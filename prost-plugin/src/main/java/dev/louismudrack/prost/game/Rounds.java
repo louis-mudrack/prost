@@ -1,6 +1,8 @@
 package dev.louismudrack.prost.game;
 
 import dev.louismudrack.prost.ProstPlugin;
+import dev.louismudrack.prost.api.event.RoundEndEvent;
+import dev.louismudrack.prost.api.event.RoundStartEvent;
 import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
@@ -69,6 +71,7 @@ public final class Rounds {
         r.add(host.getUniqueId(), host.getName(), plugin.cfg().limitDefault(), false, now);
         byCode.put(r.code, r);
         save();
+        Bukkit.getPluginManager().callEvent(new RoundStartEvent(Views.round(r, null)));
         return r;
     }
 
@@ -110,7 +113,9 @@ public final class Rounds {
         close(r);
     }
 
+    /** the one path every closure passes through, so RoundEndEvent fires exactly once */
     private void close(Round r) {
+        Bukkit.getPluginManager().callEvent(new RoundEndEvent(Views.round(r, plugin.director().running(r))));
         byCode.remove(r.code);
         plugin.placed().forget(r);
         save();

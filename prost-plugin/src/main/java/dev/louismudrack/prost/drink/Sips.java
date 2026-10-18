@@ -1,6 +1,8 @@
 package dev.louismudrack.prost.drink;
 
 import dev.louismudrack.prost.ProstPlugin;
+import dev.louismudrack.prost.api.SipSource;
+import dev.louismudrack.prost.api.event.SipsEvent;
 import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
@@ -94,6 +96,7 @@ public final class Sips {
         int drunk = a.drunk();
         Msg.roundEach(x.round(), viewer -> Msg.str(viewer, m.water ? "sips.drinks_water" : "sips.drinks", V.of("name", m.name), V.mm("sips", Msg.sips(viewer, drunk)), V.of("why", x.why().apply(viewer)))
                 + (a.lapsed() > 0 ? " " + Msg.str(viewer, "sips.limit_tag") : ""));
+        if (drunk > 0) Bukkit.getPluginManager().callEvent(new SipsEvent(m.id, x.round().code, drunk, source(x.source()), m.water));
         Player p = Bukkit.getPlayer(m.id);
         if (p == null) {
             plugin.rounds().save();
@@ -107,5 +110,13 @@ public final class Sips {
             Sounds.fail(p);
         }
         plugin.rounds().save();
+    }
+
+    private static SipSource source(SipLedger.Source s) {
+        return switch (s) {
+            case CHALLENGE -> SipSource.CHALLENGE;
+            case ROULETTE -> SipSource.ROULETTE;
+            case HANDOUT -> SipSource.HANDOUT;
+        };
     }
 }

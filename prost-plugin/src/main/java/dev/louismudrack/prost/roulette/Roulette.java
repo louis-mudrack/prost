@@ -1,6 +1,7 @@
 package dev.louismudrack.prost.roulette;
 
 import dev.louismudrack.prost.ProstPlugin;
+import dev.louismudrack.prost.api.event.RouletteHitEvent;
 import dev.louismudrack.prost.drink.SipLedger;
 import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
@@ -158,9 +159,10 @@ public final class Roulette implements Listener {
         else Sounds.tick(p, PITCH_LOW + (PITCH_HIGH - PITCH_LOW) * frame / (frames - 1));
     }
 
-    private void land(Round r, UUID id, int sips, String whatKey) {
+    void land(Round r, UUID id, int sips, String whatKey) {
         Member m = r.member(id);
         if (m == null || plugin.rounds().of(id) != r) return;   // left the round (or it ended) during the spin
+        Bukkit.getPluginManager().callEvent(new RouletteHitEvent(id, r.code, sips));
         m.tally.roulette++;
         plugin.stats().add(id, m.name, StatsField.ROULETTE, 1);
         plugin.sips().drink(r, id, sips, SipLedger.Source.ROULETTE,

@@ -1,6 +1,8 @@
 package dev.louismudrack.prost.game;
 
 import dev.louismudrack.prost.ProstPlugin;
+import dev.louismudrack.prost.api.event.ChallengeEndEvent;
+import dev.louismudrack.prost.api.event.ChallengeStartEvent;
 import dev.louismudrack.prost.catalogue.ChallengeDef;
 import dev.louismudrack.prost.catalogue.Need;
 import dev.louismudrack.prost.drink.SipLedger;
@@ -72,6 +74,7 @@ public final class ChallengeRun {
     void start() {
         tracker.start(online());
         announce();
+        Bukkit.getPluginManager().callEvent(new ChallengeStartEvent(Views.round(round, this), Views.challenge(this)));
         update(startedAt);
     }
 
@@ -105,6 +108,7 @@ public final class ChallengeRun {
         tracker.stop();
         hideBars();
         if (key != null) Msg.round(round, key);
+        Bukkit.getPluginManager().callEvent(new ChallengeEndEvent(Views.round(round, this), Views.challenge(this), false, List.of(), Map.of()));
         plugin.director().ended(round, false);
     }
 
@@ -174,6 +178,7 @@ public final class ChallengeRun {
         } else {
             for (UUID w : o.rewarded()) plugin.rewards().grant(round, w, def, false, List.of());
         }
+        Bukkit.getPluginManager().callEvent(new ChallengeEndEvent(Views.round(round, this), Views.challenge(this), true, o.winners(), o.drinks()));
         plugin.director().ended(round, true);
     }
 
