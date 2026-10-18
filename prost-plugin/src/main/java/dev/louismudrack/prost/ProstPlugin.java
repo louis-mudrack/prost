@@ -6,6 +6,7 @@ import dev.louismudrack.prost.catalogue.Rule;
 import dev.louismudrack.prost.catalogue.RulesFile;
 import dev.louismudrack.prost.catalogue.Texts;
 import dev.louismudrack.prost.command.ProstCommand;
+import dev.louismudrack.prost.command.Subcommands;
 import dev.louismudrack.prost.config.DataFiles;
 import dev.louismudrack.prost.config.GameConfig;
 import dev.louismudrack.prost.config.PluginConfig;
@@ -32,6 +33,7 @@ import dev.louismudrack.prost.roulette.Roulette;
 import dev.louismudrack.prost.storage.PlayerPrefs;
 import dev.louismudrack.prost.storage.SqlStatsStore;
 import dev.louismudrack.prost.storage.StatsStore;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
@@ -39,11 +41,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
-/** Prost - the drinking game. Rounds, challenges and the roulette. */
-public final class ProstPlugin extends JavaPlugin {
+/** Prost - the drinking game. Rounds, challenges and the roulette. Not final: MockBukkit loads it as a subclass. */
+public class ProstPlugin extends JavaPlugin {
     private PluginConfig pluginConfig = PluginConfig.DEFAULTS;
     private GameConfig cfg = GameConfig.DEFAULTS;
     private List<ChallengeDef> challenges = List.of();
@@ -59,6 +63,7 @@ public final class ProstPlugin extends JavaPlugin {
     private Roulette roulette;
     private Hooks hooks;
     private Lang lang = Lang.empty();
+    private ProstCommand command;
 
     @Override
     public void onEnable() {
@@ -78,9 +83,10 @@ public final class ProstPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MenuListener(), this);
         director = new Director(this);
         getServer().getScheduler().runTaskTimer(this, () -> director.tick(), 10L, 10L);
-        ProstCommand command = new ProstCommand(this);
-        getCommand("prost").setExecutor(command);
-        getCommand("prost").setTabCompleter(command);
+        command = new ProstCommand(this);
+        command.subcommands(subcommands());
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS,
+                event -> event.registrar().register("prost", pluginConfig.commandAliases(), command));
         roulette = new Roulette(this);
         getServer().getPluginManager().registerEvents(roulette, this);
         rounds = new Rounds(this);
@@ -142,6 +148,13 @@ public final class ProstPlugin extends JavaPlugin {
         Texts.serverDefault(lang.defaultLanguage());
         Msg.bind(lang, new LanguageResolver(lang, hooks, prefs, pluginConfig.perPlayerLanguage()),
                 Theme.of(pluginConfig.theme(), getLogger()::warning), (player, text) -> text);   // PlaceholderAPI: Task 14
+        if (command != null) command.subcommands(subcommands());
+    }
+
+    private Subcommands subcommands() {
+        Map<String, Map<String, List<String>>> aliases = new HashMap<>();
+        for (String code : lang.languages()) aliases.put(code, lang.aliases(code));
+        return Subcommands.of(aliases, getLogger()::warning);
     }
 
     public PluginConfig pluginConfig() { return pluginConfig; }
@@ -160,4 +173,5 @@ public final class ProstPlugin extends JavaPlugin {
     public Roulette roulette() { return roulette; }
     public Hooks hooks() { return hooks; }
     public Lang lang() { return lang; }
+    public ProstCommand command() { return command; }
 }

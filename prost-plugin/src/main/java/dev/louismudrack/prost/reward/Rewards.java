@@ -98,11 +98,11 @@ public final class Rewards implements Listener {
         offer(p, new ChoiceMenu(plugin, p, "menu.choice.reward", list).until(deadline()));
     }
 
-    /** a choice the winner may close by accident: the chat button (/prost belohnung) opens it again until it is decided */
+    /** a choice the winner may close by accident: the chat button (/prost reward) opens it again until it is decided */
     private void offer(Player p, Menu menu) {
         pendingMenus.put(p.getUniqueId(), menu);
         menu.open();
-        Msg.tell(p, "reward.reopen");
+        Msg.tell(p, "reward.reopen", V.of("cmd", "/prost reward"));
     }
 
     private void settled(UUID winner) { pendingMenus.remove(winner); }
@@ -199,7 +199,7 @@ public final class Rewards implements Listener {
             return;
         }
         new HandoutMenu(plugin, p, this, h).until(h.deadline).open();
-        Msg.tell(p, "handout.prompt", V.of("amount", amount));
+        Msg.tell(p, "handout.prompt", V.of("amount", amount), V.of("cmd", "/prost handout"));
     }
 
     public boolean reopenHandout(Player p) {

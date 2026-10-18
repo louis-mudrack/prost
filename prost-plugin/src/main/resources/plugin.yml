@@ -8,12 +8,6 @@ softdepend: [Essentials]
 description: "The drinking game: rounds, challenges and a roulette - played in real life, no in-game advantage"
 libraries:
   - org.mariadb.jdbc:mariadb-java-client:3.5.10
-commands:
-  prost:
-    aliases: [drinks]
-    description: "Prost - the drinking game"
-    usage: /prost
-    permission: prost.play
 permissions:
   prost.play:
     description: "Open, join and play rounds"

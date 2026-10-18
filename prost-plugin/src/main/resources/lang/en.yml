@@ -6,8 +6,8 @@ prefix: "<primary>Prost</primary> <dark_gray>»</dark_gray> <gray>"
 sips:
   one: "<n> sip"
   other: "<n> sips"
-  drinks: "<hl><name> <gray>drinks <hl><drunk> <gray>sips <dark_gray>(<why>)"
-  drinks_water: "<hl><name> <gray>drinks <hl><drunk> <gray>sips of water <dark_gray>(<why>)"
+  drinks: "<hl><name> <gray>drinks <hl><sips> <dark_gray>(<why>)"
+  drinks_water: "<hl><name> <gray>drinks <hl><sips> <gray>of water <dark_gray>(<why>)"
   limit_tag: "<dark_gray>(Limit)"
   limit_reached: "Limit reached - <lapsed> sips lapse."
 kind:
@@ -170,9 +170,9 @@ reward:
     next: "Pick the next challenge"
   joker_lore: ["<gray>Cancels one drink"]
   time_up: "Time's up - you get: <hl><label>"
-  reopen: "<click:run_command:'/prost belohnung'><ok>[Pick your reward]</click> <dark_gray>(opens the menu again)"
+  reopen: "<click:run_command:'<cmd>'><ok>[Pick your reward]</click> <dark_gray>(opens the menu again)"
 joker:
-  offer: "You would drink <hl><amount> <gray>sips. <click:run_command:'/prost joker'><ok>[Use a joker]</click> <dark_gray>(<left> left)"
+  offer: "You would drink <hl><amount> <gray>sips. <click:run_command:'<cmd>'><ok>[Use a joker]</click> <dark_gray>(<left> left)"
   used: "<hl><name> <gray>uses a joker - no sip."
   got: "You got a <ok>joker<gray>! (<count>)"
   full: "You already hold <count> jokers - this one lapses."
@@ -180,7 +180,7 @@ handout:
   from: "from <player>"
   real_life: "<hl><name> <gray>hands out <hl><amount> <gray>sips in real life."
   nobody: "Nobody can receive sips right now - they lapse."
-  prompt: "Hand out <hl><amount> <gray>sips. <click:run_command:'/prost verteilen'><ok>[Hand out sips]</click>"
+  prompt: "Hand out <hl><amount> <gray>sips. <click:run_command:'<cmd>'><ok>[Hand out sips]</click>"
   expired: "Time's up - the sips went out, the rest at random."
 rule:
   expired: "Time's up - a random rule was picked."
@@ -214,7 +214,7 @@ round:
   not_in: "You are not in a round. Start one with /prost start."
   host_only: "Only the host can do that."
   opened: "Round <hl><code> <gray>opened (pace <pace>). Invite friends: <white>/prost invite <name> <gray>- or they join with <white>/prost join <code>"
-  invite: "<hl><name> <gray>invites you to the drinking game. <click:run_command:'<join>'><ok>[Accept]</click> <click:run_command:'/prost ablehnen'><err>[Decline]</click>"
+  invite: "<hl><name> <gray>invites you to the drinking game. <click:run_command:'<join>'><ok>[Accept]</click> <click:run_command:'<decline>'><err>[Decline]</click>"
   joined: "<hl><name> <gray>joined the round."
   left: "<hl><name> <gray>left the round."
   host_now: "<hl><name> <gray>is the host now."
@@ -249,9 +249,9 @@ command:
   invite_sent: "Invite sent to <hl><player><gray>."
   unknown_player: "I don't know that player."
   no_permission: "You don't have permission for that."
-  help: "<white>/prost <gray>menu · <white>start <gray>· <white>invite <name> <gray>· <white>join <code> <gray>· <white>pause [round] <gray>· <white>next <gray>· <white>pace <gray>· <white>kick <gray>· <white>end <gray>· <white>leave <gray>· <white>stats"
+  help: "<white>/prost <gray>menu · <white>start <gray>· <white>invite <name> <gray>· <white>join <code> <gray>· <white>pause [round] <gray>· <white>next <gray>· <white>pace <gray>· <white>kick <gray>· <white>end <gray>· <white>leave <gray>· <white>stats <gray>· <white>language"
 admin:
-  reloaded: "Reloaded: <challenges> challenges, <rules> rules."
+  reloaded: "Reloaded: <challenges> challenges, <rules> rules. <muted>Changes under storage: take effect after a restart."
   none: "No round is running."
   list_idle: "<code>: <players> players, pace <pace>"
   list_running: "<code>: <players> players, pace <pace>, running: <id>"
@@ -260,6 +260,11 @@ admin:
   force_refused: "Not possible now (something runs, or too few active players for that kind)."
   debug_on: "Roulette debug in the console: on"
   debug_off: "Roulette debug in the console: off"
-  usage: "/prost admin list | end <code> | force <code> <id> <kind> | debug [on|off]"
+  usage: "/prost admin reload | list | end <code> | force <code> <id> <kind> | debug [on|off]"
+language:
+  managed: "Your language follows the server (it decides it for you)."
+  current: "Language: <hl><language> <gray>- available: <white><available> <gray>(or auto)"
+  unknown: "There is no language <language>. Available: <available>"
+  set: "Language set: <hl><language>"
 # Extra names for subcommands in this language, e.g. invite: [add]. English names always work.
 commands: {}

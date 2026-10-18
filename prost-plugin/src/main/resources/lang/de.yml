@@ -6,8 +6,8 @@ prefix: "<primary>Prost</primary> <dark_gray>»</dark_gray> <gray>"
 sips:
   one: "<n> Schluck"
   other: "<n> Schlucke"
-  drinks: "<hl><name> <gray>trinkt <hl><drunk> <gray>Schlucke <dark_gray>(<why>)"
-  drinks_water: "<hl><name> <gray>trinkt <hl><drunk> <gray>Schlucke Wasser <dark_gray>(<why>)"
+  drinks: "<hl><name> <gray>trinkt <hl><sips> <dark_gray>(<why>)"
+  drinks_water: "<hl><name> <gray>trinkt <hl><sips> <gray>Wasser <dark_gray>(<why>)"
   limit_tag: "<dark_gray>(Limit)"
   limit_reached: "Limit erreicht - <lapsed> Schlucke verfallen."
 kind:
@@ -170,9 +170,9 @@ reward:
     next: "Nächste Herausforderung wählen"
   joker_lore: ["<gray>Hebt einen Schluck-Befehl auf"]
   time_up: "Zeit abgelaufen - du bekommst: <hl><label>"
-  reopen: "<click:run_command:'/prost belohnung'><ok>[Belohnung wählen]</click> <dark_gray>(öffnet das Menü wieder)"
+  reopen: "<click:run_command:'<cmd>'><ok>[Belohnung wählen]</click> <dark_gray>(öffnet das Menü wieder)"
 joker:
-  offer: "Du müsstest <hl><amount> <gray>Schlucke trinken. <click:run_command:'/prost joker'><ok>[Joker einsetzen]</click> <dark_gray>(<left> übrig)"
+  offer: "Du müsstest <hl><amount> <gray>Schlucke trinken. <click:run_command:'<cmd>'><ok>[Joker einsetzen]</click> <dark_gray>(<left> übrig)"
   used: "<hl><name> <gray>setzt einen Joker ein - kein Schluck."
   got: "Du hast einen <ok>Joker<gray>! (<count>)"
   full: "Du hast schon <count> Joker - der Joker verfällt."
@@ -180,7 +180,7 @@ handout:
   from: "von <player>"
   real_life: "<hl><name> <gray>verteilt <hl><amount> <gray>Schlucke in echt."
   nobody: "Gerade kann niemand Schlucke bekommen - sie verfallen."
-  prompt: "Verteile <hl><amount> <gray>Schlucke. <click:run_command:'/prost verteilen'><ok>[Schlucke verteilen]</click>"
+  prompt: "Verteile <hl><amount> <gray>Schlucke. <click:run_command:'<cmd>'><ok>[Schlucke verteilen]</click>"
   expired: "Zeit abgelaufen - die Schlucke wurden verteilt, der Rest zufällig."
 rule:
   expired: "Zeit abgelaufen - eine zufällige Regel wurde gewählt."
@@ -214,7 +214,7 @@ round:
   not_in: "Du bist in keiner Runde. Starte eine mit /prost start."
   host_only: "Das darf nur der Host."
   opened: "Runde <hl><code> <gray>eröffnet (Tempo <pace>). Lade Freunde ein: <white>/prost einladen <name> <gray>- oder sie kommen mit <white>/prost join <code>"
-  invite: "<hl><name> <gray>lädt dich zum Trinkspiel ein. <click:run_command:'<join>'><ok>[Annehmen]</click> <click:run_command:'/prost ablehnen'><err>[Ablehnen]</click>"
+  invite: "<hl><name> <gray>lädt dich zum Trinkspiel ein. <click:run_command:'<join>'><ok>[Annehmen]</click> <click:run_command:'<decline>'><err>[Ablehnen]</click>"
   joined: "<hl><name> <gray>spielt jetzt mit."
   left: "<hl><name> <gray>hat die Runde verlassen."
   host_now: "<hl><name> <gray>ist jetzt Host."
@@ -249,9 +249,9 @@ command:
   invite_sent: "Einladung an <hl><player> <gray>geschickt."
   unknown_player: "Diesen Spieler kenne ich nicht."
   no_permission: "Dafür fehlt dir die Berechtigung."
-  help: "<white>/prost <gray>Menü · <white>start <gray>· <white>einladen <name> <gray>· <white>join <code> <gray>· <white>pause [runde] <gray>· <white>weiter <gray>· <white>tempo <gray>· <white>kick <gray>· <white>ende <gray>· <white>verlassen <gray>· <white>stats"
+  help: "<white>/prost <gray>Menü · <white>start <gray>· <white>einladen <name> <gray>· <white>join <code> <gray>· <white>pause [runde] <gray>· <white>weiter <gray>· <white>tempo <gray>· <white>kick <gray>· <white>ende <gray>· <white>verlassen <gray>· <white>stats <gray>· <white>sprache"
 admin:
-  reloaded: "Neu geladen: <challenges> Herausforderungen, <rules> Regeln."
+  reloaded: "Neu geladen: <challenges> Herausforderungen, <rules> Regeln. <muted>Änderungen unter storage: wirken erst nach einem Neustart."
   none: "Keine Runde läuft."
   list_idle: "<code>: <players> Spieler, Tempo <pace>"
   list_running: "<code>: <players> Spieler, Tempo <pace>, läuft: <id>"
@@ -260,7 +260,12 @@ admin:
   force_refused: "Geht gerade nicht (läuft schon etwas, oder zu wenige aktive Spieler für diese Art)."
   debug_on: "Roulette-Debug in der Konsole: an"
   debug_off: "Roulette-Debug in der Konsole: aus"
-  usage: "/prost admin list | end <code> | force <code> <id> <kind> | debug [on|off]"
+  usage: "/prost admin reload | list | end <code> | force <code> <id> <kind> | debug [on|off]"
+language:
+  managed: "Deine Sprache stellt der Server ein."
+  current: "Sprache: <hl><language> <gray>- verfügbar: <white><available> <gray>(oder auto)"
+  unknown: "Die Sprache <language> gibt es nicht. Verfügbar: <available>"
+  set: "Sprache eingestellt: <hl><language>"
 # Deutsche Namen der Unterbefehle; die englischen gehen immer.
 commands:
   invite: [einladen]

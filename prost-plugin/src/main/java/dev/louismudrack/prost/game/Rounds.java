@@ -117,7 +117,7 @@ public final class Rounds {
 
     public void invite(Player from, Player to, Round r) {
         invites.put(to.getUniqueId(), new Invite(r.code, from.getUniqueId(), System.currentTimeMillis() + INVITE_MS));
-        Msg.tell(to, "round.invite", V.of("name", from.getName()), V.of("join", "/prost join " + r.code));
+        Msg.tell(to, "round.invite", V.of("name", from.getName()), V.of("join", "/prost join " + r.code), V.of("decline", "/prost decline"));
         Sounds.bell(to);
     }
 

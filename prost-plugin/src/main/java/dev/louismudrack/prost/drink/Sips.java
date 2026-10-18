@@ -52,7 +52,7 @@ public final class Sips {
         }, plugin.cfg().jokerOfferSeconds() * 20L);
         pending.put(id, new Pending(r, id, amount, source, why, timeout));
         int left = m.jokers;
-        Msg.tell(p, "joker.offer", V.of("amount", amount), V.of("left", left));
+        Msg.tell(p, "joker.offer", V.of("amount", amount), V.of("left", left), V.of("cmd", "/prost joker"));
         Sounds.bell(p);
     }
 
@@ -91,7 +91,7 @@ public final class Sips {
         else m.tally.drunk += a.drunk();
         plugin.stats().add(m.id, m.name, m.water ? StatsField.WATER : StatsField.DRUNK, a.drunk());
         int drunk = a.drunk();
-        Msg.roundEach(x.round(), viewer -> Msg.str(viewer, m.water ? "sips.drinks_water" : "sips.drinks", V.of("name", m.name), V.of("drunk", drunk), V.of("why", x.why().apply(viewer)))
+        Msg.roundEach(x.round(), viewer -> Msg.str(viewer, m.water ? "sips.drinks_water" : "sips.drinks", V.of("name", m.name), V.mm("sips", Msg.sips(viewer, drunk)), V.of("why", x.why().apply(viewer)))
                 + (a.lapsed() > 0 ? " " + Msg.str(viewer, "sips.limit_tag") : ""));
         Player p = Bukkit.getPlayer(m.id);
         if (p == null) {

@@ -145,7 +145,7 @@ public final class Director {
         });
     }
 
-    /** /prost weiter: refused while a challenge runs (Review Focus 3) */
+    /** /prost next: refused while a challenge runs (Review Focus 3) */
     public boolean next(Round r) {
         if (!DirectorRules.mayDrawNow(runs.containsKey(r.code))) return false;
         r.nextDrawAt = 0;

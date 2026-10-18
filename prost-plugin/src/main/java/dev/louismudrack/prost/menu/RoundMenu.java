@@ -63,15 +63,15 @@ public final class RoundMenu extends Menu {
                     List.of(me.selfPaused ? text("menu.round.is_paused") : text("menu.round.is_playing"))), e -> command("prost pause"));
             set(33, Items.item(Material.COMPARATOR, "<hl>" + text("menu.round.limit_water"), lines("menu.round.limit_lore", V.of("limit", me.limit))),
                     e -> new JoinMenu(plugin, viewer, round).open());
-            set(34, Items.item(Material.RED_DYE, "<err>" + text("menu.round.leave"), List.of()), e -> command("prost verlassen"));
+            set(34, Items.item(Material.RED_DYE, "<err>" + text("menu.round.leave"), List.of()), e -> command("prost leave"));
         }
         if (host) {
-            set(38, Items.item(Material.CLOCK, "<hl>" + text("menu.round.next_now"), List.of()), e -> command("prost weiter"));
+            set(38, Items.item(Material.CLOCK, "<hl>" + text("menu.round.next_now"), List.of()), e -> command("prost next"));
             set(39, Items.item(round.paused ? Material.LIME_DYE : Material.GRAY_DYE, "<hl>" + text("menu.round.pause_round"),
-                    List.of(round.paused ? text("menu.round.is_paused") : text("menu.round.is_running"))), e -> command("prost pause runde"));
+                    List.of(round.paused ? text("menu.round.is_paused") : text("menu.round.is_running"))), e -> command("prost pause round"));
             Pace nextPace = Pace.values()[(round.pace.ordinal() + 1) % Pace.values().length];
             set(40, Items.item(Material.REPEATER, "<hl>" + text("menu.round.pace", V.mm("pace", text("pace." + round.pace.key))),
-                    lines("menu.round.pace_lore", V.mm("pace", text("pace." + nextPace.key)))), e -> command("prost tempo " + nextPace.key));
+                    lines("menu.round.pace_lore", V.mm("pace", text("pace." + nextPace.key)))), e -> command("prost pace " + nextPace.key));
             set(41, Items.item(Material.TNT, "<err>" + text("menu.round.end"), List.of()), e -> confirmEnd());
         }
     }
@@ -99,7 +99,7 @@ public final class RoundMenu extends Menu {
 
     private void confirmEnd() {
         new ChoiceMenu(plugin, viewer, "menu.choice.end", List.of(
-                new ChoiceMenu.Option(Items.item(Material.LIME_WOOL, "<ok>" + text("menu.round.yes_end"), List.of()), () -> viewer.performCommand("prost ende")),
+                new ChoiceMenu.Option(Items.item(Material.LIME_WOOL, "<ok>" + text("menu.round.yes_end"), List.of()), () -> viewer.performCommand("prost end")),
                 new ChoiceMenu.Option(Items.item(Material.RED_WOOL, "<err>" + text("menu.round.cancel"), List.of()), () -> new RoundMenu(plugin, viewer, round).open()))).open();
     }
 }

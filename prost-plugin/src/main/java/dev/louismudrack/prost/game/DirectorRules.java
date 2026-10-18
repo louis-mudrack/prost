@@ -10,7 +10,7 @@ public final class DirectorRules {
         return !running && !roundPaused && active > 0 && now >= nextDrawAt;
     }
 
-    /** /prost weiter: only between challenges */
+    /** /prost next: only between challenges */
     public static boolean mayDrawNow(boolean running) { return !running; }
 
     public static long afterRun(long now, int rewardSeconds, long gapMs) { return now + rewardSeconds * 1000L + gapMs; }

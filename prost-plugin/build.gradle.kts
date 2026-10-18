@@ -34,7 +34,10 @@ tasks.shadowJar {
     archiveClassifier.set("")
 }
 tasks.assemble { dependsOn(tasks.shadowJar) }
-tasks.test { useJUnitPlatform { excludeTags("integration") } }
+tasks.test {
+    useJUnitPlatform { excludeTags("integration") }
+    systemProperty("prost.offline", "true")
+}
 val integrationTest by tasks.registering(Test::class) {
     description = "Tests against a MariaDB container (needs Docker)"
     group = "verification"

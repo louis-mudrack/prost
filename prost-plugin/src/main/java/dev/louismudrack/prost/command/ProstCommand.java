@@ -10,6 +10,7 @@ import dev.louismudrack.prost.game.Pace;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.game.Rounds;
 import dev.louismudrack.prost.i18n.Lang;
+import dev.louismudrack.prost.i18n.LanguageResolver;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.menu.JoinMenu;
@@ -18,87 +19,73 @@ import dev.louismudrack.prost.menu.RoundMenu;
 import dev.louismudrack.prost.menu.StatsMenu;
 import dev.louismudrack.prost.roulette.Roulette;
 import dev.louismudrack.prost.ui.Sounds;
+import io.papermc.paper.command.brigadier.BasicCommand;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.ProxiedCommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.TreeSet;
 import java.util.UUID;
 
-/** /prost (spec §3.1). Every reply in the player's language; console only gets the admin part. */
-public final class ProstCommand implements CommandExecutor, TabCompleter {
+/** /prost (spec §5). Every reply in the player's language; console only gets the admin part, in English. */
+public final class ProstCommand implements BasicCommand {
+    private static final String PLAY = "prost.play";
     private static final String ADMIN = "prost.admin";
-    private static final List<String> SUBS = List.of("start", "einladen", "join", "ablehnen", "verlassen", "pause", "status", "weiter",
-            "tempo", "kick", "ende", "stats");
+    private static final List<String> ADMIN_ARGS = List.of("reload", "list", "end", "force", "debug", "migrate");
+    private static final String AUTO = "auto";
 
     private final ProstPlugin plugin;
+    private volatile Subcommands subs;
 
     public ProstCommand(ProstPlugin plugin) { this.plugin = plugin; }
 
-    /** a player, or the player an op runs it for: /execute as <player> run prost ... */
-    static Player player(CommandSender s) {
-        if (s instanceof Player p) return p;
-        if (s instanceof ProxiedCommandSender px && px.getCallee() instanceof Player p) return p;
-        return null;
-    }
+    /** the subcommand names: English plus the language files' aliases, swapped on /prost reload */
+    public void subcommands(Subcommands s) { subs = s; }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+    public boolean canUse(CommandSender sender) { return sender.hasPermission(PLAY); }
+
+    @Override
+    public void execute(CommandSourceStack source, String[] args) {
+        CommandSender sender = source.getSender();
+        String sub = args.length == 0 ? "" : subs.canonical(args[0]);
         if (sub.equals("reload") || sub.equals("admin")) {
             admin(sender, sub, args);
-            return true;
+            return;
         }
-        Player p = player(sender);
+        Player p = source.getExecutor() instanceof Player x ? x : sender instanceof Player y ? y : null;   // /execute as <player> run prost ...
         if (p == null) {
             sender.sendMessage("Players only (console: /prost reload, /prost admin ...).");
-            return true;
+            return;
         }
         Round r = plugin.rounds().of(p.getUniqueId());
         switch (sub) {
             case "" -> new MainMenu(plugin, p).open();
             case "start" -> start(p, r, args);
-            case "einladen", "invite" -> invite(p, r, args);
+            case "invite" -> invite(p, r, args);
             case "join" -> join(p, r, args);
-            case "ablehnen", "decline" -> {
-                plugin.rounds().decline(p.getUniqueId());
-                Msg.tell(p, "command.declined");
-            }
-            case "verlassen", "leave" -> {
-                if (r == null) notInRound(p);
-                else plugin.rounds().leave(p.getUniqueId());
-            }
+            case "decline" -> decline(p);
+            case "leave" -> leave(p, r);
             case "pause" -> pause(p, r, args);
-            case "status" -> {
-                if (r == null) notInRound(p);
-                else new RoundMenu(plugin, p, r).open();
-            }
-            case "weiter", "next" -> next(p, r);
-            case "tempo", "pace" -> pace(p, r, args);
+            case "status" -> status(p, r);
+            case "next" -> next(p, r);
+            case "pace" -> pace(p, r, args);
             case "kick" -> kick(p, r, args);
-            case "ende", "end" -> {
-                if (host(p, r)) plugin.rounds().end(r);
-            }
+            case "end" -> end(p, r);
             case "stats" -> stats(p, args);
-            case "joker" -> {
-                if (!plugin.sips().useJoker(p)) Msg.error(p, "command.no_joker");
-            }
-            case "verteilen" -> {
-                if (!plugin.rewards().reopenHandout(p)) Msg.error(p, "command.no_handout");
-            }
-            case "belohnung" -> {
-                if (!plugin.rewards().reopenChoice(p)) Msg.error(p, "command.no_choice");
-            }
+            case "language" -> language(p, args);
+            case "joker" -> joker(p);
+            case "handout" -> handout(p);
+            case "reward" -> reward(p);
             default -> help(p);
         }
-        return true;
     }
 
     private void start(Player p, Round r, String[] args) {
@@ -145,9 +132,19 @@ public final class ProstCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void decline(Player p) {
+        plugin.rounds().decline(p.getUniqueId());
+        Msg.tell(p, "command.declined");
+    }
+
+    private void leave(Player p, Round r) {
+        if (r == null) notInRound(p);
+        else plugin.rounds().leave(p.getUniqueId());
+    }
+
     private void pause(Player p, Round r, String[] args) {
         if (r == null) { notInRound(p); return; }
-        if (args.length > 1 && (args[1].equalsIgnoreCase("runde") || args[1].equalsIgnoreCase("round"))) {
+        if (args.length > 1 && subs.canonical(args[1]).equals("round")) {
             if (!host(p, r)) return;
             r.paused = !r.paused;
             Msg.round(r, r.paused ? "round.paused" : "round.resumed");
@@ -157,6 +154,11 @@ public final class ProstCommand implements CommandExecutor, TabCompleter {
             Msg.tell(p, m.selfPaused ? "round.self_paused" : "round.self_back");
         }
         plugin.rounds().save();
+    }
+
+    private void status(Player p, Round r) {
+        if (r == null) notInRound(p);
+        else new RoundMenu(plugin, p, r).open();
     }
 
     private void next(Player p, Round r) {
@@ -183,6 +185,10 @@ public final class ProstCommand implements CommandExecutor, TabCompleter {
         plugin.rounds().leave(target.id);
     }
 
+    private void end(Player p, Round r) {
+        if (host(p, r)) plugin.rounds().end(r);
+    }
+
     private void stats(Player p, String[] args) {
         UUID id = p.getUniqueId();
         String name = p.getName();
@@ -195,19 +201,52 @@ public final class ProstCommand implements CommandExecutor, TabCompleter {
         StatsMenu.load(plugin, p, id, name);
     }
 
+    /** a language provider or language.per-player: false decides for everyone - a choice here would change nothing */
+    private void language(Player p, String[] args) {
+        Lang lang = plugin.lang();
+        String available = String.join(", ", new TreeSet<>(lang.languages()));
+        if (plugin.hooks().hasLanguageProvider() || !plugin.pluginConfig().perPlayerLanguage()) {
+            Msg.tell(p, "language.managed");
+            return;
+        }
+        if (args.length < 2) {
+            Msg.tell(p, "language.current", V.of("language", Msg.lang(p.getUniqueId())), V.of("available", available));
+            return;
+        }
+        String code = args[1].equalsIgnoreCase(AUTO) ? null : LanguageResolver.normalize(args[1]);
+        if (code != null && !lang.has(code)) {
+            Msg.error(p, "language.unknown", V.of("language", args[1]), V.of("available", available));
+            return;
+        }
+        plugin.prefs().setLanguage(p, code);
+        Msg.tell(p, "language.set", V.of("language", Msg.lang(p.getUniqueId())));
+    }
+
+    private void joker(Player p) {
+        if (!plugin.sips().useJoker(p)) Msg.error(p, "command.no_joker");
+    }
+
+    private void handout(Player p) {
+        if (!plugin.rewards().reopenHandout(p)) Msg.error(p, "command.no_handout");
+    }
+
+    private void reward(Player p) {
+        if (!plugin.rewards().reopenChoice(p)) Msg.error(p, "command.no_choice");
+    }
+
+    /** /prost admin reload|list|end|force|debug; /prost reload stays as the short form */
     private void admin(CommandSender s, String sub, String[] args) {
         if (!s.hasPermission(ADMIN)) {
-            Player p = player(s);
-            if (p != null) Msg.error(p, "command.no_permission");
+            if (s instanceof Player p) Msg.error(p, "command.no_permission");
+            else reply(s, "command.no_permission");
             return;
         }
-        if (sub.equals("reload")) {
-            plugin.reloadData();
-            reply(s, "admin.reloaded", V.of("challenges", plugin.challenges().size()), V.of("rules", plugin.preparedRules().size()));
-            return;
-        }
-        String what = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "list";
+        String what = sub.equals("reload") ? "reload" : args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "list";
         switch (what) {
+            case "reload" -> {
+                plugin.reloadData();
+                reply(s, "admin.reloaded", V.of("challenges", plugin.challenges().size()), V.of("rules", plugin.preparedRules().size()));
+            }
             case "list" -> {
                 if (plugin.rounds().all().isEmpty()) reply(s, "admin.none");
                 for (Round r : plugin.rounds().all()) {
@@ -237,10 +276,9 @@ public final class ProstCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    /** a player (or the one an op runs it for) in their language, the console in English */
+    /** a player in their language, the console in English */
     private static void reply(CommandSender s, String key, V... vars) {
-        Player p = player(s);
-        if (p != null) Msg.tell(p, key, vars);
+        if (s instanceof Player p) Msg.tell(p, key, vars);
         else s.sendMessage(Msg.mm(Msg.render(Lang.FALLBACK, text -> text, key, vars)));
     }
 
@@ -256,25 +294,49 @@ public final class ProstCommand implements CommandExecutor, TabCompleter {
     private static void help(Player p) { Msg.tell(p, "command.help"); }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
-        Player p = player(sender);
-        String last = args[args.length - 1].toLowerCase(Locale.ROOT);
+    public Collection<String> suggest(CommandSourceStack source, String[] args) {
+        CommandSender s = source.getSender();
+        String lang = s instanceof Player p ? Msg.lang(p.getUniqueId()) : Lang.FALLBACK;
+        String typed = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
+        List<String> options = args.length <= 1 ? subs.visible(lang, s.hasPermission(ADMIN)) : args.length > 2 ? List.of() : switch (subs.canonical(args[0])) {
+            case "start", "pace" -> Arrays.stream(Pace.values()).map(pace -> pace.key).toList();
+            case "invite", "stats" -> onlineNames();
+            case "kick" -> roundNames(s);
+            case "join" -> joinTargets();
+            case "pause" -> subs.namesOf("round", lang);
+            case "language" -> languageOptions();
+            case "admin" -> s.hasPermission(ADMIN) ? ADMIN_ARGS : List.<String>of();
+            default -> List.<String>of();
+        };
+        return options.stream().filter(o -> o.toLowerCase(Locale.ROOT).startsWith(typed)).toList();
+    }
+
+    private List<String> onlineNames() {
+        return Bukkit.getOnlinePlayers().stream().filter(o -> !plugin.hooks().bot(o)).map(Player::getName).toList();
+    }
+
+    /** the other members of the sender's round */
+    private List<String> roundNames(CommandSender s) {
+        if (!(s instanceof Player p)) return List.of();
+        Round r = plugin.rounds().of(p.getUniqueId());
+        if (r == null) return List.of();
+        return r.members.values().stream().filter(m -> !m.id.equals(p.getUniqueId())).map(m -> m.name).toList();
+    }
+
+    /** /prost join takes a round code or its host's name */
+    private List<String> joinTargets() {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) {
-            out.addAll(SUBS);
-            if (sender.hasPermission(ADMIN)) { out.add("reload"); out.add("admin"); }
-        } else if (args.length == 2 && p != null) {
-            Round r = plugin.rounds().of(p.getUniqueId());
-            switch (args[0].toLowerCase(Locale.ROOT)) {
-                case "start", "tempo", "pace" -> { for (Pace pace : Pace.values()) out.add(pace.key); }
-                case "pause" -> { if (r != null && r.host.equals(p.getUniqueId())) out.add("runde"); }
-                case "einladen", "invite", "stats" -> { for (Player o : Bukkit.getOnlinePlayers()) if (!plugin.hooks().bot(o)) out.add(o.getName()); }
-                case "join" -> { for (Round x : plugin.rounds().all()) out.add(x.code); }
-                case "kick" -> { if (r != null) for (Member m : r.members.values()) out.add(m.name); }
-                case "admin" -> out.addAll(List.of("list", "end", "force", "debug"));
-                default -> { }
-            }
+        for (Round r : plugin.rounds().all()) {
+            out.add(r.code);
+            Member host = r.member(r.host);
+            if (host != null) out.add(host.name);
         }
-        return out.stream().filter(s -> s.toLowerCase(Locale.ROOT).startsWith(last)).toList();
+        return out;
+    }
+
+    private List<String> languageOptions() {
+        List<String> out = new ArrayList<>(new TreeSet<>(plugin.lang().languages()));
+        out.add(AUTO);
+        return out;
     }
 }
