@@ -42,6 +42,17 @@ class LangFilesTest {
         assertEquals(1, warnings.size());
     }
 
+    /** Bukkit throws an unknown tag as a bare ConstructorException, not as InvalidConfigurationException */
+    @Test
+    void aFileWithAnUnknownTagIsSkippedWithOneWarning() throws Exception {
+        write("en.yml", "a: A\n");
+        write("de.yml", "a: !secret\n");
+        Lang lang = read("en");
+        assertFalse(lang.has("de"));
+        assertEquals(1, warnings.size());
+        assertFalse(warnings.get(0).contains("secret"), warnings.get(0));
+    }
+
     @Test
     void valuesThatAreNoTextFallBackToEnglish() throws Exception {
         write("en.yml", "a: A\nb:\n  c: C\n");

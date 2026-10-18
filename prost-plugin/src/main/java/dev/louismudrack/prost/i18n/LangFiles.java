@@ -51,7 +51,7 @@ public final class LangFiles {
         try {
             new YamlConfiguration().load(f);
             return false;
-        } catch (IOException | InvalidConfigurationException e) {
+        } catch (IOException | InvalidConfigurationException | RuntimeException e) {   // an unknown tag comes through bare
             return true;
         }
     }
@@ -67,7 +67,7 @@ public final class LangFiles {
             YamlConfiguration y = new YamlConfiguration();
             try {
                 y.load(f);
-            } catch (IOException | InvalidConfigurationException e) {
+            } catch (IOException | InvalidConfigurationException | RuntimeException e) {
                 warn.accept(file + " is unreadable (" + YamlErrors.describe(e) + ") - English is used instead");
                 continue;
             }

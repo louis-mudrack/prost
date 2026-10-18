@@ -33,7 +33,7 @@ public final class YamlMerge {
             user.save(file);
             plugin.getLogger().info(path + ": new settings added with their defaults");
             return true;
-        } catch (IOException | InvalidConfigurationException e) {
+        } catch (IOException | InvalidConfigurationException | RuntimeException e) {   // Bukkit lets an unknown tag through bare
             plugin.getLogger().warning(path + " could not be updated (" + YamlErrors.describe(e) + ") - fix the file; defaults apply to anything missing");
             return false;
         }

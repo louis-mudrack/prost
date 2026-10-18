@@ -4,7 +4,8 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 
@@ -22,7 +23,7 @@ import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** A config.yml that does not parse: the warning names the problem and its line, never the line's text (a password). */
+/** A config.yml that does not parse: the warning names the kind of error and its line, never the line's text (a password). */
 class BrokenConfigTest {
     private static final String SECRET = "s3cret";
     private final List<LogRecord> logged = new ArrayList<>();
@@ -45,10 +46,11 @@ class BrokenConfigTest {
         MockBukkit.unmock();
     }
 
-    private static void writeConfigWithBrokenPassword(File dataFolder) {
+    /** each prefix makes YAML fail on the password line in its own way: scanner (% @ `), alias (*), tag (! !!) */
+    private static void writeConfigWithBrokenPassword(File dataFolder, String prefix) {
         try (InputStream in = ProstPlugin.class.getResourceAsStream("/config.yml")) {
             String shipped = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            String broken = shipped.replace("password: \"\"", "password: %" + SECRET);
+            String broken = shipped.replace("password: \"\"", "password: " + prefix + SECRET);
             assertNotEquals(shipped, broken);
             Files.createDirectories(dataFolder.toPath());
             Files.writeString(dataFolder.toPath().resolve("config.yml"), broken, StandardCharsets.UTF_8);
@@ -66,18 +68,20 @@ class BrokenConfigTest {
         return logged.stream().map(LogRecord::getMessage).filter(m -> m.startsWith("config.yml")).toList();
     }
 
-    @Test
-    void thePasswordNeverReachesTheLog() {
-        ProstPlugin plugin = TestServer.start(server, BrokenConfigTest::writeConfigWithBrokenPassword);
-        server.dispatchCommand(server.getConsoleSender(), "prost reload");
+    @ParameterizedTest
+    @ValueSource(strings = {"%", "@", "`", "*", "!!", "!"})
+    void prostEnablesAndThePasswordNeverReachesTheLog(String prefix) {
+        ProstPlugin plugin = TestServer.start(server, folder -> writeConfigWithBrokenPassword(folder, prefix));
         assertTrue(plugin.isEnabled());
+        server.dispatchCommand(server.getConsoleSender(), "prost reload");
         assertFalse(configWarnings().isEmpty(), logged.stream().map(BrokenConfigTest::text).toList().toString());
         for (LogRecord r : logged) assertFalse(text(r).contains(SECRET), text(r));
     }
 
-    @Test
-    void theWarningNamesTheLine() {
-        TestServer.start(server, BrokenConfigTest::writeConfigWithBrokenPassword);
+    @ParameterizedTest
+    @ValueSource(strings = {"%", "*", "!!", "!"})
+    void theWarningNamesTheLine(String prefix) {
+        TestServer.start(server, folder -> writeConfigWithBrokenPassword(folder, prefix));
         List<String> warnings = configWarnings();
         assertFalse(warnings.isEmpty());
         for (String w : warnings) assertTrue(w.matches("(?s).*line \\d+, column \\d+.*"), w);
