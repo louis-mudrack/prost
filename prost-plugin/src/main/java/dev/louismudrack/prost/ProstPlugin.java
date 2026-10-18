@@ -10,12 +10,15 @@ import dev.louismudrack.prost.config.GameConfig;
 import dev.louismudrack.prost.config.PluginConfig;
 import dev.louismudrack.prost.config.YamlMerge;
 import dev.louismudrack.prost.drink.Sips;
+import dev.louismudrack.prost.api.AfkProvider;
 import dev.louismudrack.prost.api.ProstApi;
 import dev.louismudrack.prost.game.Director;
 import dev.louismudrack.prost.game.PlacedBlocks;
 import dev.louismudrack.prost.game.Rounds;
+import dev.louismudrack.prost.hook.AfkDetector;
 import dev.louismudrack.prost.hook.ConfigAreas;
 import dev.louismudrack.prost.hook.DimensionDefaults;
+import dev.louismudrack.prost.hook.EssentialsAfk;
 import dev.louismudrack.prost.hook.Hooks;
 import dev.louismudrack.prost.menu.MenuListener;
 import dev.louismudrack.prost.reward.Rewards;
@@ -24,6 +27,7 @@ import dev.louismudrack.prost.storage.PlayerPrefs;
 import dev.louismudrack.prost.storage.SqlStatsStore;
 import dev.louismudrack.prost.storage.StatsStore;
 import org.bukkit.Bukkit;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -66,7 +70,15 @@ public final class ProstPlugin extends JavaPlugin {
                     + "stats are written once the database is reachable");
         }
         stats = store;
-        hooks = new Hooks(getLogger(), p -> false,   // AFK detection: Task 7
+        AfkDetector detector = new AfkDetector(() -> pluginConfig.afkMinutes(), () -> System.currentTimeMillis());
+        getServer().getPluginManager().registerEvents(detector, this);
+        Plugin essentials = getServer().getPluginManager().getPlugin("Essentials");
+        AfkProvider defaultAfk = detector;
+        if (pluginConfig.useEssentials() && essentials != null && essentials.isEnabled()) {
+            defaultAfk = new EssentialsAfk(essentials, detector, getLogger());
+            getLogger().info("AFK: EssentialsX decides");
+        }
+        hooks = new Hooks(getLogger(), defaultAfk,
                 new DimensionDefaults(() -> pluginConfig, env -> getServer().getWorlds().stream().anyMatch(w -> w.getEnvironment() == env),
                         () -> Bukkit.getAllowNether(), () -> Bukkit.getAllowEnd()),
                 new ConfigAreas(() -> pluginConfig));

@@ -37,7 +37,7 @@ dimensions:
 afk:
   # No movement, look, chat or command for this many minutes = AFK: no challenges, no roulette. 0 = never AFK.
   minutes: 5
-  # Use EssentialsX's AFK state instead, when EssentialsX is installed.
+  # Use EssentialsX's AFK state instead, when EssentialsX is installed. (restart)
   use-essentials: true
 
 placeholderapi:
