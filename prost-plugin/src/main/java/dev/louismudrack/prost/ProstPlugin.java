@@ -1,5 +1,20 @@
 package dev.louismudrack.prost;
 
+import dev.louismudrack.prost.catalogue.Catalogue;
+import dev.louismudrack.prost.catalogue.ChallengeDef;
+import dev.louismudrack.prost.catalogue.Rule;
+import dev.louismudrack.prost.catalogue.RulesFile;
+import dev.louismudrack.prost.command.ProstCommand;
+import dev.louismudrack.prost.config.DataFiles;
+import dev.louismudrack.prost.config.DrinksConfig;
+import dev.louismudrack.prost.drink.Sips;
+import dev.louismudrack.prost.game.Director;
+import dev.louismudrack.prost.game.PlacedBlocks;
+import dev.louismudrack.prost.game.Rounds;
+import dev.louismudrack.prost.menu.MenuListener;
+import dev.louismudrack.prost.reward.Rewards;
+import dev.louismudrack.prost.roulette.Roulette;
+import dev.louismudrack.prost.storage.Stats;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
@@ -34,7 +49,7 @@ public final class ProstPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MenuListener(), this);
         director = new Director(this);
         getServer().getScheduler().runTaskTimer(this, () -> director.tick(), 10L, 10L);
-        DrinksCommand command = new DrinksCommand(this);
+        ProstCommand command = new ProstCommand(this);
         getCommand("prost").setExecutor(command);
         getCommand("prost").setTabCompleter(command);
         roulette = new Roulette(this);
@@ -57,21 +72,21 @@ public final class ProstPlugin extends JavaPlugin {
         if (rounds != null) rounds.save();
     }
 
-    void reloadData() {
+    public void reloadData() {
         cfg = DrinksConfig.parse(files.map("drinks.yml"));
         challenges = Catalogue.load(files.load("challenges.yml"), getLogger());
         preparedRules = RulesFile.parse(files.load("rules.yml"));
     }
 
-    DrinksConfig cfg() { return cfg; }
-    List<ChallengeDef> challenges() { return challenges; }
-    List<Rule> preparedRules() { return preparedRules; }
-    DataFiles files() { return files; }
-    Rounds rounds() { return rounds; }
-    PlacedBlocks placed() { return placed; }
-    Stats stats() { return stats; }
-    Sips sips() { return sips; }
-    Rewards rewards() { return rewards; }
-    Director director() { return director; }
-    Roulette roulette() { return roulette; }
+    public DrinksConfig cfg() { return cfg; }
+    public List<ChallengeDef> challenges() { return challenges; }
+    public List<Rule> preparedRules() { return preparedRules; }
+    public DataFiles files() { return files; }
+    public Rounds rounds() { return rounds; }
+    public PlacedBlocks placed() { return placed; }
+    public Stats stats() { return stats; }
+    public Sips sips() { return sips; }
+    public Rewards rewards() { return rewards; }
+    public Director director() { return director; }
+    public Roulette roulette() { return roulette; }
 }
