@@ -6,6 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class VTest {
     @Test
+    void anEscapedTagStaysLiteral() { assertEquals("\\<player>", V.fill("\\<player>", V.of("player", "X"))); }
+
+    @Test
+    void anEvenRunOfBackslashesIsNotAnEscape() { assertEquals("\\\\X", V.fill("\\\\<player>", V.of("player", "X"))); }
+
+    @Test
     void fillsNamedValues() { assertEquals("Round <hl>ABCD opened", V.fill("Round <hl><code> opened", V.of("code", "ABCD"))); }
 
     @Test

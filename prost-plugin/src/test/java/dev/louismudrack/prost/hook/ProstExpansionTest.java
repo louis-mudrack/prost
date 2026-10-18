@@ -3,6 +3,8 @@ package dev.louismudrack.prost.hook;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import dev.louismudrack.prost.game.Round;
+import net.kyori.adventure.text.Component;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,21 @@ class ProstExpansionTest {
         assertEquals("-", expansion.onRequest(null, "top_1_name"));
         assertEquals("0", expansion.onRequest(null, "top_1_value"));
         assertEquals("-", expansion.onRequest(null, "top_99_name"));
+    }
+
+    @Test
+    void anUnknownParamIsNullEvenWithoutAPlayer() {
+        assertNull(expansion.onRequest(null, "nonsense"));
+        assertEquals("", expansion.onRequest(null, "in_round"));
+    }
+
+    @Test
+    void aQuitEvictsTheCachedTotals() {
+        PlayerMock p = server.addPlayer("Host");
+        expansion.onRequest(p, "sips_total");
+        assertTrue(expansion.cachedTotals() > 0);
+        expansion.onQuit(new PlayerQuitEvent(p, Component.empty(), PlayerQuitEvent.QuitReason.DISCONNECTED));
+        assertEquals(0, expansion.cachedTotals());
     }
 
     @Test

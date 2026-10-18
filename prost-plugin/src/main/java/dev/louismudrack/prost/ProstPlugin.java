@@ -155,6 +155,7 @@ public class ProstPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) ProstExpansion.unregisterFor();
         if (director != null) director.shutdown();
         if (rewards != null) rewards.flushAll();
         if (sips != null) sips.flushAll();

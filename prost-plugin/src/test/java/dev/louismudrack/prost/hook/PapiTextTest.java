@@ -1,8 +1,13 @@
 package dev.louismudrack.prost.hook;
 
+import dev.louismudrack.prost.i18n.Lang;
 import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.Theme;
+import dev.louismudrack.prost.i18n.V;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -29,5 +34,19 @@ class PapiTextTest {
     @Test
     void aBackslashInAValueCannotCancelTheEscape() {
         assertEquals("a\\\\\\<red>", PapiText.substitute("%p_x%", token -> "a\\<red>"));
+    }
+
+    @Test
+    void aValueThatLooksLikeAValueOrThemeTagRendersLiterally() {
+        Lang lang = new Lang(Map.of("en", Map.of("line", "<hl><player> <white>%a_b%")), "en", w -> { });
+        Msg.bind(lang, null, Theme.DEFAULT, (p, s) -> s);
+        try {
+            for (String tag : new String[] {"<player>", "<hl>"}) {
+                String line = Msg.render("en", text -> PapiText.substitute(text, token -> tag), "line", V.of("player", "Kasheyy"));
+                assertEquals("Kasheyy " + tag, plain(line));
+            }
+        } finally {
+            Msg.bind(Lang.empty(), null, Theme.DEFAULT, (p, s) -> s);
+        }
     }
 }
