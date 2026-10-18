@@ -258,7 +258,7 @@ command:
   no_permission: "Dafür fehlt dir die Berechtigung."
   help: "<white>/prost <gray>Menü · <white>start <gray>· <white>einladen <name> <gray>· <white>join <code> <gray>· <white>pause [runde] <gray>· <white>weiter <gray>· <white>tempo <gray>· <white>kick <gray>· <white>ende <gray>· <white>verlassen <gray>· <white>stats <gray>· <white>sprache"
 admin:
-  reloaded: "Neu geladen: <challenges> Herausforderungen, <rules> Regeln. <muted>Änderungen unter storage: und commands.aliases wirken erst nach einem Neustart."
+  reloaded: "Neu geladen: <challenges> Herausforderungen, <rules> Regeln. <muted>storage:, commands.aliases, afk.use-essentials, metrics und update-checker wirken erst nach einem Neustart."
   none: "Keine Runde läuft."
   list_idle: "<code>: <players> Spieler, Tempo <pace>"
   list_running: "<code>: <players> Spieler, Tempo <pace>, läuft: <id>"

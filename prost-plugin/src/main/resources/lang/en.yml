@@ -258,7 +258,7 @@ command:
   no_permission: "You don't have permission for that."
   help: "<white>/prost <gray>menu · <white>start <gray>· <white>invite <name> <gray>· <white>join <code> <gray>· <white>pause [round] <gray>· <white>next <gray>· <white>pace <gray>· <white>kick <gray>· <white>end <gray>· <white>leave <gray>· <white>stats <gray>· <white>language"
 admin:
-  reloaded: "Reloaded: <challenges> challenges, <rules> rules. <muted>Changes under storage: and commands.aliases take effect after a restart."
+  reloaded: "Reloaded: <challenges> challenges, <rules> rules. <muted>storage:, commands.aliases, afk.use-essentials, metrics and update-checker take effect after a restart."
   none: "No round is running."
   list_idle: "<code>: <players> players, pace <pace>"
   list_running: "<code>: <players> players, pace <pace>, running: <id>"

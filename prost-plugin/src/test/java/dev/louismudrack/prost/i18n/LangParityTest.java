@@ -84,4 +84,17 @@ class LangParityTest {
             assertTrue(y.getString("rule.type_prompt").contains("\"" + words.get(0) + "\""), code);
         }
     }
+
+    /** an admin who edits one of these and runs /prost reload must learn that it waits for a restart */
+    @Test
+    void theReloadReplyNamesEveryRestartOnlySetting() throws Exception {
+        List<String> restartOnly = List.of("storage:", "commands.aliases", "afk.use-essentials", "metrics", "update-checker");
+        String config = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/resources/config.yml"));
+        long marked = config.lines().filter(l -> l.contains("(restart)") && !l.contains("marked (restart)")).count();
+        assertEquals(restartOnly.size(), marked, "config.yml marks a restart-only setting this list does not know");
+        for (String code : List.of("en", "de")) {
+            String reply = load(code).getString("admin.reloaded");
+            for (String key : restartOnly) assertTrue(reply.contains(key), code + " admin.reloaded lacks " + key);
+        }
+    }
 }
