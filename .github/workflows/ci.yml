@@ -4,23 +4,28 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
+      # v6 puts its caching under proprietary terms of use: staying on v5 until the owner decides
+      - uses: gradle/actions/setup-gradle@v5
       - name: Build and unit tests
         run: ./gradlew build
       - name: MariaDB tests
         run: ./gradlew integrationTest
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: prost-jars
           path: |
             prost-plugin/build/libs/Prost-*.jar
             prost-api/build/libs/prost-api-*.jar
+            !prost-plugin/build/libs/*-plain.jar
