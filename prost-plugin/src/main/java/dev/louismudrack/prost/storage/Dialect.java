@@ -42,9 +42,13 @@ public enum Dialect {
             }
             try (Statement st = c.createStatement()) {
                 st.executeUpdate("CREATE INDEX " + index + " ON " + table + " (" + column + ")");
+            } catch (SQLException e) {
+                if (e.getErrorCode() != DUPLICATE_KEY_NAME) throw e;   // another server starting at the same time was faster
             }
         }
     };
+
+    private static final int DUPLICATE_KEY_NAME = 1061;
 
     static final List<String> COUNTERS = List.of("sips_drunk", "sips_water", "sips_given", "won", "lost", "roulette_hits",
             "jokers_used", "rules_made", "rounds");

@@ -142,9 +142,22 @@ class SqlStatsStoreTest {
     @Test
     void hasDataOnceAPlayerIsStored() throws Exception {
         assertFalse(store.hasData().get(5, TimeUnit.SECONDS));
-        store.setLanguage(A, "A", "de");
+        store.add(A, "A", DRUNK, 1);
         flush();
         assertTrue(store.hasData().get(5, TimeUnit.SECONDS));
+    }
+
+    /** a player who only picked a language or saw the notice never played: no row, no top list, no take-over guard */
+    @Test
+    void settingsAloneAreNoStats() throws Exception {
+        store.setLanguage(A, "A", "de");
+        store.markNoticed(A, "A");
+        flush();
+        assertNull(this.<StatsRow>get(c -> store.row(A, c)));
+        assertEquals(java.util.Optional.empty(), store.fetch(A).get(5, TimeUnit.SECONDS));
+        assertEquals(List.of(), this.<List<StatsRow>>get(c -> store.top(DRUNK, c)));
+        assertFalse(store.hasData().get(5, TimeUnit.SECONDS));
+        assertEquals(new Prefs("de", true), this.<Prefs>get(c -> store.prefs(A, c)));
     }
 
     @Test
@@ -167,6 +180,19 @@ class SqlStatsStoreTest {
         ExecutionException write = assertThrows(ExecutionException.class,
                 () -> unprefixed.importRow(new StatsRow(A, "A", 1, 0, 0, 0, 0, 0, 0, 0, 1), 1).get(5, TimeUnit.SECONDS));
         assertInstanceOf(java.sql.SQLException.class, write.getCause());
+        unprefixed.close();
+    }
+
+    @Test
+    void refusesASettingsTableOfItsNameThatIsNotProsts() throws Exception {
+        Path shared = dir.resolve("prefs.db");
+        try (java.sql.Connection c = java.sql.DriverManager.getConnection("jdbc:sqlite:" + shared);
+             java.sql.Statement st = c.createStatement()) {
+            st.executeUpdate("CREATE TABLE prefs (id INTEGER PRIMARY KEY, value TEXT)");
+        }
+        SqlStatsStore unprefixed = SqlStatsStore.sqlite(shared.toFile(), "", Logger.getLogger("test"), Runnable::run);
+        java.sql.SQLException e = assertThrows(java.sql.SQLException.class, unprefixed::open);
+        assertTrue(e.getMessage().contains("table prefs is not Prost's"), e.getMessage());
         unprefixed.close();
     }
 

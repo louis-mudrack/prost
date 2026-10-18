@@ -13,13 +13,16 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static dev.louismudrack.prost.storage.StatsField.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @Tag("integration")
 class MariaDbStatsStoreIT {
@@ -34,9 +37,11 @@ class MariaDbStatsStoreIT {
     @AfterAll
     static void stop() { db.stop(); }
 
-    private static SqlStatsStore store() throws Exception {
+    private static SqlStatsStore store() throws Exception { return store("it_"); }
+
+    private static SqlStatsStore store(String prefix) throws Exception {
         PluginConfig.Storage s = new PluginConfig.Storage("mysql", db.getHost(), db.getMappedPort(3306), db.getDatabaseName(),
-                db.getUsername(), db.getPassword(), "it_", "useSSL=false");
+                db.getUsername(), db.getPassword(), prefix, "useSSL=false");
         SqlStatsStore store = SqlStatsStore.mysql(s, Logger.getLogger("it"), Runnable::run);
         store.open();
         return store;
@@ -73,6 +78,39 @@ class MariaDbStatsStoreIT {
         SqlStatsStore second = store();
         assertEquals(4, row(second, id).rounds());
         second.close();
+    }
+
+    @Test
+    void settingsLiveInTheirOwnTable() throws Exception {
+        UUID id = UUID.randomUUID();
+        SqlStatsStore s = store();
+        s.setLanguage(id, "P", "de");
+        s.markNoticed(id, "P");
+        s.flush().get(10, TimeUnit.SECONDS);
+        CompletableFuture<Prefs> prefs = new CompletableFuture<>();
+        s.prefs(id, prefs::complete);
+        assertEquals(new Prefs("de", true), prefs.get(10, TimeUnit.SECONDS));
+        assertNull(row(s, id), "a player who only chose a language never played");
+        assertEquals(Optional.empty(), s.fetch(id).get(10, TimeUnit.SECONDS));
+        s.close();
+    }
+
+    /** a network starting its servers at once: each one creates the tables, none mistakes the others' for foreign ones */
+    @Test
+    void twoServersCreateTheSchemaAtOnce() throws Exception {
+        String prefix = "race_" + Long.toHexString(System.nanoTime()) + "_";
+        CompletableFuture<SqlStatsStore> a = CompletableFuture.supplyAsync(() -> open(prefix));
+        CompletableFuture<SqlStatsStore> b = CompletableFuture.supplyAsync(() -> open(prefix));
+        a.get(30, TimeUnit.SECONDS).close();
+        b.get(30, TimeUnit.SECONDS).close();
+    }
+
+    private static SqlStatsStore open(String prefix) {
+        try {
+            return store(prefix);
+        } catch (Exception e) {
+            throw new CompletionException(e);
+        }
     }
 
     @Test

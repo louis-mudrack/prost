@@ -88,7 +88,7 @@ Stats are stored in SQLite or MySQL/MariaDB. All of `storage:` needs a restart.
 | key | default | meaning |
 |---|---|---|
 | `storage.type` | `sqlite` | `sqlite` (the file `stats.db` in the plugin folder, nothing to set up) or `mysql` (MySQL or MariaDB, shareable between servers). Anything else: `sqlite` with a warning. |
-| `storage.table-prefix` | `"prost_"` | Prefix of the table names (`<prefix>stats`, `<prefix>rounds`): up to 16 letters, digits and `_`, not starting with a digit; an empty prefix is allowed. Invalid: `prost_` with a warning. Prost refuses to use an existing table of that name that is not its own (for example another plugin's `stats`) and says so in the console; set a prefix then. |
+| `storage.table-prefix` | `"prost_"` | Prefix of the table names (`<prefix>stats`, `<prefix>rounds`, `<prefix>prefs` for the players' settings): up to 16 letters, digits and `_`, not starting with a digit; an empty prefix is allowed. Invalid: `prost_` with a warning. Prost refuses to use an existing table of that name that is not its own (for example another plugin's `stats`) and says so in the console; set a prefix then. |
 | `storage.mysql.host` | `localhost` | |
 | `storage.mysql.port` | `3306` | 1-65535, else `3306` with a warning. |
 | `storage.mysql.database` | `prost` | |

@@ -198,7 +198,7 @@ class AniDrinksMigrationTest {
         assertTrue(Files.isRegularFile(old.resolve("stats.db")), "nothing renamed");
         assertFalse(Files.exists(plugins.resolve("AniDrinks.migrated")));
         try (Connection c = DriverManager.getConnection("jdbc:sqlite:" + copied); Statement st = c.createStatement()) {
-            assertThrows(SQLException.class, () -> st.executeQuery("SELECT language FROM stats"), "the old table got no Prost columns");
+            assertThrows(SQLException.class, () -> st.executeQuery("SELECT 1 FROM prefs"), "no Prost table was created next to AniDrinks' tables");
         }
     }
 }

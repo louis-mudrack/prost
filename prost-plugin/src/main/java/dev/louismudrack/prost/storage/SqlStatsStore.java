@@ -29,7 +29,8 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
- * All-time numbers per player in SQLite (stats.db) or MySQL/MariaDB. One background thread owns the connection, so
+ * All-time numbers per player in SQLite (stats.db) or MySQL/MariaDB, and the players' settings in a table of their own, so
+ * a player who only picked a language never counts as having played. One background thread owns the connection, so
  * reads and writes never race; counters are deltas (sips = sips + ?), so servers sharing a database never overwrite
  * each other. A dead connection is reopened before the next statement, and a statement cut by a lost connection
  * (SQLState class 08) is retried once. A counter delta that still fails (database down) is kept in memory, merged per
@@ -55,7 +56,7 @@ public final class SqlStatsStore implements StatsStore {
     }
 
     private final Dialect dialect;
-    private final String url, user, password, stats, rounds;
+    private final String url, user, password, stats, rounds, settings;
     private final Logger log;
     private final Executor sync;
     private final ExecutorService worker;
@@ -76,6 +77,7 @@ public final class SqlStatsStore implements StatsStore {
         this.password = password;
         this.stats = prefix + "stats";
         this.rounds = prefix + "rounds";
+        this.settings = prefix + "prefs";
         this.log = log;
         this.sync = sync;
         this.worker = worker;
@@ -149,17 +151,23 @@ public final class SqlStatsStore implements StatsStore {
     }
 
     private void schema(Connection c) throws SQLException {
+        // AniDrinks' stats table has Prost's columns: one without Prost's settings table next to it is not Prost's
+        if (exists(c, stats) && !exists(c, settings)) throw notProsts(stats, "no " + settings + " table next to it", null, null);
         try (Statement st = c.createStatement()) {
+            // settings first, so a Prost stats table always has them - also while another server creates the tables
+            st.executeUpdate("CREATE TABLE IF NOT EXISTS " + settings + " (uuid VARCHAR(36) NOT NULL PRIMARY KEY, name VARCHAR(32) NOT NULL, "
+                    + "language VARCHAR(16) NULL, noticed INT NOT NULL DEFAULT 0)");
             st.executeUpdate("CREATE TABLE IF NOT EXISTS " + stats + " (uuid VARCHAR(36) NOT NULL PRIMARY KEY, name VARCHAR(32) NOT NULL, "
                     + "sips_drunk INT NOT NULL DEFAULT 0, sips_water INT NOT NULL DEFAULT 0, sips_given INT NOT NULL DEFAULT 0, "
                     + "won INT NOT NULL DEFAULT 0, lost INT NOT NULL DEFAULT 0, roulette_hits INT NOT NULL DEFAULT 0, "
                     + "jokers_used INT NOT NULL DEFAULT 0, rules_made INT NOT NULL DEFAULT 0, rounds INT NOT NULL DEFAULT 0, "
-                    + "last_played BIGINT NOT NULL DEFAULT 0, language VARCHAR(16) NULL, noticed INT NOT NULL DEFAULT 0)");
+                    + "last_played BIGINT NOT NULL DEFAULT 0)");
             st.executeUpdate("CREATE TABLE IF NOT EXISTS " + rounds + " (id " + dialect.autoId() + ", code VARCHAR(8) NOT NULL, "
                     + "host VARCHAR(36) NOT NULL, started BIGINT NOT NULL, ended BIGINT NOT NULL, members INT NOT NULL, "
                     + "challenges INT NOT NULL, UNIQUE (code, started))");
         }
-        requireOwn(c, stats, "language, noticed");
+        requireOwn(c, settings, "name, language, noticed");
+        requireOwn(c, stats, "name, " + String.join(", ", Dialect.COUNTERS) + ", last_played");
         requireOwn(c, rounds, "code, host, started, ended, members, challenges");
         for (StatsField f : StatsField.values()) dialect.createIndex(c, stats, stats + "_" + f.column, f.column);
     }
@@ -169,10 +177,26 @@ public final class SqlStatsStore implements StatsStore {
         try (Statement st = c.createStatement()) {
             st.executeQuery("SELECT " + columns + " FROM " + table + " WHERE 1 = 0").close();
         } catch (SQLException e) {
-            if (e.getSQLState() != null && e.getSQLState().startsWith(CONNECTION_LOST)) throw e;
-            throw new SQLException("table " + table + " is not Prost's (" + e.getMessage() + ") - another plugin or an AniDrinks database "
-                    + "uses that name: set storage.table-prefix in config.yml (default prost_) and restart", e.getSQLState(), e);
+            if (lostConnection(e)) throw e;
+            throw notProsts(table, e.getMessage(), e.getSQLState(), e);
         }
+    }
+
+    private static boolean exists(Connection c, String table) throws SQLException {
+        try (Statement st = c.createStatement()) {
+            st.executeQuery("SELECT 1 FROM " + table + " WHERE 1 = 0").close();
+            return true;
+        } catch (SQLException e) {
+            if (lostConnection(e)) throw e;
+            return false;
+        }
+    }
+
+    private static boolean lostConnection(SQLException e) { return e.getSQLState() != null && e.getSQLState().startsWith(CONNECTION_LOST); }
+
+    private static SQLException notProsts(String table, String why, String sqlState, SQLException cause) {
+        return new SQLException("table " + table + " is not Prost's (" + why + ") - another plugin or an AniDrinks database "
+                + "uses that name: set storage.table-prefix in config.yml (default prost_) and restart", sqlState, cause);
     }
 
     /** worker thread: one retry after a lost connection, so a database restart costs no counter */
@@ -180,7 +204,7 @@ public final class SqlStatsStore implements StatsStore {
         try {
             return work.run(connection());
         } catch (SQLException e) {
-            if (e.getSQLState() == null || !e.getSQLState().startsWith(CONNECTION_LOST)) throw e;
+            if (!lostConnection(e)) throw e;
             closeQuietly();
             return work.run(connection());
         }
@@ -389,7 +413,7 @@ public final class SqlStatsStore implements StatsStore {
             Prefs p = Prefs.NONE;
             try {
                 p = attempt(c -> {
-                    try (PreparedStatement ps = c.prepareStatement("SELECT language, noticed FROM " + stats + " WHERE uuid = ?")) {
+                    try (PreparedStatement ps = c.prepareStatement("SELECT language, noticed FROM " + settings + " WHERE uuid = ?")) {
                         ps.setString(1, id.toString());
                         try (ResultSet rs = ps.executeQuery()) {
                             return rs.next() ? new Prefs(rs.getString("language"), rs.getInt("noticed") != 0) : Prefs.NONE;
@@ -411,7 +435,7 @@ public final class SqlStatsStore implements StatsStore {
     public void markNoticed(UUID id, String name) { set(id, name, "noticed", 1); }
 
     private void set(UUID id, String name, String column, Object value) {
-        String sql = dialect.setSql(stats, column);
+        String sql = dialect.setSql(settings, column);
         submit("player setting " + column + " for " + name, c -> {
             try (PreparedStatement ps = c.prepareStatement(sql)) {
                 ps.setString(1, id.toString());
