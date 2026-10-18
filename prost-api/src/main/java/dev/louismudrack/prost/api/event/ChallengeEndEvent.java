@@ -5,6 +5,8 @@ import dev.louismudrack.prost.api.RoundView;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,7 +32,7 @@ public final class ChallengeEndEvent extends Event {
         this.challenge = challenge;
         this.resolved = resolved;
         this.winners = List.copyOf(winners);
-        this.drinks = Map.copyOf(drinks);
+        this.drinks = Collections.unmodifiableMap(new LinkedHashMap<>(drinks));
     }
 
     /** the round */

@@ -8,8 +8,10 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Hooks replace one of Prost's defaults: one provider per hook, the latest registration wins, and all hooks of a
- * plugin are removed when it disables. A hook that throws is logged once and Prost's default is used for that call.
+ * Hooks replace one of Prost's defaults. There is one provider per hook type; a new registration replaces the
+ * previous one. When the owning plugin disables or calls {@link #unregisterAll(Plugin)}, Prost's own default answers
+ * again (a replaced earlier provider does not come back). A {@code null} plugin or hook throws
+ * {@link NullPointerException}. A hook that throws is logged once and Prost's default answers for that call.
  * Call everything from the server's main thread, except {@link #stats(UUID)}.
  */
 public interface ProstApi {

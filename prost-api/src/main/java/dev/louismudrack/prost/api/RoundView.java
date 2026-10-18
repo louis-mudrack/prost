@@ -1,6 +1,7 @@
 package dev.louismudrack.prost.api;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,4 +15,10 @@ import java.util.UUID;
  * @param members   member UUIDs in join order
  * @param challenge the running challenge, if any
  */
-public record RoundView(String code, UUID host, String pace, boolean paused, List<UUID> members, Optional<ChallengeView> challenge) {}
+public record RoundView(String code, UUID host, String pace, boolean paused, List<UUID> members, Optional<ChallengeView> challenge) {
+    /** copies the member list so a view is an immutable snapshot; challenge must not be null (use Optional.empty()) */
+    public RoundView {
+        members = List.copyOf(members);
+        Objects.requireNonNull(challenge, "challenge");
+    }
+}

@@ -4,7 +4,10 @@ import dev.louismudrack.prost.api.RoundView;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-/** A round ended (host, admin, or its last member left); the view is its last state. */
+/**
+ * Fires whenever a round closes, however it ends (host, admin, last member leaving or removed); the view is its
+ * last state. A plugin shutdown does not fire it: rounds are saved and restored, not ended.
+ */
 public final class RoundEndEvent extends Event {
     private static final HandlerList HANDLERS = new HandlerList();
     private final RoundView round;

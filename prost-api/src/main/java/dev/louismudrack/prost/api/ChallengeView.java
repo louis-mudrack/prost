@@ -12,4 +12,9 @@ import java.util.UUID;
  * @param endsAtMillis end time as epoch milliseconds
  * @param participants participant UUIDs
  */
-public record ChallengeView(String id, String kind, int sips, long endsAtMillis, List<UUID> participants) {}
+public record ChallengeView(String id, String kind, int sips, long endsAtMillis, List<UUID> participants) {
+    /** copies the participant list so a view is an immutable snapshot */
+    public ChallengeView {
+        participants = List.copyOf(participants);
+    }
+}
