@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 - unreleased
+## 0.3.0 - 2026-10-19
 First release as Prost (grew out of AniDrinks 0.2.0 on the GoofyCraft survival server).
 - English and German, every text in lang/<code>.yml, per-player language (client language or /prost language).
 - English subcommands with per-language aliases; /drinks alias; tab completion.
