@@ -17,13 +17,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class ProstExpansionTest {
     private ServerMock server;
     private ProstPlugin plugin;
+    private PlaceholderSnapshots snapshots;
     private ProstExpansion expansion;
 
     @BeforeEach
     void start() {
         server = TestServer.mock();
         plugin = TestServer.start(server);
-        expansion = new ProstExpansion(plugin);
+        snapshots = new PlaceholderSnapshots(plugin);
+        expansion = new ProstExpansion(plugin, snapshots);
     }
 
     @AfterEach
@@ -32,10 +34,13 @@ class ProstExpansionTest {
     @Test
     void roundPlaceholders() {
         PlayerMock p = server.addPlayer("Host");
+        snapshots.publish();
         assertEquals("false", expansion.onRequest(p, "in_round"));
         assertEquals("", expansion.onRequest(p, "round_code"));
         p.performCommand("prost start");
         Round r = plugin.rounds().of(p.getUniqueId());
+        assertEquals("false", expansion.onRequest(p, "in_round"), "only the published copy is read");
+        snapshots.publish();
         assertEquals("true", expansion.onRequest(p, "in_round"));
         assertEquals(r.code, expansion.onRequest(p, "round_code"));
         assertEquals("1", expansion.onRequest(p, "round_players"));
@@ -43,6 +48,15 @@ class ProstExpansionTest {
         assertEquals("0", expansion.onRequest(p, "sips_session"));
         assertFalse(expansion.onRequest(p, "tag").isEmpty());
         assertNull(expansion.onRequest(p, "nonsense"));
+    }
+
+    @Test
+    void aPlayerWithoutACopyGetsTheIdleValues() {
+        PlayerMock p = server.addPlayer("Host");
+        assertEquals("false", expansion.onRequest(p, "in_round"));
+        assertEquals("0", expansion.onRequest(p, "round_players"));
+        assertEquals("", expansion.onRequest(p, "limit_left"));
+        assertEquals("", expansion.onRequest(p, "tag"));
     }
 
     @Test

@@ -1,16 +1,10 @@
 package dev.louismudrack.prost.hook;
 
 import dev.louismudrack.prost.ProstPlugin;
-import dev.louismudrack.prost.drink.SipLedger;
-import dev.louismudrack.prost.game.ChallengeRun;
-import dev.louismudrack.prost.game.Member;
-import dev.louismudrack.prost.game.Round;
-import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.hook.PlaceholderSnapshots.Snapshot;
 import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.storage.StatsRow;
-import dev.louismudrack.prost.ui.Fmt;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -25,26 +19,32 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * %prost_...% for TAB, scoreboards, holograms. Resolved per viewer on every refresh, so nothing here touches the
- * database on the calling thread: leaderboards come from the store's cache, totals from a 30 s per-player cache.
+ * %prost_...% for TAB, scoreboards, holograms. Resolved per viewer on every refresh, often off the main thread, so
+ * nothing here reads the rounds or the database: round values come from the main thread's per-tick copy, leaderboards
+ * from the store's cache, totals from a 30 s per-player cache.
  */
 public final class ProstExpansion extends PlaceholderExpansion implements Listener {
     private static final Pattern TOP = Pattern.compile("top_(\\d{1,2})_(name|value)");
     private static final Set<String> PLAYER_PARAMS = Set.of("in_round", "round_code", "round_players", "challenge",
             "challenge_time", "sips_session", "sips_total", "jokers", "limit_left", "tag");
     private static final long TOTAL_CACHE_MS = 30_000L;
+    private static final Snapshot IDLE = new Snapshot(false, "", 0, "", "", 0, 0, "", "");
 
     private static ProstExpansion registered;
 
     private final ProstPlugin plugin;
+    private final PlaceholderSnapshots snapshots;
     private final Map<UUID, Integer> totals = new ConcurrentHashMap<>();
     private final Map<UUID, Long> totalsAt = new ConcurrentHashMap<>();
 
-    public ProstExpansion(ProstPlugin plugin) { this.plugin = plugin; }
+    public ProstExpansion(ProstPlugin plugin, PlaceholderSnapshots snapshots) {
+        this.plugin = plugin;
+        this.snapshots = snapshots;
+    }
 
     /** a static entry keeps ProstPlugin's bytecode free of PlaceholderAPI types, which the verifier would load */
-    public static void registerFor(ProstPlugin plugin) {
-        ProstExpansion expansion = new ProstExpansion(plugin);
+    public static void registerFor(ProstPlugin plugin, PlaceholderSnapshots snapshots) {
+        ProstExpansion expansion = new ProstExpansion(plugin, snapshots);
         if (!expansion.register()) {
             plugin.getLogger().warning("PlaceholderAPI did not register %prost_*%: the identifier is taken (a stale expansion?)");
             return;
@@ -75,20 +75,19 @@ public final class ProstExpansion extends PlaceholderExpansion implements Listen
         if (!PLAYER_PARAMS.contains(params)) return null;
         if (player == null) return "";
         UUID id = player.getUniqueId();
-        Round r = plugin.rounds().of(id);
-        Member m = r == null ? null : r.member(id);
-        ChallengeRun run = r == null ? null : plugin.director().running(r);
+        Snapshot s = snapshots.of(id);
+        if (s == null) s = IDLE;
         return switch (params) {
-            case "in_round" -> String.valueOf(r != null);
-            case "round_code" -> r == null ? "" : r.code;
-            case "round_players" -> r == null ? "0" : String.valueOf(r.members.size());
-            case "challenge" -> run == null ? "" : run.def.name(Msg.lang(id));
-            case "challenge_time" -> run == null ? "" : Fmt.clock(run.remainingMs());
-            case "sips_session" -> m == null ? "0" : String.valueOf(m.tally.drunk);
+            case "in_round" -> String.valueOf(s.inRound());
+            case "round_code" -> s.roundCode();
+            case "round_players" -> String.valueOf(s.roundPlayers());
+            case "challenge" -> s.challenge();
+            case "challenge_time" -> s.challengeTime();
+            case "sips_session" -> String.valueOf(s.sipsSession());
             case "sips_total" -> String.valueOf(total(id));
-            case "jokers" -> m == null ? "0" : String.valueOf(m.jokers);
-            case "limit_left" -> m == null ? "" : String.valueOf(SipLedger.room(m.history, System.currentTimeMillis(), m.limit));
-            case "tag" -> LegacyComponentSerializer.legacySection().serialize(Msg.mm(Msg.str(id, "placeholder.tag")));
+            case "jokers" -> String.valueOf(s.jokers());
+            case "limit_left" -> s.limitLeft();
+            case "tag" -> s.tag();
             default -> throw new IllegalStateException(params);
         };
     }

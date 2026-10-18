@@ -23,6 +23,7 @@ import dev.louismudrack.prost.hook.DimensionDefaults;
 import dev.louismudrack.prost.hook.EssentialsAfk;
 import dev.louismudrack.prost.hook.Hooks;
 import dev.louismudrack.prost.hook.PapiText;
+import dev.louismudrack.prost.hook.PlaceholderSnapshots;
 import dev.louismudrack.prost.hook.ProstExpansion;
 import dev.louismudrack.prost.i18n.Lang;
 import dev.louismudrack.prost.i18n.LangFiles;
@@ -46,6 +47,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,6 +83,7 @@ public class ProstPlugin extends JavaPlugin {
     private Hooks hooks;
     private Lang lang = Lang.empty();
     private ProstCommand command;
+    private BukkitTask snapshotTask;
 
     @Override
     public void onEnable() {
@@ -111,7 +114,11 @@ public class ProstPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(placed, this);
         rounds.load();
         getServer().getScheduler().runTaskTimer(this, () -> rounds.tickPresence(), 20L, 20L);
-        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) ProstExpansion.registerFor(this);
+        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            PlaceholderSnapshots snapshots = new PlaceholderSnapshots(this);
+            snapshotTask = getServer().getScheduler().runTaskTimer(this, () -> snapshots.publish(), 1L, 1L);
+            ProstExpansion.registerFor(this, snapshots);
+        }
         boolean offline = Boolean.getBoolean("prost.offline");   // the test build: no network
         if (!offline && pluginConfig.metrics()) ProstMetrics.start(this);
         if (!offline && pluginConfig.updateChecker()) {
@@ -210,6 +217,7 @@ public class ProstPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (snapshotTask != null) snapshotTask.cancel();
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) ProstExpansion.unregisterFor();
         if (director != null) director.shutdown();
         if (rewards != null) rewards.flushAll();
