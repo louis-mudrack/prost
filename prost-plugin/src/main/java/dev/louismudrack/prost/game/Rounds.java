@@ -72,6 +72,7 @@ public final class Rounds {
         byCode.put(r.code, r);
         save();
         Bukkit.getPluginManager().callEvent(new RoundStartEvent(Views.round(r, null)));
+        firstRoundNotice(host);
         return r;
     }
 
@@ -82,7 +83,15 @@ public final class Rounds {
         invites.remove(p.getUniqueId());
         Msg.round(r, "round.joined", V.of("name", p.getName()));
         save();
+        firstRoundNotice(p);
         return result;
+    }
+
+    /** any drink counts, know your limits - once per player, ever */
+    private void firstRoundNotice(Player p) {
+        if (!plugin.pluginConfig().firstRoundNotice() || plugin.prefs().noticed(p.getUniqueId())) return;
+        Msg.tell(p, "notice.first_round");
+        plugin.prefs().markNoticed(p);
     }
 
     /** a member leaves, is kicked or timed out; the last one closes the round */
