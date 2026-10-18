@@ -29,7 +29,8 @@ public final class Director {
 
     private final ProstPlugin plugin;
     private final Map<String, ChallengeRun> runs = new HashMap<>();
-    private final Map<String, Boolean> wasPaused = new HashMap<>();
+    /** by the round, not its code: a new round may get a closed one's code */
+    private final Map<Round, Boolean> wasPaused = new HashMap<>();
     private final Random rnd = new Random();
 
     public Director(ProstPlugin plugin) { this.plugin = plugin; }
@@ -48,10 +49,10 @@ public final class Director {
             }
         }
         long now = System.currentTimeMillis();
+        wasPaused.keySet().retainAll(plugin.rounds().all());
         for (Round r : new ArrayList<>(plugin.rounds().all())) {
             try {
-                if (Boolean.TRUE.equals(wasPaused.put(r.code, r.paused)) && !r.paused)
-                    r.nextDrawAt = DirectorRules.afterResume(now, r.nextDrawAt, RESUME_MIN_WAIT_MS);
+                if (resumed(r)) r.nextDrawAt = DirectorRules.afterResume(now, r.nextDrawAt, RESUME_MIN_WAIT_MS);
                 List<UUID> active = r.activeIds();
                 if (DirectorRules.mayStart(runs.containsKey(r.code), r.paused, active.size(), now, r.nextDrawAt)) draw(r, active);
                 remindRules(r, now);
@@ -161,6 +162,11 @@ public final class Director {
     }
 
     public ChallengeRun running(Round r) { return runs.get(r.code); }
+
+    /** true on the first tick after the round's pause ended */
+    boolean resumed(Round r) { return Boolean.TRUE.equals(wasPaused.put(r, r.paused)) && !r.paused; }
+
+    int watchedRounds() { return wasPaused.size(); }
 
     public boolean involves(UUID id) {
         for (ChallengeRun run : runs.values()) if (run.involves(id)) return true;
