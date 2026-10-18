@@ -19,10 +19,10 @@ public final class RewardRules {
     /** with nobody else in the round the sips go to people at the real-life table */
     static boolean realLifeHandout(int members) { return members <= 1; }
 
-    /** a typed rule: no colour codes, trimmed, cut to the maximum; null when empty or "abbrechen"/"cancel" */
-    static String cleanRule(String typed, int max) {
+    /** a typed rule: no colour codes, trimmed, cut to the maximum; null when empty or one of the language's cancel words */
+    static String cleanRule(String typed, int max, List<String> cancelWords) {
         String s = typed.replaceAll(COLOUR_CODES, "").trim();
-        if (s.isEmpty() || s.equalsIgnoreCase("abbrechen") || s.equalsIgnoreCase("cancel")) return null;
+        if (s.isEmpty() || cancelWords.stream().anyMatch(s::equalsIgnoreCase)) return null;
         return s.length() > max ? s.substring(0, max) : s;
     }
 }

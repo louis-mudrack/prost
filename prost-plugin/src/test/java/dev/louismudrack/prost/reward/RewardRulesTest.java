@@ -17,12 +17,15 @@ class RewardRulesTest {
         check("no third joker", !RewardRules.jokerFits(2, 2));
         check("a solo round hands out in real life", RewardRules.realLifeHandout(1));
         check("a group hands out in the game", !RewardRules.realLifeHandout(3));
-        eq("a typed rule is trimmed", "Nur flüstern", RewardRules.cleanRule("  Nur flüstern ", 60));
-        eq("colour codes are stripped", "Rot", RewardRules.cleanRule("§cRot", 60));
-        eq("too long is cut", "abcde", RewardRules.cleanRule("abcdefgh", 5));
-        eq("'abbrechen' cancels", null, RewardRules.cleanRule("abbrechen", 60));
-        eq("'cancel' cancels", null, RewardRules.cleanRule("Cancel", 60));
-        eq("only blanks cancel", null, RewardRules.cleanRule("   ", 60));
+        List<String> cancel = List.of("abbrechen", "cancel");
+        eq("a typed rule is trimmed", "Nur flüstern", RewardRules.cleanRule("  Nur flüstern ", 60, cancel));
+        eq("colour codes are stripped", "Rot", RewardRules.cleanRule("§cRot", 60, cancel));
+        eq("too long is cut", "abcde", RewardRules.cleanRule("abcdefgh", 5, cancel));
+        eq("'abbrechen' cancels", null, RewardRules.cleanRule("abbrechen", 60, cancel));
+        eq("'cancel' cancels", null, RewardRules.cleanRule("Cancel", 60, cancel));
+        eq("only blanks cancel", null, RewardRules.cleanRule("   ", 60, cancel));
+        eq("a translator's cancel word cancels", null, RewardRules.cleanRule("Annuler", 60, List.of("annuler")));
+        eq("a word that is not a cancel word in this language is a rule", "abbrechen", RewardRules.cleanRule("abbrechen", 60, List.of("annuler")));
     }
 
     /** review finding 1: an own-rule window that ran out must not swallow the player's next chat message */

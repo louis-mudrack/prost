@@ -139,6 +139,7 @@ challenge:
     joker_each: "ein Joker für jeden"
     next: "die nächste Herausforderung wählen"
   reward_or: " oder "
+  versus: " gegen "
   bar_watching: "<dark_gray>(zuschauen)"
   hint:
     broken: "<err>Gebrochen"
@@ -185,6 +186,8 @@ handout:
 rule:
   expired: "Zeit abgelaufen - eine zufällige Regel wurde gewählt."
   type_prompt: "Schreib deine Regel in den Chat (max. <max> Zeichen) - \"abbrechen\" bricht ab."
+  # was im Chat die Eingabe abbricht, statt zur Regel zu werden (Groß-/Kleinschreibung egal); das erste Wort steht oben
+  cancel_words: [abbrechen, cancel]
   made: "<hl><name> <gray>stellt eine Regel auf: <white><text>"
   reminder: "Aktive Regeln: <white><rules>"
 next:
@@ -238,6 +241,9 @@ summary:
   drinker: "<gold>Schluckspecht: <hl><name>"
   generous: "<gold>Gönner: <hl><name>"
 command:
+  # steht in /help für alle, in der Serversprache (language.default)
+  description: "Prost - das Trinkspiel"
+  players_only: "Das kann nur ein Spieler (die Konsole: /prost reload, /prost admin ...)."
   declined: "Einladung abgelehnt."
   no_joker: "Gerade gibt es nichts, wofür du einen Joker einsetzen kannst."
   no_handout: "Du hast gerade keine Schlucke zu verteilen."

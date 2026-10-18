@@ -199,6 +199,11 @@ class ProstCommandTest {
         Zombie zombie = at.getWorld().spawn(at, Zombie.class);
         plugin.command().execute(new CommandSourceStackMock(at, guest, zombie), new String[]{"start"});
         assertNull(plugin.rounds().of(guest.getUniqueId()), "the zombie runs it, not the player who typed /execute");
-        assertTrue(TestServer.messages(guest).stream().anyMatch(m -> m.startsWith("Players only")));
+        assertTrue(TestServer.messages(guest).stream().anyMatch(m -> m.contains("Only a player can do that")));
+        guest.setLocale(java.util.Locale.GERMANY);
+        plugin.command().execute(new CommandSourceStackMock(at, guest, zombie), new String[]{"start"});
+        assertTrue(TestServer.messages(guest).stream().anyMatch(m -> m.contains("Das kann nur ein Spieler")), "the player's language");
+        plugin.command().execute(new CommandSourceStackMock(at, server.getConsoleSender(), zombie), new String[]{"start"});
+        assertTrue(console().stream().anyMatch(m -> m.contains("Only a player can do that")), "the console in English");
     }
 }

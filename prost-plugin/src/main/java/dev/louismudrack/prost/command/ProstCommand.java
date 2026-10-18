@@ -70,7 +70,7 @@ public final class ProstCommand implements BasicCommand {
         }
         CommandSender actor = source.getExecutor() == null ? sender : source.getExecutor();   // /execute as <entity> run prost ...
         if (!(actor instanceof Player p)) {
-            sender.sendMessage("Players only (console: /prost reload, /prost admin ...).");
+            reply(sender, "command.players_only");
             return;
         }
         Round r = plugin.rounds().of(p.getUniqueId());

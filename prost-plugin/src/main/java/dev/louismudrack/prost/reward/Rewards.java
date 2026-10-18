@@ -293,7 +293,7 @@ public final class Rewards implements Listener {
         e.setCancelled(true);
         String text = PlainTextComponentSerializer.plainText().serialize(e.message());
         Bukkit.getScheduler().runTask(plugin, () -> {
-            String rule = RewardRules.cleanRule(text, plugin.cfg().customRuleMaxLength());
+            String rule = RewardRules.cleanRule(text, plugin.cfg().customRuleMaxLength(), plugin.lang().lines(Msg.lang(id), "rule.cancel_words"));
             if (rule != null && in.round().member(id) != null) addRule(in.round(), id, Rule.custom(rule));
         });
     }

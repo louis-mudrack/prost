@@ -47,6 +47,23 @@ class ProstPluginTest {
         assertEquals(List.of(), ProstPlugin.notRegistered(List.of("Drinks"), registered));
     }
 
+    /** Paper shows one description to everyone in /help: the server language's */
+    @Test
+    void theCommandDescriptionIsInTheServerLanguage() throws Exception {
+        MockBukkit.unmock();
+        server = TestServer.mock();
+        TestServer.start(server, folder -> {
+            try (var in = ProstPlugin.class.getResourceAsStream("/config.yml")) {
+                String config = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).replace("default: en", "default: de");
+                java.nio.file.Files.createDirectories(folder.toPath());
+                java.nio.file.Files.writeString(folder.toPath().resolve("config.yml"), config);
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        });
+        assertEquals("Prost - das Trinkspiel", server.getCommandMap().getCommand("prost").getDescription());
+    }
+
     @Test
     void writesItsFiles() {
         for (String f : List.of("config.yml", "game.yml", "challenges.yml", "rules.yml", "lang/en.yml", "lang/de.yml", "stats.db"))

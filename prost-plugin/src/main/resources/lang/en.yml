@@ -139,6 +139,7 @@ challenge:
     joker_each: "a joker each"
     next: "pick the next challenge"
   reward_or: " or "
+  versus: " vs "
   bar_watching: "<dark_gray>(watching)"
   hint:
     broken: "<err>Broken"
@@ -185,6 +186,8 @@ handout:
 rule:
   expired: "Time's up - a random rule was picked."
   type_prompt: "Type your rule into chat (max <max> characters) - \"cancel\" stops."
+  # what typed into chat stops the prompt instead of becoming the rule (any case); the first one is named above
+  cancel_words: [cancel]
   made: "<hl><name> <gray>makes a rule: <white><text>"
   reminder: "Active rules: <white><rules>"
 next:
@@ -238,6 +241,9 @@ summary:
   drinker: "<gold>Biggest drinker: <hl><name>"
   generous: "<gold>Most generous: <hl><name>"
 command:
+  # shown in /help to everyone, in the server language (language.default)
+  description: "Prost - the drinking game"
+  players_only: "Only a player can do that (the console: /prost reload, /prost admin ...)."
   declined: "Invite declined."
   no_joker: "There is nothing to use a joker on right now."
   no_handout: "You have no sips to hand out right now."

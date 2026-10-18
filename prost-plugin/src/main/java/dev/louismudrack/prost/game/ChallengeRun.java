@@ -194,7 +194,7 @@ public final class ChallengeRun {
             String goal = Msg.esc(def.text(lang)) + teamGoal(id);
             if (participants.contains(id)) Hud.announce(p, "<primary>" + headline + "</primary>", "<white>" + goal);
             else Hud.announce(p, "<primary>" + whoPlays(id, lang) + "</primary>", "<white>" + goal + " " + Msg.str(id, "challenge.watching"));
-            String who = kind == Kind.SOLO || kind == Kind.DUEL ? " " + Msg.str(id, "challenge.who", V.of("names", names(participants, kind == Kind.DUEL ? " vs " : ", "))) : "";
+            String who = kind == Kind.SOLO || kind == Kind.DUEL ? " " + Msg.str(id, "challenge.who", V.mm("names", names(participants, kind == Kind.DUEL ? versus(id) : ", "))) : "";
             Msg.send(p, "<primary>" + headline + "</primary>" + who);
             Msg.send(p, "<white>" + goal);
             Msg.tell(p, "challenge.time", V.of("time", Fmt.clock(def.seconds() * 1000L)), V.mm("stakes", stakes(id)));
@@ -211,8 +211,8 @@ public final class ChallengeRun {
     /** the title for round members who do not play this one */
     private String whoPlays(UUID viewer, String lang) {
         return switch (kind) {
-            case SOLO -> Msg.str(viewer, "challenge.solo_plays", V.of("names", names(participants, ", ")));
-            case DUEL -> Msg.esc(names(participants, " vs "));
+            case SOLO -> Msg.str(viewer, "challenge.solo_plays", V.mm("names", names(participants, ", ")));
+            case DUEL -> names(participants, versus(viewer));
             default -> kindAndName(viewer, lang);
         };
     }
@@ -250,7 +250,7 @@ public final class ChallengeRun {
             String line;
             if (kind == Kind.TEAM) line = o.success() ? Msg.str(id, "result.team_ok") : Msg.str(id, "result.team_missed", V.of("sum", sum), V.of("target", target));
             else if (o.winners().isEmpty()) line = Msg.str(id, "result.nobody");
-            else line = Msg.str(id, "result.made_it", V.of("winners", names(o.winners(), ", "))) + (noReward ? " " + Msg.str(id, "result.no_reward") : "");
+            else line = Msg.str(id, "result.made_it", V.mm("winners", names(o.winners(), ", "))) + (noReward ? " " + Msg.str(id, "result.no_reward") : "");
             Msg.tell(p, "result.line", V.of("name", def.name(lang)), V.mm("result", line));
             if (!participants.contains(id)) continue;
             boolean won = o.winners().contains(id);
@@ -260,14 +260,17 @@ public final class ChallengeRun {
     }
 
     /** the players' names, not escaped: callers insert them with V.of or Msg.esc */
+    /** MiniMessage: each name escaped, the separator as it is (a translator may style challenge.versus) */
     private String names(List<UUID> ids, String separator) {
         StringJoiner j = new StringJoiner(separator);
         for (UUID id : ids) {
             Member m = round.member(id);
-            j.add(m == null ? "?" : m.name);
+            j.add(Msg.esc(m == null ? "?" : m.name));
         }
         return j.toString();
     }
+
+    private static String versus(UUID viewer) { return Msg.str(viewer, "challenge.versus"); }
 
     // ---------------------------------------------------------------------------------------------- HUD
 

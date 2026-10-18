@@ -42,6 +42,7 @@ import dev.louismudrack.prost.storage.SqlStatsStore;
 import dev.louismudrack.prost.storage.StatsStore;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -65,7 +66,6 @@ import java.util.logging.Level;
 /** Prost - the drinking game. Rounds, challenges and the roulette. Not final: MockBukkit loads it as a subclass. */
 public class ProstPlugin extends JavaPlugin {
     private static final String COMMAND = "prost";
-    private static final String COMMAND_DESCRIPTION = "Prost - the drinking game";
 
     private PluginConfig pluginConfig = PluginConfig.DEFAULTS;
     private GameConfig cfg = GameConfig.DEFAULTS;
@@ -132,9 +132,14 @@ public class ProstPlugin extends JavaPlugin {
 
     private void registerCommand(Commands registrar) {
         List<String> aliases = pluginConfig.commandAliases();
-        Set<String> registered = registrar.register(COMMAND, COMMAND_DESCRIPTION, aliases, command);
+        Set<String> registered = registrar.register(COMMAND, commandDescription(), aliases, command);
         for (String alias : notRegistered(aliases, registered))
             getLogger().warning("commands.aliases: /" + alias + " is already a command of another plugin - not registered");
+    }
+
+    /** Paper shows one description to everyone in /help: the server language's, as plain text */
+    private String commandDescription() {
+        return PlainTextComponentSerializer.plainText().serialize(Msg.mm(lang.template(lang.defaultLanguage(), "command.description")));
     }
 
     /** Paper leaves out an alias another command already has: the set holds every label it did register */

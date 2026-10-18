@@ -13,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Every shipped language has every key, with the same value tags (a translation that drops <code> is a bug). */
@@ -70,6 +71,17 @@ class LangParityTest {
                 boolean ok = v instanceof String || v instanceof List<?> l && l.stream().allMatch(e -> e instanceof String);
                 assertTrue(ok, code + ".yml " + k + " is " + v + " - quote yes/no/on/off and numbers");
             }
+        }
+    }
+
+    /** the prompt names the word that stops it: a translation that changes one must change the other */
+    @Test
+    void thePromptNamesACancelWord() throws Exception {
+        for (String code : List.of("en", "de")) {
+            YamlConfiguration y = load(code);
+            List<String> words = y.getStringList("rule.cancel_words");
+            assertFalse(words.isEmpty(), code);
+            assertTrue(y.getString("rule.type_prompt").contains("\"" + words.get(0) + "\""), code);
         }
     }
 }
