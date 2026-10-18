@@ -9,8 +9,10 @@ import org.mockbukkit.mockbukkit.command.MessageTarget;
 import org.mockbukkit.mockbukkit.inventory.ChestInventoryMock;
 import org.mockbukkit.mockbukkit.inventory.InventoryMock;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Prost on a MockBukkit server (metrics and the update checker stay off: build.gradle.kts sets prost.offline).
@@ -26,10 +28,18 @@ public final class TestServer {
      */
     public static ServerMock mock() { return MockBukkit.mock(new MenuServer()); }
 
-    public static ProstPlugin start(ServerMock server) {
+    public static ProstPlugin start(ServerMock server) { return start(server, dataFolder -> { }); }
+
+    /** beforeEnable gets Prost's data folder (MockBukkit names it after the version) before onEnable runs */
+    public static ProstPlugin start(ServerMock server, Consumer<File> beforeEnable) {
         if (!(server instanceof MenuServer)) throw new IllegalArgumentException("start Prost on TestServer.mock(), not MockBukkit.mock()");
         server.addSimpleWorld("world");
-        ProstPlugin plugin = MockBukkit.load(ProstPlugin.class);
+        ProstPlugin plugin = (ProstPlugin) server.getPluginManager().loadPlugin(ProstPlugin.class, new Object[0]);
+        beforeEnable.accept(plugin.getDataFolder());
+        // what MockBukkit.load does between loading and enabling
+        server.getPluginManager().addPermissions(plugin.getDescription().getPermissions().stream()
+                .filter(permission -> server.getPluginManager().getPermission(permission.getName()) == null).toList());
+        server.getPluginManager().enablePlugin(plugin);
         // a real server registers commands (LifecycleEvents.COMMANDS) once startup is done; MockBukkit on the first dispatch
         server.dispatchCommand(server.getConsoleSender(), "");
         return plugin;

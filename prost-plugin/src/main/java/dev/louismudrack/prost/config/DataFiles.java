@@ -27,7 +27,7 @@ public final class DataFiles {
         try (Reader r = java.nio.file.Files.newBufferedReader(f.toPath(), StandardCharsets.UTF_8)) {
             return yaml().load(r);
         } catch (IOException | RuntimeException e) {   // SnakeYAML's YAMLException is a RuntimeException
-            plugin.getLogger().warning(name + " is unreadable (" + e.getMessage() + ") - using the shipped copy until it is fixed");
+            plugin.getLogger().warning(name + " is unreadable (" + YamlErrors.describe(e) + ") - using the shipped copy until it is fixed");
             return shipped(name);
         }
     }
@@ -38,7 +38,7 @@ public final class DataFiles {
         try (Reader r = java.nio.file.Files.newBufferedReader(f.toPath(), StandardCharsets.UTF_8)) {
             return yaml().load(r);
         } catch (IOException | RuntimeException e) {
-            plugin.getLogger().warning(name + " is unreadable (" + e.getMessage() + ") - ignored");
+            plugin.getLogger().warning(name + " is unreadable (" + YamlErrors.describe(e) + ") - ignored");
             return null;
         }
     }
@@ -50,7 +50,7 @@ public final class DataFiles {
             if (in == null) return null;
             return yaml().load(new InputStreamReader(in, StandardCharsets.UTF_8));
         } catch (IOException e) {
-            plugin.getLogger().warning("shipped " + name + " unreadable: " + e.getMessage());
+            plugin.getLogger().warning("shipped " + name + " unreadable: " + YamlErrors.describe(e));
             return null;
         }
     }

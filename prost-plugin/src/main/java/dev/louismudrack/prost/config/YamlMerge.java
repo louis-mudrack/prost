@@ -34,7 +34,7 @@ public final class YamlMerge {
             plugin.getLogger().info(path + ": new settings added with their defaults");
             return true;
         } catch (IOException | InvalidConfigurationException e) {
-            plugin.getLogger().warning(path + " could not be updated (" + e.getMessage() + ") - fix the file; defaults apply to anything missing");
+            plugin.getLogger().warning(path + " could not be updated (" + YamlErrors.describe(e) + ") - fix the file; defaults apply to anything missing");
             return false;
         }
     }

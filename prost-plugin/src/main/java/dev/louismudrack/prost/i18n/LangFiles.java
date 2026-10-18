@@ -1,5 +1,6 @@
 package dev.louismudrack.prost.i18n;
 
+import dev.louismudrack.prost.config.YamlErrors;
 import dev.louismudrack.prost.config.YamlMerge;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -67,7 +68,7 @@ public final class LangFiles {
             try {
                 y.load(f);
             } catch (IOException | InvalidConfigurationException e) {
-                warn.accept(file + " is unreadable (" + String.valueOf(e.getMessage()).lines().findFirst().orElse("?") + ") - English is used instead");
+                warn.accept(file + " is unreadable (" + YamlErrors.describe(e) + ") - English is used instead");
                 continue;
             }
             String code = f.getName().substring(0, f.getName().length() - SUFFIX.length()).toLowerCase(Locale.ROOT);
