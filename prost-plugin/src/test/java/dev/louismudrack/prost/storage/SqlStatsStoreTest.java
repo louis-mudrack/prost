@@ -140,6 +140,37 @@ class SqlStatsStoreTest {
     }
 
     @Test
+    void hasDataOnceAPlayerIsStored() throws Exception {
+        assertFalse(store.hasData().get(5, TimeUnit.SECONDS));
+        store.setLanguage(A, "A", "de");
+        flush();
+        assertTrue(store.hasData().get(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void hasDataOnceARoundIsStored() throws Exception {
+        store.importRound("L9D5", A.toString(), 10, 20, 2, 16).get(5, TimeUnit.SECONDS);
+        assertTrue(store.hasData().get(5, TimeUnit.SECONDS));
+    }
+
+    /** an empty table-prefix can meet a table of that name that is not Prost's: AniDrinks' own stats table, another plugin's */
+    @Test
+    void refusesATableOfItsNameThatIsNotProsts() throws Exception {
+        Path shared = dir.resolve("shared.db");
+        try (java.sql.Connection c = java.sql.DriverManager.getConnection("jdbc:sqlite:" + shared);
+             java.sql.Statement st = c.createStatement()) {
+            st.executeUpdate("CREATE TABLE stats (uuid TEXT PRIMARY KEY, name TEXT NOT NULL, sips_drunk INTEGER NOT NULL DEFAULT 0)");
+        }
+        SqlStatsStore unprefixed = SqlStatsStore.sqlite(shared.toFile(), "", Logger.getLogger("test"), Runnable::run);
+        java.sql.SQLException e = assertThrows(java.sql.SQLException.class, unprefixed::open);
+        assertTrue(e.getMessage().contains("table stats is not Prost's") && e.getMessage().contains("storage.table-prefix"), e.getMessage());
+        ExecutionException write = assertThrows(ExecutionException.class,
+                () -> unprefixed.importRow(new StatsRow(A, "A", 1, 0, 0, 0, 0, 0, 0, 0, 1), 1).get(5, TimeUnit.SECONDS));
+        assertInstanceOf(java.sql.SQLException.class, write.getCause());
+        unprefixed.close();
+    }
+
+    @Test
     void countersAddedDuringAnOutageAreWrittenWhenTheDatabaseIsBack() throws Exception {
         java.io.File missing = dir.resolve("later").resolve("outage.db").toFile();
         SqlStatsStore outage = SqlStatsStore.sqlite(missing, "prost_", Logger.getLogger("test"), Runnable::run, new ManualWorker());

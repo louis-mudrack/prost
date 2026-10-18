@@ -46,6 +46,8 @@ public final class SqlStatsStore implements StatsStore {
 
     private interface Work<T> { T run(Connection c) throws SQLException; }
 
+    private interface Read<T> { T run() throws SQLException; }
+
     private record PendingKey(UUID id, StatsField field) {}
 
     private record Pending(int amount, String name, long at) {
@@ -157,7 +159,19 @@ public final class SqlStatsStore implements StatsStore {
                     + "host VARCHAR(36) NOT NULL, started BIGINT NOT NULL, ended BIGINT NOT NULL, members INT NOT NULL, "
                     + "challenges INT NOT NULL, UNIQUE (code, started))");
         }
+        requireOwn(c, stats, "language, noticed");
+        requireOwn(c, rounds, "code, host, started, ended, members, challenges");
         for (StatsField f : StatsField.values()) dialect.createIndex(c, stats, stats + "_" + f.column, f.column);
+    }
+
+    /** CREATE TABLE IF NOT EXISTS keeps a table of that name: with an empty table-prefix AniDrinks' old one or another plugin's */
+    private static void requireOwn(Connection c, String table, String columns) throws SQLException {
+        try (Statement st = c.createStatement()) {
+            st.executeQuery("SELECT " + columns + " FROM " + table + " WHERE 1 = 0").close();
+        } catch (SQLException e) {
+            throw new SQLException("table " + table + " is not Prost's (" + e.getMessage() + ") - another plugin or an AniDrinks database "
+                    + "uses that name: set storage.table-prefix in config.yml (default prost_) and restart", e.getSQLState(), e);
+        }
     }
 
     /** worker thread: one retry after a lost connection, so a database restart costs no counter */
@@ -274,14 +288,26 @@ public final class SqlStatsStore implements StatsStore {
     }
 
     @Override
-    public CompletableFuture<Optional<StatsRow>> fetch(UUID id) {
-        CompletableFuture<Optional<StatsRow>> done = new CompletableFuture<>();
+    public CompletableFuture<Optional<StatsRow>> fetch(UUID id) { return read("stats read", () -> Optional.ofNullable(find(id))); }
+
+    @Override
+    public CompletableFuture<Boolean> hasData() { return read("stats check", () -> attempt(c -> any(c, stats) || any(c, rounds))); }
+
+    private static boolean any(Connection c, String table) throws SQLException {
+        try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery("SELECT 1 FROM " + table + " LIMIT 1")) {
+            return rs.next();
+        }
+    }
+
+    /** completes on the worker thread; exceptionally when the read fails or the store is closed */
+    private <T> CompletableFuture<T> read(String what, Read<T> work) {
+        CompletableFuture<T> done = new CompletableFuture<>();
         try {
             worker.execute(() -> {
                 try {
-                    done.complete(Optional.ofNullable(find(id)));
+                    done.complete(work.run());
                 } catch (SQLException | RuntimeException e) {
-                    warn("stats read failed: " + e.getMessage());
+                    warn(what + " failed: " + e.getMessage());
                     done.completeExceptionally(e);
                 }
             });

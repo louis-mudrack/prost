@@ -34,7 +34,7 @@ import java.util.UUID;
 public final class Rounds {
     public record Invite(String code, UUID from, long until) {}
 
-    private static final String FILE = "rounds.yml";
+    public static final String FILE = "rounds.yml";
     private static final long INVITE_MS = 120_000L, MINUTE_MS = 60_000L;
 
     private final ProstPlugin plugin;

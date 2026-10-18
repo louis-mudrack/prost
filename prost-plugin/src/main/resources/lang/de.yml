@@ -260,7 +260,11 @@ admin:
   force_refused: "Geht gerade nicht (läuft schon etwas, oder zu wenige aktive Spieler für diese Art)."
   debug_on: "Roulette-Debug in der Konsole: an"
   debug_off: "Roulette-Debug in der Konsole: aus"
-  usage: "/prost admin reload | list | end <code> | force <code> <id> <kind> | debug [on|off]"
+  migrated: "AniDrinks-Daten übernommen - die Zahlen stehen in der Konsole."
+  nothing_to_migrate: "Es gibt keinen AniDrinks-Ordner zum Übernehmen."
+  migrate_blocked: "AniDrinks ist noch installiert: entferne AniDrinks.jar und starte neu - nichts wurde übernommen."
+  migrate_failed: "Die Übernahme der AniDrinks-Daten ist fehlgeschlagen - siehe Konsole. Der AniDrinks-Ordner bleibt unverändert; führe den Befehl nach der Behebung erneut aus."
+  usage: "/prost admin reload | list | end <code> | force <code> <id> <kind> | debug [on|off] | migrate"
 language:
   managed: "Deine Sprache stellt der Server ein."
   current: "Sprache: <hl><language> <gray>- verfügbar: <white><available> <gray>(oder auto)"

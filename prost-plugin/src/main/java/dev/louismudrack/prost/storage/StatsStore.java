@@ -35,6 +35,9 @@ public interface StatsStore {
 
     CompletableFuture<Void> importRound(String code, String host, long started, long ended, int members, int challenges);
 
+    /** completes on the store's worker thread: true once a player or a round is stored; exceptionally when the read fails */
+    CompletableFuture<Boolean> hasData();
+
     /** completes once everything queued before it is written */
     CompletableFuture<Void> flush();
 

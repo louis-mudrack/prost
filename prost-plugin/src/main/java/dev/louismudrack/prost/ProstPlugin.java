@@ -32,6 +32,8 @@ import dev.louismudrack.prost.i18n.Theme;
 import dev.louismudrack.prost.menu.MenuListener;
 import dev.louismudrack.prost.meta.ProstMetrics;
 import dev.louismudrack.prost.meta.UpdateChecker;
+import dev.louismudrack.prost.migration.AniDrinksMigration;
+import dev.louismudrack.prost.migration.AniDrinksMigration.Outcome;
 import dev.louismudrack.prost.reward.Rewards;
 import dev.louismudrack.prost.roulette.Roulette;
 import dev.louismudrack.prost.storage.PlayerPrefs;
@@ -46,6 +48,7 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -55,6 +58,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.logging.Level;
 
 /** Prost - the drinking game. Rounds, challenges and the roulette. Not final: MockBukkit loads it as a subclass. */
 public class ProstPlugin extends JavaPlugin {
@@ -85,6 +90,7 @@ public class ProstPlugin extends JavaPlugin {
         // silent here: reloadData() below parses the file again and logs its warnings once
         pluginConfig = PluginConfig.parse(files.map("config.yml"), warning -> { });
         openStorage();
+        migrateOnStart();   // before game.yml, the catalogue and rounds.yml are read, so AniDrinks' copies are what loads
         hooks = createHooks();
         getServer().getPluginManager().registerEvents(hooks, this);
         getServer().getServicesManager().register(ProstApi.class, new ApiImpl(this), this, ServicePriority.Normal);
@@ -145,6 +151,43 @@ public class ProstPlugin extends JavaPlugin {
         prefs = new PlayerPrefs(stats);
         getServer().getPluginManager().registerEvents(prefs, this);
         getServer().getOnlinePlayers().forEach(p -> prefs.load(p));
+    }
+
+    /** spec §9: at the start only into a Prost that holds no stats yet */
+    Outcome migrateOnStart() { return migrate(false, taken -> { }); }
+
+    /** /prost admin migrate: also over Prost's own stats (AniDrinks' numbers replace them), loaded right away */
+    public Outcome migrate() { return migrate(true, taken -> loadTakenOver(taken)); }
+
+    private Outcome migrate(boolean overProstStats, Consumer<AniDrinksMigration.Result> load) {
+        if (getServer().getPluginManager().getPlugin(AniDrinksMigration.SOURCE) != null) {
+            getLogger().severe("AniDrinks is installed next to Prost - nothing taken over; remove AniDrinks.jar and restart");
+            return Outcome.BLOCKED;
+        }
+        AniDrinksMigration migration = new AniDrinksMigration(getDataFolder().getParentFile(), getDataFolder(), stats, getLogger());
+        if (!migration.found()) return Outcome.NOTHING;
+        AniDrinksMigration.Result taken;
+        try {
+            if (!overProstStats && migration.prostHasStats()) {
+                getLogger().warning("plugins/AniDrinks not taken over: Prost already holds stats - /prost admin migrate takes it over "
+                        + "anyway (AniDrinks' numbers then replace those players' Prost numbers)");
+                return Outcome.BLOCKED;
+            }
+            taken = migration.run();
+        } catch (IOException | SQLException | RuntimeException e) {
+            getLogger().log(Level.SEVERE, "taking over plugins/AniDrinks failed - the folder stays as it is; /prost admin migrate "
+                    + "tries again", e);
+            return Outcome.FAILED;
+        }
+        if (taken == null) return Outcome.NOTHING;
+        load.accept(taken);
+        return Outcome.DONE;
+    }
+
+    /** Prost writes rounds.yml whenever a round opens: a copied one means no round of Prost's own is running to collide with */
+    private void loadTakenOver(AniDrinksMigration.Result taken) {
+        reloadData();
+        if (taken.files().contains(Rounds.FILE)) rounds.load();
     }
 
     private Hooks createHooks() {

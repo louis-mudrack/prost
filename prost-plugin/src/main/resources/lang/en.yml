@@ -260,7 +260,11 @@ admin:
   force_refused: "Not possible now (something runs, or too few active players for that kind)."
   debug_on: "Roulette debug in the console: on"
   debug_off: "Roulette debug in the console: off"
-  usage: "/prost admin reload | list | end <code> | force <code> <id> <kind> | debug [on|off]"
+  migrated: "AniDrinks data taken over - the counts are in the console."
+  nothing_to_migrate: "There is no AniDrinks folder to take over."
+  migrate_blocked: "AniDrinks is still installed: remove AniDrinks.jar and restart - nothing was taken over."
+  migrate_failed: "Taking over the AniDrinks data failed - see the console. The AniDrinks folder is untouched; run this again once it is fixed."
+  usage: "/prost admin reload | list | end <code> | force <code> <id> <kind> | debug [on|off] | migrate"
 language:
   managed: "Your language follows the server (it decides it for you)."
   current: "Language: <hl><language> <gray>- available: <white><available> <gray>(or auto)"

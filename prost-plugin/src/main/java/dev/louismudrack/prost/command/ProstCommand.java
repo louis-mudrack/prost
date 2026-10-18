@@ -242,7 +242,7 @@ public final class ProstCommand implements BasicCommand {
         if (!plugin.rewards().reopenChoice(p)) Msg.error(p, "command.no_choice");
     }
 
-    /** /prost admin reload|list|end|force|debug; /prost reload stays as the short form */
+    /** /prost admin reload|list|end|force|debug|migrate; /prost reload stays as the short form */
     private void admin(CommandSender s, String sub, String[] args) {
         if (!s.hasPermission(ADMIN)) {
             if (s instanceof Player p) Msg.error(p, "command.no_permission");
@@ -279,6 +279,14 @@ public final class ProstCommand implements BasicCommand {
                 Roulette rl = plugin.roulette();
                 rl.debug = args.length > 2 ? args[2].equalsIgnoreCase("on") : !rl.debug;
                 reply(s, rl.debug ? "admin.debug_on" : "admin.debug_off");
+            }
+            case "migrate" -> {
+                switch (plugin.migrate()) {
+                    case DONE -> reply(s, "admin.migrated");
+                    case NOTHING -> reply(s, "admin.nothing_to_migrate");
+                    case BLOCKED -> reply(s, "admin.migrate_blocked");
+                    case FAILED -> reply(s, "admin.migrate_failed");
+                }
             }
             default -> reply(s, "admin.usage");
         }
