@@ -12,18 +12,17 @@ public final class ChoiceMenu extends Menu {
 
     private static final int SPACED_MAX = 4;
 
-    private final String titleDe, titleEn;
+    private final String titleKey;
     private final List<Option> options;
 
-    public ChoiceMenu(ProstPlugin plugin, Player viewer, String titleDe, String titleEn, List<Option> options) {
+    public ChoiceMenu(ProstPlugin plugin, Player viewer, String titleKey, List<Option> options) {
         super(plugin, viewer);
-        this.titleDe = titleDe;
-        this.titleEn = titleEn;
+        this.titleKey = titleKey;
         this.options = options;
     }
 
     @Override protected int size() { return 27; }
-    @Override protected String title() { return t(titleDe, titleEn); }
+    @Override protected String title() { return text(titleKey); }
 
     @Override
     protected void draw() {

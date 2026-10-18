@@ -94,7 +94,7 @@ public final class Rewards implements Listener {
             settled(winner);
             apply(r, winner, d, rw, team, teamMembers);
         }));
-        offer(p, new ChoiceMenu(plugin, p, "Belohnung wählen", "Pick your reward", list).until(deadline()));
+        offer(p, new ChoiceMenu(plugin, p, "menu.choice.reward", list).until(deadline()));
     }
 
     /** a choice the winner may close by accident: the chat button (/prost belohnung) opens it again until it is decided */
@@ -368,7 +368,7 @@ public final class Rewards implements Listener {
                 choosePlayers(r, p, c);
             }));
         }
-        offer(p, new ChoiceMenu(plugin, p, "Nächste Herausforderung", "Next challenge", list).until(deadline()));
+        offer(p, new ChoiceMenu(plugin, p, "menu.choice.next", list).until(deadline()));
     }
 
     /** Solo/Duel picked: the winner also names who plays (one for Solo, two picks for Duel) */
@@ -396,7 +396,7 @@ public final class Rewards implements Listener {
                 } else pickPlayers(r, chooser, c, now, needed);
             }));
         }
-        offer(chooser, new ChoiceMenu(plugin, chooser, "Wer spielt?", "Who plays?", list));
+        offer(chooser, new ChoiceMenu(plugin, chooser, "menu.choice.who", list));
     }
 
     /** onDisable: open hand-outs go out at random now (inline) */

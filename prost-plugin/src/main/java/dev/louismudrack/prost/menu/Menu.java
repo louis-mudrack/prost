@@ -2,6 +2,7 @@ package dev.louismudrack.prost.menu;
 
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.ui.Sounds;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -27,7 +28,6 @@ public abstract class Menu implements InventoryHolder {
 
     protected final ProstPlugin plugin;
     protected final Player viewer;
-    protected final boolean de;
     protected final String lang;
     private final Map<Integer, Consumer<InventoryClickEvent>> actions = new HashMap<>();
     private Inventory inv;
@@ -38,7 +38,6 @@ public abstract class Menu implements InventoryHolder {
     Menu(ProstPlugin plugin, Player viewer) {
         this.plugin = plugin;
         this.viewer = viewer;
-        this.de = Msg.de(viewer.getUniqueId());
         this.lang = Msg.lang(viewer.getUniqueId());
     }
 
@@ -61,7 +60,7 @@ public abstract class Menu implements InventoryHolder {
     }
 
     public final void open() {
-        inv = Bukkit.createInventory(this, size(), Msg.mm("<gradient:#ffd94d:#ff8f3f>» " + Msg.esc(title()) + "</gradient>"));
+        inv = Bukkit.createInventory(this, size(), Msg.mm("<primary>» " + title() + "</primary>"));
         render();
         viewer.openInventory(inv);
         Sounds.open(viewer);
@@ -81,8 +80,7 @@ public abstract class Menu implements InventoryHolder {
 
     private ItemStack clockItem() {
         long seconds = Math.max(0, (deadline - System.currentTimeMillis() + 999) / 1000);
-        return Items.item(Material.CLOCK, "<gray>" + t("Noch ", "Time left: ") + Msg.HL + seconds + " s",
-                List.of("<dark_gray>" + t("Danach wird für dich gewählt.", "Then it is chosen for you.")));
+        return Items.item(Material.CLOCK, text("menu.common.clock", V.of("seconds", seconds)), lines("menu.common.clock_lore"));
     }
 
     final void render() {
@@ -91,8 +89,8 @@ public abstract class Menu implements InventoryHolder {
         if (deadline > 0) inv.setItem(CLOCK_SLOT, clockItem());
         draw();
         Menu b = back();
-        if (b != null) set(size() - 9, Items.item(Material.ARROW, "<gray>" + t("Zurück", "Back"), List.of()), e -> b.open());
-        set(size() - 1, Items.item(Material.BARRIER, "<#ff5555>" + t("Schließen", "Close"), List.of()), e -> viewer.closeInventory());
+        if (b != null) set(size() - 9, Items.item(Material.ARROW, "<gray>" + text("menu.common.back"), List.of()), e -> b.open());
+        set(size() - 1, Items.item(Material.BARRIER, "<err>" + text("menu.common.close"), List.of()), e -> viewer.closeInventory());
     }
 
     protected final void set(int slot, ItemStack item, Consumer<InventoryClickEvent> action) {
@@ -108,7 +106,9 @@ public abstract class Menu implements InventoryHolder {
         action.accept(e);
     }
 
-    protected final String t(String german, String english) { return de ? german : english; }
+    protected final String text(String key, V... vars) { return Msg.str(viewer.getUniqueId(), key, vars); }
+
+    protected final List<String> lines(String key, V... vars) { return Msg.lines(viewer.getUniqueId(), key, vars); }
 
     @Override
     public Inventory getInventory() { return inv; }

@@ -2,8 +2,7 @@ package dev.louismudrack.prost.menu;
 
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.game.Rounds;
-import dev.louismudrack.prost.i18n.Msg;
-import dev.louismudrack.prost.roulette.Roulette;
+import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.storage.StatsRow;
 import dev.louismudrack.prost.storage.StatsStore;
@@ -39,27 +38,22 @@ public final class StatsMenu extends Menu {
     }
 
     @Override protected int size() { return 54; }
-    @Override protected String title() { return t("Statistik", "Stats"); }
+    @Override protected String title() { return text("menu.stats.title"); }
     @Override protected Menu back() { return new MainMenu(plugin, viewer); }
 
     @Override
     protected void draw() {
-        List<String> lore = new ArrayList<>();
-        if (row == null) lore.add("<gray>" + t("Noch nie mitgespielt", "Never played yet"));
-        else {
-            lore.add("<gray>" + t("Getrunken: ", "Drunk: ") + Msg.HL + row.drunk() + " <dark_gray>· <gray>" + t("Wasser: ", "Water: ") + Msg.HL + row.water());
-            lore.add("<gray>" + t("Verteilt: ", "Handed out: ") + Msg.HL + row.given());
-            lore.add("<gray>" + t("Siege: ", "Won: ") + Msg.HL + row.won() + " <dark_gray>· <gray>" + t("Niederlagen: ", "Lost: ") + Msg.HL + row.lost());
-            lore.add("<gray>Roulette: " + Msg.HL + row.roulette() + " <dark_gray>· <gray>Joker: " + Msg.HL + row.jokers());
-            lore.add("<gray>" + t("Regeln: ", "Rules: ") + Msg.HL + row.rules() + " <dark_gray>· <gray>" + t("Runden: ", "Rounds: ") + Msg.HL + row.rounds());
-        }
-        set(13, Items.head(target, Msg.HL + Msg.esc(name), lore), null);
-        set(29, board(Material.HONEY_BOTTLE, t("Meiste Schlucke", "Most sips"), drunk, StatsField.DRUNK), null);
-        set(31, board(Material.CAKE, t("Großzügigste", "Most generous"), given, StatsField.GIVEN), null);
-        set(33, board(Material.GOLDEN_APPLE, t("Meiste Siege", "Most wins"), won, StatsField.WON), null);
+        List<String> lore = row == null ? lines("menu.stats.never")
+                : lines("menu.stats.numbers", V.of("drunk", row.drunk()), V.of("water", row.water()), V.of("given", row.given()),
+                        V.of("won", row.won()), V.of("lost", row.lost()), V.of("roulette", row.roulette()), V.of("jokers", row.jokers()),
+                        V.of("rules", row.rules()), V.of("rounds", row.rounds()));
+        set(13, Items.head(target, text("menu.stats.player", V.of("name", name)), lore), null);
+        set(29, board(Material.HONEY_BOTTLE, "menu.stats.most_sips", drunk, StatsField.DRUNK), null);
+        set(31, board(Material.CAKE, "menu.stats.most_generous", given, StatsField.GIVEN), null);
+        set(33, board(Material.GOLDEN_APPLE, "menu.stats.most_wins", won, StatsField.WON), null);
     }
 
-    private org.bukkit.inventory.ItemStack board(Material icon, String title, List<StatsRow> rows, StatsField field) {
+    private org.bukkit.inventory.ItemStack board(Material icon, String titleKey, List<StatsRow> rows, StatsField field) {
         List<String> lore = new ArrayList<>();
         int place = 1;
         for (StatsRow r : rows) {
@@ -68,9 +62,9 @@ public final class StatsMenu extends Menu {
                 case GIVEN -> r.given();
                 default -> r.won();
             };
-            lore.add("<gray>" + place++ + ". <white>" + Msg.esc(r.name()) + " <dark_gray>· " + Msg.HL + value);
+            lore.add(text("menu.stats.entry", V.of("place", place++), V.of("name", r.name()), V.of("value", value)));
         }
-        if (lore.isEmpty()) lore.add("<gray>" + t("Noch leer", "Empty so far"));
-        return Items.item(icon, Msg.HL + title, lore);
+        if (lore.isEmpty()) lore.addAll(lines("menu.stats.empty"));
+        return Items.item(icon, "<hl>" + text(titleKey), lore);
     }
 }

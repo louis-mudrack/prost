@@ -6,12 +6,14 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Every shipped language has every key, with the same value tags (a translation that drops <code> is a bug). */
 class LangParityTest {
@@ -57,5 +59,17 @@ class LangParityTest {
     void bothUseTheSameValueTags() throws Exception {
         YamlConfiguration en = load("en"), de = load("de");
         for (String k : keys(en)) assertEquals(values(String.valueOf(en.get(k))), values(String.valueOf(de.get(k))), k);
+    }
+
+    @Test
+    void everyValueIsAStringOrAListOfStrings() throws Exception {
+        for (String code : new String[]{"en", "de"}) {
+            YamlConfiguration y = load(code);
+            for (String k : keys(y)) {
+                Object v = y.get(k);
+                boolean ok = v instanceof String || v instanceof List<?> l && l.stream().allMatch(e -> e instanceof String);
+                assertTrue(ok, code + ".yml " + k + " is " + v + " - quote yes/no/on/off and numbers");
+            }
+        }
     }
 }

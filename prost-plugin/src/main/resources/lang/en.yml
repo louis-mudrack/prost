@@ -16,5 +16,105 @@ pace:
   chill: "chill"
   normal: "normal"
   party: "party"
+menu:
+  common:
+    back: "Back"
+    close: "Close"
+    clock: "<gray>Time left: <hl><seconds> s"
+    clock_lore: ["<dark_gray>Then it is chosen for you."]
+  choice:
+    pace: "Pick the pace"
+    join: "Join a round"
+    remove: "Remove?"
+    end: "End the round?"
+    reward: "Pick your reward"
+    next: "Next challenge"
+    who: "Who plays?"
+  main:
+    title: "Drinking game"
+    mine: "<hl>My round <code>"
+    mine_lore: ["<gray><count> players"]
+    open: "Open a round"
+    open_lore: ["<gray>You become the host"]
+    open_entry: "<gray><code> <dark_gray>· <white><host> <dark_gray>· <gray><count>/<max>"
+    none: ["<gray>No round is running"]
+    none_error: "No round is running - open one!"
+    join: "Join a round"
+    stats: "My stats"
+    pace_lore: ["<gray>every <from>-<to> min"]
+    round_host: "<gray>Host: <white><host>"
+    round_info: "<gray><count>/<max> · <pace>"
+  round:
+    title: "Round <code>"
+    drunk: "<gray>Drunk: <hl><drunk>"
+    drunk_water: "<gray>Drunk: <hl><drunk> <gray>(+<water> water)"
+    limit_joker: "<gray>Limit: <hl><limit> <dark_gray>· <gray>Joker: <hl><jokers>"
+    click_remove: "<dark_gray>Click: remove"
+    member: "<hl><name>"
+    next_in: "<gray>Next in <hl><time>"
+    run_text: "<white><text>"
+    run_info: "<gray><kind> <dark_gray>· <gray><time> <dark_gray>· <err><sips>"
+    no_challenge: "<hl>No challenge"
+    challenge_name: "<hl><name>"
+    rule_entry: "<white>• <text>"
+    rules_none: "<gray>None yet"
+    rules: "Rules"
+    pause: "Pause"
+    is_paused: "<ok>paused"
+    is_playing: "<err>playing"
+    is_running: "<err>running"
+    limit_water: "Limit & water"
+    limit_lore: ["<gray><limit> per hour"]
+    leave: "Leave the round"
+    next_now: "Next challenge now"
+    pause_round: "Pause the round"
+    pace: "Pace: <pace>"
+    pace_lore: ["<gray>Click: <pace>"]
+    end: "End the round"
+    state_away: "<dark_gray>away"
+    state_afk: "<dark_gray>AFK"
+    state_paused: "<yellow>paused"
+    state_wrong_mode: "<dark_gray>creative/spectator"
+    state_active: "<ok>active"
+    yes_remove: "Yes, remove"
+    yes_end: "Yes, end it"
+    cancel: "Cancel"
+  join:
+    title: "Your settings"
+    limit: "<hl>Limit: <limit> sips per hour"
+    limit_lore: ["<gray>Anything above it lapses."]
+    water: "Water mode"
+    water_on: "<ok>on"
+    water_off: "<err>off"
+    water_lore: ["<gray>You drink something without alcohol."]
+  rules:
+    title_replace: "Which rule goes?"
+    title_pick: "Pick a rule"
+    entry: "<white><text>"
+    previous: "Previous"
+    next: "Next"
+    own: "Own rule"
+    own_lore: ["<gray>Type it into chat"]
+  handout:
+    title: "Hand out sips"
+    member: "<hl><name>"
+    member_lore: ["<gray>Assigned: <hl><given> <dark_gray>/ <max>", "<dark_gray>Left +1 · Right -1"]
+    confirm: "Hand out"
+    confirm_lore: ["<gray>Left to give: <hl><left>", "<dark_gray>The rest goes out at random."]
+  stats:
+    title: "Stats"
+    never: ["<gray>Never played yet"]
+    numbers:
+      - "<gray>Drunk: <hl><drunk> <dark_gray>· <gray>Water: <hl><water>"
+      - "<gray>Handed out: <hl><given>"
+      - "<gray>Won: <hl><won> <dark_gray>· <gray>Lost: <hl><lost>"
+      - "<gray>Roulette: <hl><roulette> <dark_gray>· <gray>Joker: <hl><jokers>"
+      - "<gray>Rules: <hl><rules> <dark_gray>· <gray>Rounds: <hl><rounds>"
+    player: "<hl><name>"
+    most_sips: "Most sips"
+    most_generous: "Most generous"
+    most_wins: "Most wins"
+    entry: "<gray><place>. <white><name> <dark_gray>· <hl><value>"
+    empty: ["<gray>Empty so far"]
 # Extra names for subcommands in this language, e.g. invite: [add]. English names always work.
 commands: {}

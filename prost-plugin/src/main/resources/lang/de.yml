@@ -16,6 +16,106 @@ pace:
   chill: "chill"
   normal: "normal"
   party: "party"
+menu:
+  common:
+    back: "Zurück"
+    close: "Schließen"
+    clock: "<gray>Noch <hl><seconds> s"
+    clock_lore: ["<dark_gray>Danach wird für dich gewählt."]
+  choice:
+    pace: "Tempo wählen"
+    join: "Runde beitreten"
+    remove: "Entfernen?"
+    end: "Runde beenden?"
+    reward: "Belohnung wählen"
+    next: "Nächste Herausforderung"
+    who: "Wer spielt?"
+  main:
+    title: "Trinkspiel"
+    mine: "<hl>Meine Runde <code>"
+    mine_lore: ["<gray><count> Spieler"]
+    open: "Runde eröffnen"
+    open_lore: ["<gray>Du wirst Host"]
+    open_entry: "<gray><code> <dark_gray>· <white><host> <dark_gray>· <gray><count>/<max>"
+    none: ["<gray>Gerade läuft keine Runde"]
+    none_error: "Gerade läuft keine Runde - eröffne doch eine!"
+    join: "Runde beitreten"
+    stats: "Meine Statistik"
+    pace_lore: ["<gray>alle <from>-<to> min"]
+    round_host: "<gray>Host: <white><host>"
+    round_info: "<gray><count>/<max> · <pace>"
+  round:
+    title: "Runde <code>"
+    drunk: "<gray>Getrunken: <hl><drunk>"
+    drunk_water: "<gray>Getrunken: <hl><drunk> <gray>(+<water> Wasser)"
+    limit_joker: "<gray>Limit: <hl><limit> <dark_gray>· <gray>Joker: <hl><jokers>"
+    click_remove: "<dark_gray>Klick: entfernen"
+    member: "<hl><name>"
+    next_in: "<gray>Nächste in <hl><time>"
+    run_text: "<white><text>"
+    run_info: "<gray><kind> <dark_gray>· <gray><time> <dark_gray>· <err><sips>"
+    no_challenge: "<hl>Keine Herausforderung"
+    challenge_name: "<hl><name>"
+    rule_entry: "<white>• <text>"
+    rules_none: "<gray>Noch keine"
+    rules: "Regeln"
+    pause: "Pause"
+    is_paused: "<ok>pausiert"
+    is_playing: "<err>spielt"
+    is_running: "<err>läuft"
+    limit_water: "Limit & Wasser"
+    limit_lore: ["<gray><limit> pro Stunde"]
+    leave: "Runde verlassen"
+    next_now: "Nächste Herausforderung jetzt"
+    pause_round: "Runde pausieren"
+    pace: "Tempo: <pace>"
+    pace_lore: ["<gray>Klick: <pace>"]
+    end: "Runde beenden"
+    state_away: "<dark_gray>weg"
+    state_afk: "<dark_gray>AFK"
+    state_paused: "<yellow>pausiert"
+    state_wrong_mode: "<dark_gray>Kreativ/Zuschauer"
+    state_active: "<ok>aktiv"
+    yes_remove: "Ja, entfernen"
+    yes_end: "Ja, beenden"
+    cancel: "Abbrechen"
+  join:
+    title: "Deine Einstellungen"
+    limit: "<hl>Limit: <limit> Schlucke pro Stunde"
+    limit_lore: ["<gray>Was darüber geht, verfällt."]
+    water: "Wasser-Modus"
+    water_on: "<ok>an"
+    water_off: "<err>aus"
+    water_lore: ["<gray>Du trinkst etwas ohne Alkohol."]
+  rules:
+    title_replace: "Welche Regel fällt weg?"
+    title_pick: "Regel wählen"
+    entry: "<white><text>"
+    previous: "Zurück"
+    next: "Weiter"
+    own: "Eigene Regel"
+    own_lore: ["<gray>In den Chat schreiben"]
+  handout:
+    title: "Schlucke verteilen"
+    member: "<hl><name>"
+    member_lore: ["<gray>Zugeteilt: <hl><given> <dark_gray>/ <max>", "<dark_gray>Links +1 · Rechts -1"]
+    confirm: "Verteilen"
+    confirm_lore: ["<gray>Noch frei: <hl><left>", "<dark_gray>Der Rest geht zufällig raus."]
+  stats:
+    title: "Statistik"
+    never: ["<gray>Noch nie mitgespielt"]
+    numbers:
+      - "<gray>Getrunken: <hl><drunk> <dark_gray>· <gray>Wasser: <hl><water>"
+      - "<gray>Verteilt: <hl><given>"
+      - "<gray>Siege: <hl><won> <dark_gray>· <gray>Niederlagen: <hl><lost>"
+      - "<gray>Roulette: <hl><roulette> <dark_gray>· <gray>Joker: <hl><jokers>"
+      - "<gray>Regeln: <hl><rules> <dark_gray>· <gray>Runden: <hl><rounds>"
+    player: "<hl><name>"
+    most_sips: "Meiste Schlucke"
+    most_generous: "Großzügigste"
+    most_wins: "Meiste Siege"
+    entry: "<gray><place>. <white><name> <dark_gray>· <hl><value>"
+    empty: ["<gray>Noch leer"]
 # Deutsche Namen der Unterbefehle; die englischen gehen immer.
 commands:
   invite: [einladen]

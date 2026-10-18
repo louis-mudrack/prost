@@ -2,7 +2,7 @@ package dev.louismudrack.prost.menu;
 
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.game.Member;
-import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.reward.Rewards;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -25,7 +25,7 @@ public final class HandoutMenu extends Menu {
     public boolean shows(Rewards.Handout h) { return handout == h; }
 
     @Override protected int size() { return 27; }
-    @Override protected String title() { return t("Schlucke verteilen", "Hand out sips"); }
+    @Override protected String title() { return text("menu.handout.title"); }
 
     @Override
     protected void draw() {
@@ -36,17 +36,15 @@ public final class HandoutMenu extends Menu {
             Member m = handout.round.member(id);
             if (m == null) continue;
             int given = handout.assigned.getOrDefault(id, 0);
-            set(slot++, Items.head(id, Msg.HL + Msg.esc(m.name), List.of(
-                    "<gray>" + t("Zugeteilt: ", "Assigned: ") + Msg.HL + given + " <dark_gray>/ " + e.getValue(),
-                    "<dark_gray>" + t("Links +1 · Rechts -1", "Left +1 · Right -1"))), click -> {
+            set(slot++, Items.head(id, text("menu.handout.member", V.of("name", m.name)),
+                    lines("menu.handout.member_lore", V.of("given", given), V.of("max", e.getValue()))), click -> {
                 if (click.isLeftClick() && handout.remaining() > 0 && given < e.getValue()) handout.assigned.merge(id, 1, Integer::sum);
                 else if (click.isRightClick() && given > 0) handout.assigned.merge(id, -1, Integer::sum);
                 render();
             });
         }
-        set(22, Items.item(Material.LIME_WOOL, Msg.OK + t("Verteilen", "Hand out"), List.of(
-                "<gray>" + t("Noch frei: ", "Left to give: ") + Msg.HL + handout.remaining(),
-                "<dark_gray>" + t("Der Rest geht zufällig raus.", "The rest goes out at random."))), click -> {
+        set(22, Items.item(Material.LIME_WOOL, "<ok>" + text("menu.handout.confirm"),
+                lines("menu.handout.confirm_lore", V.of("left", handout.remaining()))), click -> {
             viewer.closeInventory();
             rewards.finishHandout(handout);
         });

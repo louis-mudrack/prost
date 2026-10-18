@@ -4,9 +4,11 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.V;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** your settings in a round: sips per hour (-5 -1 +1 +5) and water mode (spec §3.2, §9); changes apply at once */
@@ -19,7 +21,7 @@ public final class JoinMenu extends Menu {
     }
 
     @Override protected int size() { return 27; }
-    @Override protected String title() { return t("Deine Einstellungen", "Your settings"); }
+    @Override protected String title() { return text("menu.join.title"); }
     @Override protected Menu back() { return new RoundMenu(plugin, viewer, round); }
 
     @Override
@@ -31,15 +33,16 @@ public final class JoinMenu extends Menu {
         for (int i = 0; i < steps.length; i++) {
             int step = steps[i];
             set(slots[i], Items.item(step < 0 ? Material.RED_STAINED_GLASS_PANE : Material.LIME_STAINED_GLASS_PANE,
-                    (step < 0 ? Msg.ERR : Msg.OK) + (step > 0 ? "+" : "") + step, List.of()), e -> {
+                    (step < 0 ? "<err>" : "<ok>") + (step > 0 ? "+" : "") + step, List.of()), e -> {
                 m.limit = plugin.cfg().clampLimit(m.limit + step);
                 render();
             });
         }
-        set(13, Items.item(Material.HONEY_BOTTLE, Msg.HL + t("Limit: ", "Limit: ") + m.limit + t(" Schlucke pro Stunde", " sips per hour"),
-                List.of("<gray>" + t("Was darüber geht, verfällt.", "Anything above it lapses."))), null);
-        set(22, Items.item(m.water ? Material.LIME_DYE : Material.GRAY_DYE, Msg.HL + t("Wasser-Modus", "Water mode"),
-                List.of(m.water ? Msg.OK + t("an", "on") : Msg.ERR + t("aus", "off"), "<gray>" + t("Du trinkst etwas ohne Alkohol.", "You drink something without alcohol."))), e -> {
+        set(13, Items.item(Material.HONEY_BOTTLE, text("menu.join.limit", V.of("limit", m.limit)), lines("menu.join.limit_lore")), null);
+        List<String> waterLore = new ArrayList<>();
+        waterLore.add(m.water ? text("menu.join.water_on") : text("menu.join.water_off"));
+        waterLore.addAll(lines("menu.join.water_lore"));
+        set(22, Items.item(m.water ? Material.LIME_DYE : Material.GRAY_DYE, "<hl>" + text("menu.join.water"), waterLore), e -> {
             m.water = !m.water;
             render();
         });
