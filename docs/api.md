@@ -6,17 +6,18 @@ API classes, so you compile against `prost-api` and run against Prost.
 
 ## Getting the API
 
-Add Prost as a soft dependency so it enables first:
+1. Compile against `prost-api` (the `prost-api-<version>.jar` of a release) with `compileOnly` in Gradle or the
+   `provided` scope in Maven. **Never shade or relocate it.** Prost's jar already contains these classes; a shaded copy
+   is a different class, so the services manager finds no `ProstApi` even when Prost is installed.
+2. Add Prost as a soft dependency so it enables first:
 
-```yaml
-softdepend: [Prost]
-```
+   ```yaml
+   softdepend: [Prost]
+   ```
 
-```java
-ProstApi prost = getServer().getServicesManager().load(ProstApi.class);   // null when Prost is not installed
-```
-
-Always check for `null`. If your plugin cannot start without Prost use `depend` instead.
+3. Check `isPluginEnabled("Prost")` before your code touches any API class. Without Prost these classes do not exist:
+   the first line that names `ProstApi` or a Prost event throws `NoClassDefFoundError`. Keep that code in a class of its
+   own that is only used after the check. If your plugin cannot start without Prost use `depend` instead.
 
 A complete example (a language provider and a `SipsEvent` listener):
 
@@ -24,18 +25,26 @@ A complete example (a language provider and a `SipsEvent` listener):
 public final class MyNetwork extends JavaPlugin {
     @Override
     public void onEnable() {
-        ProstApi prost = getServer().getServicesManager().load(ProstApi.class);   // null without Prost
+        // nothing of Prost's is loaded before this check
+        if (getServer().getPluginManager().isPluginEnabled("Prost")) ProstHook.register(this);
+    }
+}
+
+/** the only class that names Prost's API */
+final class ProstHook {
+    static void register(JavaPlugin plugin) {
+        ProstApi prost = plugin.getServer().getServicesManager().load(ProstApi.class);
         if (prost == null) return;
-        prost.registerLanguageProvider(this, player -> Optional.ofNullable(languageOf(player.getUniqueId())));
-        getServer().getPluginManager().registerEvents(new Listener() {
+        prost.registerLanguageProvider(plugin, player -> Optional.ofNullable(languageOf(player.getUniqueId())));
+        plugin.getServer().getPluginManager().registerEvents(new Listener() {
             @EventHandler
             public void onSips(SipsEvent e) {
-                getLogger().info(e.player() + " drank " + e.sips() + " (" + e.source() + ")");
+                plugin.getLogger().info(e.player() + " drank " + e.sips() + " (" + e.source() + ")");
             }
-        }, this);
+        }, plugin);
     }
 
-    private String languageOf(UUID player) { return "en"; }   // your own lookup
+    private static String languageOf(UUID player) { return "en"; }   // your own lookup
 }
 ```
 
@@ -102,7 +111,14 @@ A round that ends while a challenge is running fires only `RoundEndEvent` (its v
 ## Threading
 
 Call everything from the main server thread, with one exception: `stats(UUID)` is safe from any thread. It returns a
-`CompletableFuture<Optional<StatsView>>` that completes on a background thread, never the server thread, so joining it on
-the server thread is safe. The optional is empty when the player never played; the future completes exceptionally when
-the stats cannot be read. Switch back to the main thread (`Bukkit.getScheduler()`) before touching the Bukkit API in a
-callback.
+`CompletableFuture<Optional<StatsView>>` that completes on a background thread, never the server thread. The optional is
+empty when the player never played; the future completes exceptionally when the stats cannot be read.
+
+Do not `join()` or `get()` the future on the server thread. While the database is unreachable a read can wait for the
+driver's connect timeout, long enough for the server's watchdog. Use `thenAccept` and switch back to the main thread
+with the scheduler before touching the Bukkit API:
+
+```java
+prost.stats(player.getUniqueId()).thenAccept(stats -> plugin.getServer().getScheduler().runTask(plugin, () ->
+        player.sendMessage("Sips drunk: " + stats.map(StatsView::sipsDrunk).orElse(0))));
+```

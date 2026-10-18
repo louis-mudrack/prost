@@ -40,8 +40,9 @@ public interface ProstApi {
     Collection<RoundView> rounds();
 
     /**
-     * all-time numbers. Completes on a background thread (never the server thread, so joining it there is safe);
-     * empty when the player never played, exceptionally when the stats cannot be read. Safe from any thread.
+     * all-time numbers. Completes on a background thread, never the server thread; empty when the player never played,
+     * exceptionally when the stats cannot be read. Safe from any thread. Do not join it on the server thread: while the
+     * database is unreachable a read can wait for the driver's connect timeout. Use {@code thenAccept} and the scheduler.
      */
     CompletableFuture<Optional<StatsView>> stats(UUID player);
 }

@@ -130,32 +130,44 @@ The top list is cached for 30 seconds.
 
 ## For developers
 
-Prost has a small API (hooks and events), MIT licensed. Add it as a soft dependency in your `plugin.yml`:
+Prost has a small API (hooks and events), MIT licensed. Compile against `prost-api` with `compileOnly` (never shade it:
+Prost's jar already contains these classes) and add Prost as a soft dependency in your `plugin.yml`:
 
 ```yaml
 softdepend: [Prost]
 ```
 
+Without Prost the API classes do not exist, so check that Prost is enabled before any class of yours names them:
+
 ```java
 public final class MyNetwork extends JavaPlugin {
     @Override
     public void onEnable() {
-        ProstApi prost = getServer().getServicesManager().load(ProstApi.class);   // null without Prost
+        // nothing of Prost's is loaded before this check
+        if (getServer().getPluginManager().isPluginEnabled("Prost")) ProstHook.register(this);
+    }
+}
+
+/** the only class that names Prost's API */
+final class ProstHook {
+    static void register(JavaPlugin plugin) {
+        ProstApi prost = plugin.getServer().getServicesManager().load(ProstApi.class);
         if (prost == null) return;
-        prost.registerLanguageProvider(this, player -> Optional.ofNullable(languageOf(player.getUniqueId())));
-        getServer().getPluginManager().registerEvents(new Listener() {
+        prost.registerLanguageProvider(plugin, player -> Optional.ofNullable(languageOf(player.getUniqueId())));
+        plugin.getServer().getPluginManager().registerEvents(new Listener() {
             @EventHandler
             public void onSips(SipsEvent e) {
-                getLogger().info(e.player() + " drank " + e.sips() + " (" + e.source() + ")");
+                plugin.getLogger().info(e.player() + " drank " + e.sips() + " (" + e.source() + ")");
             }
-        }, this);
+        }, plugin);
     }
 
-    private String languageOf(UUID player) { return "en"; }   // your own lookup
+    private static String languageOf(UUID player) { return "en"; }   // your own lookup
 }
 ```
 
-Everything is described in [docs/api.md](docs/api.md).
+Everything is described in [docs/api.md](docs/api.md), including why `stats(UUID)` must not be joined on the server
+thread.
 
 ## Building
 
