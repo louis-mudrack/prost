@@ -64,6 +64,28 @@ class ProstPluginTest {
         assertEquals("Prost - das Trinkspiel", server.getCommandMap().getCommand("prost").getDescription());
     }
 
+    /** a plugin that reacts to the service being published may use the API right away */
+    @Test
+    void theApiIsPublishedOnlyWhenItWorks() {
+        MockBukkit.unmock();
+        server = TestServer.mock();
+        java.util.List<Object> seen = new java.util.ArrayList<>();
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void on(org.bukkit.event.server.ServiceRegisterEvent e) {
+                if (!(e.getProvider().getProvider() instanceof ProstApi api)) return;
+                try {
+                    seen.add(api.rounds().size());
+                    seen.add(api.roundOf(java.util.UUID.randomUUID()).isPresent());
+                } catch (RuntimeException ex) {
+                    seen.add(ex);
+                }
+            }
+        }, MockBukkit.createMockPlugin("Watcher"));
+        TestServer.start(server);
+        assertEquals(List.of(0, false), seen);
+    }
+
     @Test
     void writesItsFiles() {
         for (String f : List.of("config.yml", "game.yml", "challenges.yml", "rules.yml", "lang/en.yml", "lang/de.yml", "stats.db"))

@@ -104,7 +104,6 @@ public class ProstPlugin extends JavaPlugin {
         migrateOnStart();   // before game.yml, the catalogue and rounds.yml are read, so AniDrinks' copies are what loads
         hooks = createHooks();
         getServer().getPluginManager().registerEvents(hooks, this);
-        getServer().getServicesManager().register(ProstApi.class, new ApiImpl(this), this, ServicePriority.Normal);
         YamlMerge.ensure(this, "game.yml");
         reloadData();
         sips = new Sips(this);
@@ -135,6 +134,8 @@ public class ProstPlugin extends JavaPlugin {
             getServer().getPluginManager().registerEvents(updates, this);
             updates.check();
         }
+        // last: a plugin listening for the service may call rounds() or roundOf() right away
+        getServer().getServicesManager().register(ProstApi.class, new ApiImpl(this), this, ServicePriority.Normal);
         getLogger().info("Prost enabled: " + challenges.size() + " challenges, " + preparedRules.size() + " rules, "
                 + lang.languages().size() + " languages, " + rounds.all().size() + " round(s) restored");
     }
