@@ -35,7 +35,7 @@ public final class Sips {
 
     public Sips(ProstPlugin plugin) { this.plugin = plugin; }
 
-    /** {@code why} words the reason in each viewer's language */
+    /** {@code why} words the reason in each viewer's language, as MiniMessage: names and catalogue text in it escaped */
     public void drink(Round r, UUID id, int amount, SipLedger.Source source, Function<UUID, String> why) {
         Member m = r.member(id);
         if (m == null || amount <= 0) return;
@@ -94,7 +94,7 @@ public final class Sips {
         else m.tally.drunk += a.drunk();
         plugin.stats().add(m.id, m.name, m.water ? StatsField.WATER : StatsField.DRUNK, a.drunk());
         int drunk = a.drunk();
-        Msg.roundEach(x.round(), viewer -> Msg.str(viewer, m.water ? "sips.drinks_water" : "sips.drinks", V.of("name", m.name), V.mm("sips", Msg.sips(viewer, drunk)), V.of("why", x.why().apply(viewer)))
+        Msg.roundEach(x.round(), viewer -> Msg.str(viewer, m.water ? "sips.drinks_water" : "sips.drinks", V.of("name", m.name), V.mm("sips", Msg.sips(viewer, drunk)), V.mm("why", x.why().apply(viewer)))
                 + (a.lapsed() > 0 ? " " + Msg.str(viewer, "sips.limit_tag") : ""));
         if (drunk > 0) Bukkit.getPluginManager().callEvent(new SipsEvent(m.id, x.round().code, drunk, source(x.source()), m.water));
         Player p = Bukkit.getPlayer(m.id);
@@ -105,7 +105,7 @@ public final class Sips {
         if (a.lapsed() > 0) Msg.tell(p, "sips.limit_reached", V.mm("lapsed", Msg.sips(m.id, a.lapsed())));
         if (drunk > 0) {
             p.showTitle(Title.title(Msg.mm("<primary>" + Msg.sips(m.id, drunk) + "</primary>"),
-                    Msg.mm("<gray>" + Msg.esc(x.why().apply(m.id))),
+                    Msg.mm("<gray>" + x.why().apply(m.id)),
                     Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(2000), Duration.ofMillis(400))));
             Sounds.fail(p);
         }

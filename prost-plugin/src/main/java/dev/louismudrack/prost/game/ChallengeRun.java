@@ -172,7 +172,7 @@ public final class ChallengeRun {
             else m.tally.lost++;
             plugin.stats().add(id, m.name, won ? StatsField.WON : StatsField.LOST, 1);
         }
-        o.drinks().forEach((id, n) -> plugin.sips().drink(round, id, n, SipLedger.Source.CHALLENGE, viewer -> def.name(Msg.lang(viewer))));
+        o.drinks().forEach((id, n) -> plugin.sips().drink(round, id, n, SipLedger.Source.CHALLENGE, viewer -> Msg.esc(def.name(Msg.lang(viewer)))));
         if (kind == Kind.TEAM) {
             if (!o.rewarded().isEmpty()) plugin.rewards().grant(round, o.mvp(), def, true, o.winners());
         } else {
