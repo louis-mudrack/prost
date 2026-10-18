@@ -259,7 +259,6 @@ public final class ChallengeRun {
         }
     }
 
-    /** the players' names, not escaped: callers insert them with V.of or Msg.esc */
     /** MiniMessage: each name escaped, the separator as it is (a translator may style challenge.versus) */
     private String names(List<UUID> ids, String separator) {
         StringJoiner j = new StringJoiner(separator);
