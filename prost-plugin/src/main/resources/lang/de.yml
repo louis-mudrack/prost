@@ -266,6 +266,9 @@ language:
   current: "Sprache: <hl><language> <gray>- verfügbar: <white><available> <gray>(oder auto)"
   unknown: "Die Sprache <language> gibt es nicht. Verfügbar: <available>"
   set: "Sprache eingestellt: <hl><language>"
+# %prost_tag%, for scoreboards and TAB
+placeholder:
+  tag: "<primary>[Prost]</primary>"
 # Deutsche Namen der Unterbefehle; die englischen gehen immer.
 commands:
   invite: [einladen]

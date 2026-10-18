@@ -22,6 +22,8 @@ import dev.louismudrack.prost.hook.ConfigAreas;
 import dev.louismudrack.prost.hook.DimensionDefaults;
 import dev.louismudrack.prost.hook.EssentialsAfk;
 import dev.louismudrack.prost.hook.Hooks;
+import dev.louismudrack.prost.hook.PapiText;
+import dev.louismudrack.prost.hook.ProstExpansion;
 import dev.louismudrack.prost.i18n.Lang;
 import dev.louismudrack.prost.i18n.LangFiles;
 import dev.louismudrack.prost.i18n.LanguageResolver;
@@ -36,6 +38,7 @@ import dev.louismudrack.prost.storage.StatsStore;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -49,6 +52,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Executor;
+import java.util.function.BiFunction;
 
 /** Prost - the drinking game. Rounds, challenges and the roulette. Not final: MockBukkit loads it as a subclass. */
 public class ProstPlugin extends JavaPlugin {
@@ -100,6 +104,7 @@ public class ProstPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(placed, this);
         rounds.load();
         getServer().getScheduler().runTaskTimer(this, () -> rounds.tickPresence(), 20L, 20L);
+        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) ProstExpansion.registerFor(this);
         getLogger().info("Prost enabled: " + challenges.size() + " challenges, " + preparedRules.size() + " rules, "
                 + lang.languages().size() + " languages, " + rounds.all().size() + " round(s) restored");
     }
@@ -165,8 +170,13 @@ public class ProstPlugin extends JavaPlugin {
         lang = LangFiles.load(this, pluginConfig.defaultLanguage());
         Texts.serverDefault(lang.defaultLanguage());
         Msg.bind(lang, new LanguageResolver(lang, hooks, prefs, pluginConfig.perPlayerLanguage()),
-                Theme.of(pluginConfig.theme(), getLogger()::warning), (player, text) -> text);   // PlaceholderAPI: Task 14
+                Theme.of(pluginConfig.theme(), getLogger()::warning), placeholders());
         if (command != null) command.subcommands(subcommands());
+    }
+
+    private BiFunction<Player, String, String> placeholders() {
+        boolean papi = getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
+        return pluginConfig.parsePlaceholders() && papi ? PapiText.resolver() : (player, text) -> text;
     }
 
     /** on a name clash the language that comes first keeps it: the server language, then English, then the rest sorted */

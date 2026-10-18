@@ -5,6 +5,7 @@ plugins {
 
 repositories {
     maven("https://repo.essentialsx.net/releases/")
+    maven("https://repo.extendedclip.com/releases/")
 }
 
 java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
@@ -13,6 +14,8 @@ dependencies {
     implementation(project(":prost-api"))
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("net.essentialsx:EssentialsX:2.21.2") { isTransitive = false }
+    compileOnly("me.clip:placeholderapi:2.12.3")
+    testImplementation("me.clip:placeholderapi:2.12.3")
     testImplementation("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT") // the API MockBukkit 4.116.3 is built against
     testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.116.3")
     testImplementation(platform("org.junit:junit-bom:6.1.3"))

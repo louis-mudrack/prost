@@ -4,7 +4,7 @@ main: dev.louismudrack.prost.ProstPlugin
 api-version: "1.21"
 author: Kasheyy
 website: https://modrinth.com/plugin/prost
-softdepend: [Essentials]
+softdepend: [Essentials, PlaceholderAPI]
 description: "The drinking game: rounds, challenges and a roulette - played in real life, no in-game advantage"
 libraries:
   - org.mariadb.jdbc:mariadb-java-client:3.5.10

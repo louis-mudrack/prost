@@ -29,5 +29,5 @@ public record V(String name, String value) {
      * MiniMessage's escapeTags only escapes tags it knows, so a typed theme or value tag (<hl>, <player>) would survive
      * it: every '<' is escaped, and every backslash first so a trailing one cannot cancel the next escape.
      */
-    static String escape(String text) { return text.replace("\\", "\\\\").replace("<", "\\<"); }
+    public static String escape(String text) { return text.replace("\\", "\\\\").replace("<", "\\<"); }
 }
