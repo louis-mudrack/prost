@@ -1,6 +1,7 @@
 package dev.louismudrack.prost.storage;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -13,6 +14,9 @@ public interface StatsStore {
 
     /** null when the player never played */
     void row(UUID id, Consumer<StatsRow> then);
+
+    /** completes on the store's worker thread: empty when the player never played, exceptionally when the read fails or the store is closed */
+    CompletableFuture<Optional<StatsRow>> fetch(UUID id);
 
     void top(StatsField field, Consumer<List<StatsRow>> then);
 

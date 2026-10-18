@@ -39,6 +39,9 @@ public interface ProstApi {
     /** snapshots of all running rounds */
     Collection<RoundView> rounds();
 
-    /** all-time numbers; empty when the player never played. Safe from any thread. */
+    /**
+     * all-time numbers. Completes on a background thread (never the server thread, so joining it there is safe);
+     * empty when the player never played, exceptionally when the stats cannot be read. Safe from any thread.
+     */
     CompletableFuture<Optional<StatsView>> stats(UUID player);
 }

@@ -43,8 +43,6 @@ final class ApiImpl implements ProstApi {
 
     @Override
     public CompletableFuture<Optional<StatsView>> stats(UUID player) {
-        CompletableFuture<Optional<StatsView>> result = new CompletableFuture<>();
-        plugin.stats().row(player, row -> result.complete(Optional.ofNullable(row).map(Views::stats)));
-        return result;
+        return plugin.stats().fetch(player).thenApply(row -> row.map(Views::stats));
     }
 }

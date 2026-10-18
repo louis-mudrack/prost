@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
@@ -53,6 +54,32 @@ class SqlStatsStoreTest {
 
     @Test
     void unknownPlayerHasNoRow() throws Exception { assertNull(this.<StatsRow>get(c -> store.row(B, c))); }
+
+    @Test
+    void fetchAnswersEmptyForAnUnknownPlayerAndTheRowOtherwise() throws Exception {
+        assertEquals(java.util.Optional.empty(), store.fetch(B).get(5, TimeUnit.SECONDS));
+        store.add(A, "Kasheyy", DRUNK, 4);
+        assertEquals(4, store.fetch(A).get(5, TimeUnit.SECONDS).orElseThrow().drunk());
+    }
+
+    @Test
+    void fetchFailsExceptionallyWhenTheDatabaseIsUnreachable() throws Exception {
+        java.io.File missing = dir.resolve("never").resolve("down.db").toFile();
+        SqlStatsStore down = SqlStatsStore.sqlite(missing, "prost_", Logger.getLogger("test"), Runnable::run, new ManualWorker());
+        assertThrows(java.sql.SQLException.class, down::open);
+        ExecutionException e = assertThrows(ExecutionException.class, () -> down.fetch(A).get(5, TimeUnit.SECONDS));
+        assertInstanceOf(java.sql.SQLException.class, e.getCause());
+        down.close();
+    }
+
+    @Test
+    void fetchFailsExceptionallyOnAClosedStore() throws Exception {
+        SqlStatsStore closed = SqlStatsStore.sqlite(dir.resolve("closed.db").toFile(), "prost_", Logger.getLogger("test"), Runnable::run);
+        closed.open();
+        closed.close();
+        ExecutionException e = assertThrows(ExecutionException.class, () -> closed.fetch(A).get(5, TimeUnit.SECONDS));
+        assertInstanceOf(java.util.concurrent.RejectedExecutionException.class, e.getCause());
+    }
 
     @Test
     void topIsOrderedAndCachedFor30Seconds() throws Exception {

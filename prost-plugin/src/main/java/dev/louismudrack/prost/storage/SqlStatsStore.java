@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
@@ -262,17 +264,40 @@ public final class SqlStatsStore implements StatsStore {
         worker.execute(() -> {
             StatsRow found = null;
             try {
-                found = attempt(c -> {
-                    try (PreparedStatement ps = c.prepareStatement("SELECT * FROM " + stats + " WHERE uuid = ?")) {
-                        ps.setString(1, id.toString());
-                        try (ResultSet rs = ps.executeQuery()) { return rs.next() ? read(rs) : null; }
-                    }
-                });
+                found = find(id);
             } catch (SQLException | RuntimeException e) {
                 warn("stats read failed: " + e.getMessage());
             }
             StatsRow result = found;
             sync.execute(() -> then.accept(result));
+        });
+    }
+
+    @Override
+    public CompletableFuture<Optional<StatsRow>> fetch(UUID id) {
+        CompletableFuture<Optional<StatsRow>> done = new CompletableFuture<>();
+        try {
+            worker.execute(() -> {
+                try {
+                    done.complete(Optional.ofNullable(find(id)));
+                } catch (SQLException | RuntimeException e) {
+                    warn("stats read failed: " + e.getMessage());
+                    done.completeExceptionally(e);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            done.completeExceptionally(e);
+        }
+        return done;
+    }
+
+    /** worker thread; null when the player never played */
+    private StatsRow find(UUID id) throws SQLException {
+        return attempt(c -> {
+            try (PreparedStatement ps = c.prepareStatement("SELECT * FROM " + stats + " WHERE uuid = ?")) {
+                ps.setString(1, id.toString());
+                try (ResultSet rs = ps.executeQuery()) { return rs.next() ? read(rs) : null; }
+            }
         });
     }
 
