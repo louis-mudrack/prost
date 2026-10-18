@@ -9,6 +9,7 @@ import org.mockbukkit.mockbukkit.ServerMock;
 
 import java.io.File;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,7 +19,7 @@ class ProstPluginTest {
 
     @BeforeEach
     void start() {
-        server = MockBukkit.mock();
+        server = TestServer.mock();
         plugin = TestServer.start(server);
     }
 
@@ -35,6 +36,15 @@ class ProstPluginTest {
     void registersProstAndItsAlias() {
         assertNotNull(server.getCommandMap().getCommand("prost"));
         assertNotNull(server.getCommandMap().getCommand("drinks"));
+        assertEquals("Prost - the drinking game", server.getCommandMap().getCommand("prost").getDescription());
+    }
+
+    /** Paper leaves out an alias another command already has; MockBukkit does not model that, so the check is tested alone */
+    @Test
+    void reportsAliasesPaperDidNotRegister() {
+        Set<String> registered = Set.of("prost", "prost:prost", "drinks", "prost:drinks", "prost:trinkspiel");
+        assertEquals(List.of("trinkspiel"), ProstPlugin.notRegistered(List.of("drinks", "trinkspiel"), registered));
+        assertEquals(List.of(), ProstPlugin.notRegistered(List.of("Drinks"), registered));
     }
 
     @Test

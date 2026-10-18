@@ -1,6 +1,7 @@
 package dev.louismudrack.prost.drink;
 
 import dev.louismudrack.prost.ProstPlugin;
+import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.i18n.Msg;
@@ -52,7 +53,7 @@ public final class Sips {
         }, plugin.cfg().jokerOfferSeconds() * 20L);
         pending.put(id, new Pending(r, id, amount, source, why, timeout));
         int left = m.jokers;
-        Msg.tell(p, "joker.offer", V.of("amount", amount), V.of("left", left), V.of("cmd", "/prost joker"));
+        Msg.tell(p, "joker.offer", V.mm("sips", Msg.sips(id, amount)), V.of("left", left), V.of("cmd", ProstCommand.RUN_JOKER));
         Sounds.bell(p);
     }
 
@@ -98,7 +99,7 @@ public final class Sips {
             plugin.rounds().save();
             return;
         }
-        if (a.lapsed() > 0) Msg.tell(p, "sips.limit_reached", V.of("lapsed", a.lapsed()));
+        if (a.lapsed() > 0) Msg.tell(p, "sips.limit_reached", V.mm("lapsed", Msg.sips(m.id, a.lapsed())));
         if (drunk > 0) {
             p.showTitle(Title.title(Msg.mm("<primary>" + Msg.sips(m.id, drunk) + "</primary>"),
                     Msg.mm("<gray>" + Msg.esc(x.why().apply(m.id))),

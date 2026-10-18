@@ -40,11 +40,19 @@ public final class ProstCommand implements BasicCommand {
     private static final String ADMIN = "prost.admin";
     private static final List<String> ADMIN_ARGS = List.of("reload", "list", "end", "force", "debug", "migrate");
     private static final String AUTO = "auto";
+    // what chat buttons run: canonical names built here, so the V.of values inside a click argument are constants, never player text
+    public static final String RUN_DECLINE = "/prost decline";
+    public static final String RUN_REWARD = "/prost reward";
+    public static final String RUN_HANDOUT = "/prost handout";
+    public static final String RUN_JOKER = "/prost joker";
 
     private final ProstPlugin plugin;
     private volatile Subcommands subs;
 
     public ProstCommand(ProstPlugin plugin) { this.plugin = plugin; }
+
+    /** the invite's accept button; round codes are generated letters and digits */
+    public static String runJoin(String code) { return "/prost join " + code; }
 
     /** the subcommand names: English plus the language files' aliases, swapped on /prost reload */
     public void subcommands(Subcommands s) { subs = s; }
@@ -60,8 +68,8 @@ public final class ProstCommand implements BasicCommand {
             admin(sender, sub, args);
             return;
         }
-        Player p = source.getExecutor() instanceof Player x ? x : sender instanceof Player y ? y : null;   // /execute as <player> run prost ...
-        if (p == null) {
+        CommandSender actor = source.getExecutor() == null ? sender : source.getExecutor();   // /execute as <entity> run prost ...
+        if (!(actor instanceof Player p)) {
             sender.sendMessage("Players only (console: /prost reload, /prost admin ...).");
             return;
         }

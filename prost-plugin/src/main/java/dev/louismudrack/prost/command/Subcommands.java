@@ -27,24 +27,31 @@ public final class Subcommands {
         this.byLanguage = byLanguage;
     }
 
+    /** on a clash the language that comes first in aliasesByLanguage keeps the name */
     public static Subcommands of(Map<String, Map<String, List<String>>> aliasesByLanguage, Consumer<String> warn) {
         Map<String, String> map = new HashMap<>();
         for (String c : ALL) map.put(c, c);
         Map<String, Map<String, List<String>>> kept = new HashMap<>();
-        aliasesByLanguage.forEach((lang, aliases) -> aliases.forEach((canonical, names) -> {
+        aliasesByLanguage.forEach((lang, aliases) -> aliases.forEach((canonical, typed) -> {
             if (!ALL.contains(canonical)) {
                 warn.accept("lang/" + lang + ".yml commands." + canonical + ": there is no such subcommand");
                 return;
             }
-            for (String n : names) {
+            List<String> names = kept.computeIfAbsent(lang, k -> new HashMap<>()).computeIfAbsent(canonical, k -> new ArrayList<>());
+            for (String n : typed) {
                 String alias = n.trim().toLowerCase(Locale.ROOT);
+                if (alias.isEmpty() || alias.chars().anyMatch(Character::isWhitespace)) {
+                    warn.accept("lang/" + lang + ".yml commands." + canonical + ": '" + n + "' is not a single word - skipped");
+                    continue;
+                }
+                if (alias.equals(canonical) || names.contains(alias)) continue;
                 String taken = map.get(alias);
                 if (taken != null && !taken.equals(canonical)) {
                     warn.accept("lang/" + lang + ".yml: '" + alias + "' already means " + taken + " - skipped as a name for " + canonical);
                     continue;
                 }
                 map.put(alias, canonical);
-                kept.computeIfAbsent(lang, k -> new HashMap<>()).computeIfAbsent(canonical, k -> new ArrayList<>()).add(alias);
+                names.add(alias);
             }
         }));
         return new Subcommands(Map.copyOf(map), kept);

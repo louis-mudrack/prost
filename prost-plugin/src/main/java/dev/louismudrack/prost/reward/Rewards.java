@@ -4,6 +4,7 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.catalogue.ChallengeDef;
 import dev.louismudrack.prost.catalogue.DrawRules;
 import dev.louismudrack.prost.catalogue.Rule;
+import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.drink.SipLedger;
 import dev.louismudrack.prost.game.Kind;
 import dev.louismudrack.prost.game.Member;
@@ -102,7 +103,7 @@ public final class Rewards implements Listener {
     private void offer(Player p, Menu menu) {
         pendingMenus.put(p.getUniqueId(), menu);
         menu.open();
-        Msg.tell(p, "reward.reopen", V.of("cmd", "/prost reward"));
+        Msg.tell(p, "reward.reopen", V.of("cmd", ProstCommand.RUN_REWARD));
     }
 
     private void settled(UUID winner) { pendingMenus.remove(winner); }
@@ -126,7 +127,7 @@ public final class Rewards implements Listener {
     }
 
     private static String label(Reward rw, ChallengeDef d, UUID viewer) {
-        return Msg.str(viewer, "reward.option." + rw.name().toLowerCase(Locale.ROOT), V.of("sips", d.give()));
+        return Msg.str(viewer, "reward.option." + rw.name().toLowerCase(Locale.ROOT), V.mm("sips", Msg.sips(viewer, d.give())));
     }
 
     private static ItemStack icon(Reward rw, ChallengeDef d, UUID viewer) {
@@ -171,7 +172,7 @@ public final class Rewards implements Listener {
         Member g = r.member(giver);
         if (g == null) return;
         if (RewardRules.realLifeHandout(r.members.size())) {
-            Msg.round(r, "handout.real_life", V.of("name", g.name), V.of("amount", amount));
+            Msg.roundEach(r, id -> Msg.str(id, "handout.real_life", V.of("name", g.name), V.mm("sips", Msg.sips(id, amount))));
             g.tally.given += amount;
             plugin.stats().add(g.id, g.name, StatsField.GIVEN, amount);
             plugin.rounds().save();
@@ -199,7 +200,7 @@ public final class Rewards implements Listener {
             return;
         }
         new HandoutMenu(plugin, p, this, h).until(h.deadline).open();
-        Msg.tell(p, "handout.prompt", V.of("amount", amount), V.of("cmd", "/prost handout"));
+        Msg.tell(p, "handout.prompt", V.mm("sips", Msg.sips(giver, amount)), V.of("cmd", ProstCommand.RUN_HANDOUT));
     }
 
     public boolean reopenHandout(Player p) {

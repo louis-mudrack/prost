@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +47,35 @@ class SubcommandsTest {
         Subcommands s = subs(Map.of("de", Map.of("invite", List.of("start"), "fly", List.of("fliegen"))));
         assertEquals("start", s.canonical("start"));
         assertEquals("fliegen", s.canonical("fliegen"));
+        assertEquals(2, warnings.size());
+    }
+
+    @Test
+    void blankAndMultiWordAliasesAreSkippedWithAWarning() {
+        Subcommands s = subs(Map.of("de", Map.of("invite", List.of("", "  ", "lade ein", "einladen"))));
+        assertEquals(3, warnings.size(), warnings.toString());
+        assertEquals(List.of("invite", "einladen"), s.namesOf("invite", "de"));
+        assertEquals("lade ein", s.canonical("lade ein"));
+    }
+
+    @Test
+    void anAliasThatAlreadyNamesTheSameSubcommandIsSkippedQuietly() {
+        Subcommands s = subs(Map.of("de", Map.of("invite", List.of("invite", "einladen", " Einladen "))));
+        assertEquals(List.of(), warnings);
+        assertEquals(List.of("invite", "einladen"), s.namesOf("invite", "de"));
+        assertEquals(1, s.visible("de", false).stream().filter("einladen"::equals).count());
+    }
+
+    @Test
+    void theLanguageThatComesFirstKeepsAClashedName() {
+        Map<String, Map<String, List<String>>> frFirst = new LinkedHashMap<>();
+        frFirst.put("fr", Map.of("leave", List.of("x")));
+        frFirst.put("de", Map.of("invite", List.of("x")));
+        assertEquals("leave", subs(frFirst).canonical("x"));
+        Map<String, Map<String, List<String>>> deFirst = new LinkedHashMap<>();
+        deFirst.put("de", Map.of("invite", List.of("x")));
+        deFirst.put("fr", Map.of("leave", List.of("x")));
+        assertEquals("invite", subs(deFirst).canonical("x"));
         assertEquals(2, warnings.size());
     }
 

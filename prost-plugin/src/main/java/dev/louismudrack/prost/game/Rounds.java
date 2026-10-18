@@ -1,6 +1,7 @@
 package dev.louismudrack.prost.game;
 
 import dev.louismudrack.prost.ProstPlugin;
+import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.storage.StatsField;
@@ -117,7 +118,7 @@ public final class Rounds {
 
     public void invite(Player from, Player to, Round r) {
         invites.put(to.getUniqueId(), new Invite(r.code, from.getUniqueId(), System.currentTimeMillis() + INVITE_MS));
-        Msg.tell(to, "round.invite", V.of("name", from.getName()), V.of("join", "/prost join " + r.code), V.of("decline", "/prost decline"));
+        Msg.tell(to, "round.invite", V.of("name", from.getName()), V.of("join", ProstCommand.runJoin(r.code)), V.of("decline", ProstCommand.RUN_DECLINE));
         Sounds.bell(to);
     }
 

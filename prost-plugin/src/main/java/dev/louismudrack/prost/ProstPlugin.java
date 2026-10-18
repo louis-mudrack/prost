@@ -33,6 +33,7 @@ import dev.louismudrack.prost.roulette.Roulette;
 import dev.louismudrack.prost.storage.PlayerPrefs;
 import dev.louismudrack.prost.storage.SqlStatsStore;
 import dev.louismudrack.prost.storage.StatsStore;
+import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
@@ -41,13 +42,19 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.Executor;
 
 /** Prost - the drinking game. Rounds, challenges and the roulette. Not final: MockBukkit loads it as a subclass. */
 public class ProstPlugin extends JavaPlugin {
+    private static final String COMMAND = "prost";
+    private static final String COMMAND_DESCRIPTION = "Prost - the drinking game";
+
     private PluginConfig pluginConfig = PluginConfig.DEFAULTS;
     private GameConfig cfg = GameConfig.DEFAULTS;
     private List<ChallengeDef> challenges = List.of();
@@ -85,8 +92,7 @@ public class ProstPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, () -> director.tick(), 10L, 10L);
         command = new ProstCommand(this);
         command.subcommands(subcommands());
-        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS,
-                event -> event.registrar().register("prost", pluginConfig.commandAliases(), command));
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> registerCommand(event.registrar()));
         roulette = new Roulette(this);
         getServer().getPluginManager().registerEvents(roulette, this);
         rounds = new Rounds(this);
@@ -96,6 +102,18 @@ public class ProstPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, () -> rounds.tickPresence(), 20L, 20L);
         getLogger().info("Prost enabled: " + challenges.size() + " challenges, " + preparedRules.size() + " rules, "
                 + lang.languages().size() + " languages, " + rounds.all().size() + " round(s) restored");
+    }
+
+    private void registerCommand(Commands registrar) {
+        List<String> aliases = pluginConfig.commandAliases();
+        Set<String> registered = registrar.register(COMMAND, COMMAND_DESCRIPTION, aliases, command);
+        for (String alias : notRegistered(aliases, registered))
+            getLogger().warning("commands.aliases: /" + alias + " is already a command of another plugin - not registered");
+    }
+
+    /** Paper leaves out an alias another command already has: the set holds every label it did register */
+    static List<String> notRegistered(List<String> aliases, Set<String> registered) {
+        return aliases.stream().filter(alias -> registered.stream().noneMatch(label -> label.equalsIgnoreCase(alias))).toList();
     }
 
     private void openStorage() {
@@ -151,9 +169,12 @@ public class ProstPlugin extends JavaPlugin {
         if (command != null) command.subcommands(subcommands());
     }
 
+    /** on a name clash the language that comes first keeps it: the server language, then English, then the rest sorted */
     private Subcommands subcommands() {
-        Map<String, Map<String, List<String>>> aliases = new HashMap<>();
-        for (String code : lang.languages()) aliases.put(code, lang.aliases(code));
+        List<String> order = new ArrayList<>(List.of(lang.defaultLanguage(), Lang.FALLBACK));
+        order.addAll(new TreeSet<>(lang.languages()));
+        Map<String, Map<String, List<String>>> aliases = new LinkedHashMap<>();
+        for (String code : order) if (lang.has(code)) aliases.putIfAbsent(code, lang.aliases(code));
         return Subcommands.of(aliases, getLogger()::warning);
     }
 

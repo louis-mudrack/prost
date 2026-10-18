@@ -37,6 +37,11 @@ tasks.assemble { dependsOn(tasks.shadowJar) }
 tasks.test {
     useJUnitPlatform { excludeTags("integration") }
     systemProperty("prost.offline", "true")
+    // MockBukkit turns a call it has not implemented into a skipped test: a skip must not pass as a green build
+    afterSuite(KotlinClosure2<TestDescriptor, TestResult, Unit>({ suite, result ->
+        if (suite.parent == null && result.skippedTestCount > 0)
+            throw GradleException("${result.skippedTestCount} test(s) skipped - MockBukkit skips a test that calls something it does not implement; see the test report")
+    }))
 }
 val integrationTest by tasks.registering(Test::class) {
     description = "Tests against a MariaDB container (needs Docker)"

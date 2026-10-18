@@ -9,7 +9,7 @@ sips:
   drinks: "<hl><name> <gray>trinkt <hl><sips> <dark_gray>(<why>)"
   drinks_water: "<hl><name> <gray>trinkt <hl><sips> <gray>Wasser <dark_gray>(<why>)"
   limit_tag: "<dark_gray>(Limit)"
-  limit_reached: "Limit erreicht - <lapsed> Schlucke verfallen."
+  limit_reached: "Limit erreicht - <lapsed> verfallen."
 kind:
   team: "Team"
   each: "Jeder für sich"
@@ -85,7 +85,7 @@ menu:
     cancel: "Abbrechen"
   join:
     title: "Deine Einstellungen"
-    limit: "<hl>Limit: <limit> Schlucke pro Stunde"
+    limit: "<hl>Limit: <limit> pro Stunde"
     limit_lore: ["<gray>Was darüber geht, verfällt."]
     water: "Wasser-Modus"
     water_on: "<ok>an"
@@ -133,7 +133,7 @@ challenge:
     race: "<gray>Der Langsamste trinkt <err><sips>"
     duel: "<gray>Der Verlierer trinkt <err><sips>"
   reward:
-    handout: "<sips> Schlucke verteilen"
+    handout: "<sips> verteilen"
     rule: "eine Regel"
     joker: "Joker"
     joker_each: "ein Joker für jeden"
@@ -164,7 +164,7 @@ result:
   lost: "<err>Verloren"
 reward:
   option:
-    handout: "<sips> Schlucke verteilen"
+    handout: "<sips> verteilen"
     rule: "Regel aufstellen"
     joker: "Joker"
     next: "Nächste Herausforderung wählen"
@@ -172,15 +172,15 @@ reward:
   time_up: "Zeit abgelaufen - du bekommst: <hl><label>"
   reopen: "<click:run_command:'<cmd>'><ok>[Belohnung wählen]</click> <dark_gray>(öffnet das Menü wieder)"
 joker:
-  offer: "Du müsstest <hl><amount> <gray>Schlucke trinken. <click:run_command:'<cmd>'><ok>[Joker einsetzen]</click> <dark_gray>(<left> übrig)"
+  offer: "Du müsstest <hl><sips> <gray>trinken. <click:run_command:'<cmd>'><ok>[Joker einsetzen]</click> <dark_gray>(<left> übrig)"
   used: "<hl><name> <gray>setzt einen Joker ein - kein Schluck."
   got: "Du hast einen <ok>Joker<gray>! (<count>)"
   full: "Du hast schon <count> Joker - der Joker verfällt."
 handout:
   from: "von <player>"
-  real_life: "<hl><name> <gray>verteilt <hl><amount> <gray>Schlucke in echt."
+  real_life: "<hl><name> <gray>verteilt <hl><sips> <gray>in echt."
   nobody: "Gerade kann niemand Schlucke bekommen - sie verfallen."
-  prompt: "Verteile <hl><amount> <gray>Schlucke. <click:run_command:'<cmd>'><ok>[Schlucke verteilen]</click>"
+  prompt: "Verteile <hl><sips><gray>. <click:run_command:'<cmd>'><ok>[Schlucke verteilen]</click>"
   expired: "Zeit abgelaufen - die Schlucke wurden verteilt, der Rest zufällig."
 rule:
   expired: "Zeit abgelaufen - eine zufällige Regel wurde gewählt."
@@ -251,7 +251,7 @@ command:
   no_permission: "Dafür fehlt dir die Berechtigung."
   help: "<white>/prost <gray>Menü · <white>start <gray>· <white>einladen <name> <gray>· <white>join <code> <gray>· <white>pause [runde] <gray>· <white>weiter <gray>· <white>tempo <gray>· <white>kick <gray>· <white>ende <gray>· <white>verlassen <gray>· <white>stats <gray>· <white>sprache"
 admin:
-  reloaded: "Neu geladen: <challenges> Herausforderungen, <rules> Regeln. <muted>Änderungen unter storage: wirken erst nach einem Neustart."
+  reloaded: "Neu geladen: <challenges> Herausforderungen, <rules> Regeln. <muted>Änderungen unter storage: und commands.aliases wirken erst nach einem Neustart."
   none: "Keine Runde läuft."
   list_idle: "<code>: <players> Spieler, Tempo <pace>"
   list_running: "<code>: <players> Spieler, Tempo <pace>, läuft: <id>"

@@ -38,7 +38,7 @@ public final class JoinMenu extends Menu {
                 render();
             });
         }
-        set(13, Items.item(Material.HONEY_BOTTLE, text("menu.join.limit", V.of("limit", m.limit)), lines("menu.join.limit_lore")), null);
+        set(13, Items.item(Material.HONEY_BOTTLE, text("menu.join.limit", V.mm("limit", Msg.sips(viewer.getUniqueId(), m.limit))), lines("menu.join.limit_lore")), null);
         List<String> waterLore = new ArrayList<>();
         waterLore.add(m.water ? text("menu.join.water_on") : text("menu.join.water_off"));
         waterLore.addAll(lines("menu.join.water_lore"));

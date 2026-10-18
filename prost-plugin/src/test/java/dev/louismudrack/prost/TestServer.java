@@ -14,18 +14,20 @@ import java.util.List;
 
 /**
  * Prost on a MockBukkit server (metrics and the update checker stay off: build.gradle.kts sets prost.offline).
+ * Every suite that loads Prost starts with {@code server = TestServer.mock(); plugin = TestServer.start(server);}.
  * /prost runs as on a real server: player.performCommand("prost ...") or server.dispatchCommand(sender, "prost ...").
  */
 public final class TestServer {
     private TestServer() {}
 
     /**
-     * MockBukkit.mock() for tests that click or close Prost menus: MockBukkit 4.116.3 has no Inventory#getHolder(boolean),
-     * which the menus use, and its "not implemented" exception skips a test instead of failing it.
+     * The server for Prost tests: MockBukkit.mock() plus Inventory#getHolder(boolean), which the menus use on every
+     * inventory event and MockBukkit 4.116.3 does not implement (its "not implemented" exception skips a test).
      */
     public static ServerMock mock() { return MockBukkit.mock(new MenuServer()); }
 
     public static ProstPlugin start(ServerMock server) {
+        if (!(server instanceof MenuServer)) throw new IllegalArgumentException("start Prost on TestServer.mock(), not MockBukkit.mock()");
         server.addSimpleWorld("world");
         ProstPlugin plugin = MockBukkit.load(ProstPlugin.class);
         // a real server registers commands (LifecycleEvents.COMMANDS) once startup is done; MockBukkit on the first dispatch

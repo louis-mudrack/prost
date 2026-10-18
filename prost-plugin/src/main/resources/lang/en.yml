@@ -9,7 +9,7 @@ sips:
   drinks: "<hl><name> <gray>drinks <hl><sips> <dark_gray>(<why>)"
   drinks_water: "<hl><name> <gray>drinks <hl><sips> <gray>of water <dark_gray>(<why>)"
   limit_tag: "<dark_gray>(Limit)"
-  limit_reached: "Limit reached - <lapsed> sips lapse."
+  limit_reached: "Limit reached - <lapsed> lapsed."
 kind:
   team: "Team"
   each: "Each"
@@ -85,7 +85,7 @@ menu:
     cancel: "Cancel"
   join:
     title: "Your settings"
-    limit: "<hl>Limit: <limit> sips per hour"
+    limit: "<hl>Limit: <limit> per hour"
     limit_lore: ["<gray>Anything above it lapses."]
     water: "Water mode"
     water_on: "<ok>on"
@@ -133,7 +133,7 @@ challenge:
     race: "<gray>The slowest drinks <err><sips>"
     duel: "<gray>The loser drinks <err><sips>"
   reward:
-    handout: "hand out <sips> sips"
+    handout: "hand out <sips>"
     rule: "a rule"
     joker: "Joker"
     joker_each: "a joker each"
@@ -164,7 +164,7 @@ result:
   lost: "<err>Lost"
 reward:
   option:
-    handout: "Hand out <sips> sips"
+    handout: "Hand out <sips>"
     rule: "Make a rule"
     joker: "Joker"
     next: "Pick the next challenge"
@@ -172,15 +172,15 @@ reward:
   time_up: "Time's up - you get: <hl><label>"
   reopen: "<click:run_command:'<cmd>'><ok>[Pick your reward]</click> <dark_gray>(opens the menu again)"
 joker:
-  offer: "You would drink <hl><amount> <gray>sips. <click:run_command:'<cmd>'><ok>[Use a joker]</click> <dark_gray>(<left> left)"
+  offer: "You would drink <hl><sips><gray>. <click:run_command:'<cmd>'><ok>[Use a joker]</click> <dark_gray>(<left> left)"
   used: "<hl><name> <gray>uses a joker - no sip."
   got: "You got a <ok>joker<gray>! (<count>)"
   full: "You already hold <count> jokers - this one lapses."
 handout:
   from: "from <player>"
-  real_life: "<hl><name> <gray>hands out <hl><amount> <gray>sips in real life."
+  real_life: "<hl><name> <gray>hands out <hl><sips> <gray>in real life."
   nobody: "Nobody can receive sips right now - they lapse."
-  prompt: "Hand out <hl><amount> <gray>sips. <click:run_command:'<cmd>'><ok>[Hand out sips]</click>"
+  prompt: "Hand out <hl><sips><gray>. <click:run_command:'<cmd>'><ok>[Hand out sips]</click>"
   expired: "Time's up - the sips went out, the rest at random."
 rule:
   expired: "Time's up - a random rule was picked."
@@ -251,7 +251,7 @@ command:
   no_permission: "You don't have permission for that."
   help: "<white>/prost <gray>menu · <white>start <gray>· <white>invite <name> <gray>· <white>join <code> <gray>· <white>pause [round] <gray>· <white>next <gray>· <white>pace <gray>· <white>kick <gray>· <white>end <gray>· <white>leave <gray>· <white>stats <gray>· <white>language"
 admin:
-  reloaded: "Reloaded: <challenges> challenges, <rules> rules. <muted>Changes under storage: take effect after a restart."
+  reloaded: "Reloaded: <challenges> challenges, <rules> rules. <muted>Changes under storage: and commands.aliases take effect after a restart."
   none: "No round is running."
   list_idle: "<code>: <players> players, pace <pace>"
   list_running: "<code>: <players> players, pace <pace>, running: <id>"

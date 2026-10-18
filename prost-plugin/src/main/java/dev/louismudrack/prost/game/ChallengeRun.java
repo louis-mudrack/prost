@@ -228,7 +228,7 @@ public final class ChallengeRun {
         List<Reward> rewards = kind == Kind.TEAM ? RewardRules.teamOptions(def.rewards()) : def.rewards();
         StringJoiner j = new StringJoiner(Msg.str(viewer, "challenge.reward_or"));
         for (Reward r : rewards) j.add(switch (r) {
-            case HANDOUT -> Msg.str(viewer, "challenge.reward.handout", V.of("sips", def.give()));
+            case HANDOUT -> Msg.str(viewer, "challenge.reward.handout", V.mm("sips", Msg.sips(viewer, def.give())));
             case RULE -> Msg.str(viewer, "challenge.reward.rule");
             case JOKER -> Msg.str(viewer, kind == Kind.TEAM ? "challenge.reward.joker_each" : "challenge.reward.joker");
             case NEXT -> Msg.str(viewer, "challenge.reward.next");
