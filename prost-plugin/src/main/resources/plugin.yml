@@ -1,0 +1,20 @@
+name: Prost
+version: "${version}"
+main: dev.louismudrack.prost.ProstPlugin
+api-version: "1.21"
+author: Kasheyy
+website: https://modrinth.com/plugin/prost
+description: "The drinking game: rounds, challenges and a roulette - played in real life, no in-game advantage"
+commands:
+  prost:
+    aliases: [drinks]
+    description: "Prost - the drinking game"
+    usage: /prost
+    permission: prost.play
+permissions:
+  prost.play:
+    description: "Open, join and play rounds"
+    default: true
+  prost.admin:
+    description: "/prost reload and /prost admin"
+    default: op
