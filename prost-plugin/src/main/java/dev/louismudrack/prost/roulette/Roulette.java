@@ -4,7 +4,6 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.drink.SipLedger;
 import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
-import dev.louismudrack.prost.hook.Gate;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.ui.Sounds;
@@ -112,7 +111,7 @@ public final class Roulette implements Listener {
         UUID id = p.getUniqueId();
         Round r = plugin.rounds().of(id);
         if (r == null) return;
-        if (Gate.bot(p)) { trace(p, category, "skipped: bot"); return; }
+        if (plugin.hooks().bot(p)) { trace(p, category, "skipped: bot"); return; }
         Member m = r.member(id);
         if (!r.isActive(id)) {
             trace(p, category, "skipped: inactive (round paused " + r.paused + ", self " + m.selfPaused + ", afk " + m.afk + ", away " + m.away + ", mode " + m.wrongMode + ")");

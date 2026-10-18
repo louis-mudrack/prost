@@ -1,6 +1,5 @@
 package dev.louismudrack.prost.tracker;
 
-import dev.louismudrack.prost.hook.Gate;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -57,7 +56,7 @@ final class ReachTracker extends BaseTracker {
             UUID id = p.getUniqueId();
             if (!tracks(p) || progress(id) > 0) continue;
             Location l = p.getLocation();
-            if (Gate.inSpawn(l) || now - lastTeleport.getOrDefault(id, 0L) < TELEPORT_GRACE_MS) continue;
+            if (ctx.plugin().hooks().excluded(l) || now - lastTeleport.getOrDefault(id, 0L) < TELEPORT_GRACE_MS) continue;
             boolean reached = switch (mode) {
                 case "below" -> l.getY() <= Double.parseDouble(value);
                 case "above" -> l.getY() >= Double.parseDouble(value);

@@ -8,7 +8,8 @@ java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
 dependencies {
     implementation(project(":prost-api"))
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
-    testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    testImplementation("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT") // the API MockBukkit 4.116.3 is built against
+    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.116.3")
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

@@ -336,7 +336,7 @@ public final class Rewards implements Listener {
     private void next(Round r, UUID winner) {
         List<Player> online = new ArrayList<>();
         for (UUID id : r.activeIds()) { Player p = Bukkit.getPlayer(id); if (p != null) online.add(p); }
-        List<DrawRules.Choice> cards = DrawRules.cards(plugin.challenges(), r.used, online.size(), Situation.of(online),
+        List<DrawRules.Choice> cards = DrawRules.cards(plugin.challenges(), r.used, online.size(), Situation.of(plugin.hooks(), online),
                 plugin.cfg().kindWeights(), rnd, 3);
         Player p = Bukkit.getPlayer(winner);
         if (cards.isEmpty()) return;

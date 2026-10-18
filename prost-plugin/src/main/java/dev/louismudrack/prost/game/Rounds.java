@@ -1,7 +1,6 @@
 package dev.louismudrack.prost.game;
 
 import dev.louismudrack.prost.ProstPlugin;
-import dev.louismudrack.prost.hook.Gate;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.ui.Sounds;
@@ -148,10 +147,10 @@ public final class Rounds {
         for (Round r : new ArrayList<>(byCode.values())) {
             for (Member m : new ArrayList<>(r.members.values())) {
                 Player p = Bukkit.getPlayer(m.id);
-                boolean away = p == null || Gate.bot(p);
+                boolean away = p == null || plugin.hooks().bot(p);
                 if (away && !m.away) m.awaySince = now;
                 m.away = away;
-                m.afk = !away && Gate.afk(m.id);
+                m.afk = !away && plugin.hooks().afk(p);
                 m.wrongMode = !away && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR
                         || !plugin.pluginConfig().gameWorld(p.getWorld().getName()));
                 if (p != null) m.name = p.getName();

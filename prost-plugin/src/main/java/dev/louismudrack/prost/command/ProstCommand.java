@@ -9,7 +9,6 @@ import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Pace;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.game.Rounds;
-import dev.louismudrack.prost.hook.Gate;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.menu.JoinMenu;
 import dev.louismudrack.prost.menu.MainMenu;
@@ -121,7 +120,7 @@ public final class ProstCommand implements CommandExecutor, TabCompleter {
         if (r == null) { notInRound(p); return; }
         if (args.length < 2) { Msg.error(p, "Nutzung: /prost einladen <name>", "Usage: /prost invite <name>"); return; }
         Player target = Bukkit.getPlayerExact(args[1]);
-        if (target == null || Gate.bot(target)) { Msg.error(p, args[1] + " ist nicht online.", args[1] + " is not online."); return; }
+        if (target == null || plugin.hooks().bot(target)) { Msg.error(p, args[1] + " ist nicht online.", args[1] + " is not online."); return; }
         if (plugin.rounds().of(target.getUniqueId()) != null) { Msg.error(p, target.getName() + " spielt schon in einer Runde.", target.getName() + " is already in a round."); return; }
         plugin.rounds().invite(p, target, r);
         Msg.tell(p, "Einladung an " + Msg.HL + Msg.esc(target.getName()) + " <gray>geschickt.", "Invite sent to " + Msg.HL + Msg.esc(target.getName()) + "<gray>.");
@@ -275,7 +274,7 @@ public final class ProstCommand implements CommandExecutor, TabCompleter {
             switch (args[0].toLowerCase(Locale.ROOT)) {
                 case "start", "tempo", "pace" -> { for (Pace pace : Pace.values()) out.add(pace.key); }
                 case "pause" -> { if (r != null && r.host.equals(p.getUniqueId())) out.add("runde"); }
-                case "einladen", "invite", "stats" -> { for (Player o : Bukkit.getOnlinePlayers()) if (!Gate.bot(o)) out.add(o.getName()); }
+                case "einladen", "invite", "stats" -> { for (Player o : Bukkit.getOnlinePlayers()) if (!plugin.hooks().bot(o)) out.add(o.getName()); }
                 case "join" -> { for (Round x : plugin.rounds().all()) out.add(x.code); }
                 case "kick" -> { if (r != null) for (Member m : r.members.values()) out.add(m.name); }
                 case "admin" -> out.addAll(List.of("list", "end", "force", "debug"));

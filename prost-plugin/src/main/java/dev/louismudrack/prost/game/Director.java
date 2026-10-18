@@ -86,7 +86,7 @@ public final class Director {
         List<Player> players = new ArrayList<>();
         for (UUID id : active) { Player p = Bukkit.getPlayer(id); if (p != null) players.add(p); }
         if (players.isEmpty()) return;
-        DrawRules.Conditions c = Situation.of(players);
+        DrawRules.Conditions c = Situation.of(plugin.hooks(), players);
         DrawRules.Choice choice = null;
         List<UUID> chosen = List.of();
         Round.Queued q = r.queued;

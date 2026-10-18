@@ -10,15 +10,21 @@ import dev.louismudrack.prost.config.GameConfig;
 import dev.louismudrack.prost.config.PluginConfig;
 import dev.louismudrack.prost.config.YamlMerge;
 import dev.louismudrack.prost.drink.Sips;
+import dev.louismudrack.prost.api.ProstApi;
 import dev.louismudrack.prost.game.Director;
 import dev.louismudrack.prost.game.PlacedBlocks;
 import dev.louismudrack.prost.game.Rounds;
+import dev.louismudrack.prost.hook.ConfigAreas;
+import dev.louismudrack.prost.hook.DimensionDefaults;
+import dev.louismudrack.prost.hook.Hooks;
 import dev.louismudrack.prost.menu.MenuListener;
 import dev.louismudrack.prost.reward.Rewards;
 import dev.louismudrack.prost.roulette.Roulette;
 import dev.louismudrack.prost.storage.PlayerPrefs;
 import dev.louismudrack.prost.storage.SqlStatsStore;
 import dev.louismudrack.prost.storage.StatsStore;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -41,6 +47,7 @@ public final class ProstPlugin extends JavaPlugin {
     private Rewards rewards;
     private Director director;
     private Roulette roulette;
+    private Hooks hooks;
 
     @Override
     public void onEnable() {
@@ -59,6 +66,12 @@ public final class ProstPlugin extends JavaPlugin {
                     + "stats are written once the database is reachable");
         }
         stats = store;
+        hooks = new Hooks(getLogger(), p -> false,   // AFK detection: Task 7
+                new DimensionDefaults(() -> pluginConfig, env -> getServer().getWorlds().stream().anyMatch(w -> w.getEnvironment() == env),
+                        () -> Bukkit.getAllowNether(), () -> Bukkit.getAllowEnd()),
+                new ConfigAreas(() -> pluginConfig));
+        getServer().getPluginManager().registerEvents(hooks, this);
+        getServer().getServicesManager().register(ProstApi.class, new ApiImpl(this), this, ServicePriority.Normal);
         prefs = new PlayerPrefs(stats);
         getServer().getPluginManager().registerEvents(prefs, this);
         getServer().getOnlinePlayers().forEach(p -> prefs.load(p));
@@ -112,4 +125,5 @@ public final class ProstPlugin extends JavaPlugin {
     public Rewards rewards() { return rewards; }
     public Director director() { return director; }
     public Roulette roulette() { return roulette; }
+    public Hooks hooks() { return hooks; }
 }

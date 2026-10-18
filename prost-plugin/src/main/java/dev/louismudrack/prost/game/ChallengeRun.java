@@ -4,7 +4,6 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.catalogue.ChallengeDef;
 import dev.louismudrack.prost.catalogue.Need;
 import dev.louismudrack.prost.drink.SipLedger;
-import dev.louismudrack.prost.hook.Gate;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.reward.Reward;
 import dev.louismudrack.prost.reward.RewardRules;
@@ -18,6 +17,7 @@ import dev.louismudrack.prost.ui.Sounds;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -62,6 +62,10 @@ public final class ChallengeRun {
     }
 
     boolean involves(UUID id) { return participants.contains(id); }
+
+    public long endsAt() { return endsAt; }
+
+    public List<UUID> participants() { return List.copyOf(participants); }
 
     public long remainingMs() { return Math.max(0, endsAt - System.currentTimeMillis()); }
 
@@ -113,7 +117,7 @@ public final class ChallengeRun {
     }
 
     private boolean gateClosed() {
-        return (def.needs().contains(Need.NETHER) && !Gate.netherOpen()) || (def.needs().contains(Need.END) && !Gate.endOpen());
+        return (def.needs().contains(Need.NETHER) && !plugin.hooks().open(World.Environment.NETHER)) || (def.needs().contains(Need.END) && !plugin.hooks().open(World.Environment.THE_END));
     }
 
     private boolean done(UUID id) {
