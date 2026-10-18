@@ -10,6 +10,7 @@ import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.game.Situation;
 import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.menu.ChoiceMenu;
 import dev.louismudrack.prost.menu.HandoutMenu;
 import dev.louismudrack.prost.menu.Items;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
@@ -82,12 +84,11 @@ public final class Rewards implements Listener {
         BukkitTask timeout = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (chosen[0]) return;
             chosen[0] = true;
-            expired(winner, "Zeit abgelaufen - du bekommst: " + Msg.HL + label(first, d, true),
-                    "Time's up - you get: " + Msg.HL + label(first, d, false));
+            expired(winner, "reward.time_up", V.of("label", label(first, d, winner)));
             apply(r, winner, d, first, team, teamMembers);
         }, rewardTicks());
         List<ChoiceMenu.Option> list = new ArrayList<>();
-        for (Reward rw : options) list.add(new ChoiceMenu.Option(icon(rw, d, Msg.de(winner)), () -> {
+        for (Reward rw : options) list.add(new ChoiceMenu.Option(icon(rw, d, winner), () -> {
             if (chosen[0]) return;
             chosen[0] = true;
             timeout.cancel();
@@ -101,20 +102,18 @@ public final class Rewards implements Listener {
     private void offer(Player p, Menu menu) {
         pendingMenus.put(p.getUniqueId(), menu);
         menu.open();
-        p.sendMessage(Msg.mm(Msg.PREFIX + Msg.t(p.getUniqueId(),
-                "<click:run_command:'/prost belohnung'><#55e07a>[Belohnung wählen]</click> <dark_gray>(öffnet das Menü wieder)",
-                "<click:run_command:'/prost belohnung'><#55e07a>[Pick your reward]</click> <dark_gray>(opens the menu again)")));
+        Msg.tell(p, "reward.reopen");
     }
 
     private void settled(UUID winner) { pendingMenus.remove(winner); }
 
     /** the time ran out: close the still-open menu and say what was chosen - a later click would silently do nothing */
-    private void expired(UUID winner, String de, String en) {
+    private void expired(UUID winner, String key, V... vars) {
         Menu menu = pendingMenus.remove(winner);
         Player p = Bukkit.getPlayer(winner);
         if (p == null) return;
         if (menu != null && menu.isOpen()) p.closeInventory();
-        Msg.tell(p, de, en);
+        Msg.tell(p, key, vars);
     }
 
     private long deadline() { return System.currentTimeMillis() + plugin.cfg().rewardSeconds() * 1000L; }
@@ -126,21 +125,16 @@ public final class Rewards implements Listener {
         return true;
     }
 
-    private static String label(Reward rw, ChallengeDef d, boolean de) {
-        return switch (rw) {
-            case HANDOUT -> de ? d.give() + " Schlucke verteilen" : "Hand out " + d.give() + " sips";
-            case RULE -> de ? "Regel aufstellen" : "Make a rule";
-            case JOKER -> "Joker";
-            case NEXT -> de ? "Nächste Herausforderung wählen" : "Pick the next challenge";
-        };
+    private static String label(Reward rw, ChallengeDef d, UUID viewer) {
+        return Msg.str(viewer, "reward.option." + rw.name().toLowerCase(Locale.ROOT), V.of("sips", d.give()));
     }
 
-    private static ItemStack icon(Reward rw, ChallengeDef d, boolean de) {
-        String name = Msg.HL + label(rw, d, de);
+    private static ItemStack icon(Reward rw, ChallengeDef d, UUID viewer) {
+        String name = "<hl>" + label(rw, d, viewer);
         return switch (rw) {
             case HANDOUT -> Items.item(Material.HONEY_BOTTLE, name, List.of());
             case RULE -> Items.item(Material.WRITABLE_BOOK, name, List.of());
-            case JOKER -> Items.item(Material.NETHER_STAR, name, List.of("<gray>" + (de ? "Hebt einen Schluck-Befehl auf" : "Cancels one drink")));
+            case JOKER -> Items.item(Material.NETHER_STAR, name, Msg.lines(viewer, "reward.joker_lore"));
             case NEXT -> Items.item(Material.COMPASS, name, List.of());
         };
     }
@@ -163,9 +157,9 @@ public final class Rewards implements Listener {
             if (m == null) continue;
             if (RewardRules.jokerFits(m.jokers, plugin.cfg().jokerMax())) {
                 m.jokers++;
-                if (p != null) Msg.tell(p, "Du hast einen " + Msg.OK + "Joker<gray>! (" + m.jokers + ")", "You got a " + Msg.OK + "joker<gray>! (" + m.jokers + ")");
+                if (p != null) Msg.tell(p, "joker.got", V.of("count", m.jokers));
             } else if (p != null) {
-                Msg.tell(p, "Du hast schon " + m.jokers + " Joker - der Joker verfällt.", "You already hold " + m.jokers + " jokers - this one lapses.");
+                Msg.tell(p, "joker.full", V.of("count", m.jokers));
             }
         }
         plugin.rounds().save();
@@ -176,9 +170,8 @@ public final class Rewards implements Listener {
     private void handout(Round r, UUID giver, int amount) {
         Member g = r.member(giver);
         if (g == null) return;
-        String name = Msg.esc(g.name);
         if (RewardRules.realLifeHandout(r.members.size())) {
-            Msg.round(r, de -> Msg.HL + name + (de ? " <gray>verteilt " + Msg.HL + amount + " <gray>Schlucke in echt." : " <gray>hands out " + Msg.HL + amount + " <gray>sips in real life."));
+            Msg.round(r, "handout.real_life", V.of("name", g.name), V.of("amount", amount));
             g.tally.given += amount;
             plugin.stats().add(g.id, g.name, StatsField.GIVEN, amount);
             plugin.rounds().save();
@@ -194,7 +187,7 @@ public final class Rewards implements Listener {
         }
         Player p = Bukkit.getPlayer(giver);
         if (room.isEmpty()) {
-            if (p != null) Msg.tell(p, "Gerade kann niemand Schlucke bekommen - sie verfallen.", "Nobody can receive sips right now - they lapse.");
+            if (p != null) Msg.tell(p, "handout.nobody");
             return;
         }
         Handout h = new Handout(r, giver, amount, room);
@@ -206,9 +199,7 @@ public final class Rewards implements Listener {
             return;
         }
         new HandoutMenu(plugin, p, this, h).until(h.deadline).open();
-        p.sendMessage(Msg.mm(Msg.PREFIX + Msg.t(giver,
-                "Verteile " + Msg.HL + amount + " <gray>Schlucke. <click:run_command:'/prost verteilen'><#55e07a>[Schlucke verteilen]</click>",
-                "Hand out " + Msg.HL + amount + " <gray>sips. <click:run_command:'/prost verteilen'><#55e07a>[Hand out sips]</click>")));
+        Msg.tell(p, "handout.prompt", V.of("amount", amount));
     }
 
     public boolean reopenHandout(Player p) {
@@ -222,7 +213,7 @@ public final class Rewards implements Listener {
         Player p = Bukkit.getPlayer(h.giver);
         if (p != null && !h.done) {
             if (p.getOpenInventory().getTopInventory().getHolder(false) instanceof HandoutMenu menu && menu.shows(h)) p.closeInventory();
-            Msg.tell(p, "Zeit abgelaufen - die Schlucke wurden verteilt, der Rest zufällig.", "Time's up - the sips went out, the rest at random.");
+            Msg.tell(p, "handout.expired");
         }
         finishHandout(h);
     }
@@ -247,7 +238,8 @@ public final class Rewards implements Listener {
         String giverName = g == null ? "?" : g.name;
         int given = 0;
         for (Map.Entry<UUID, Integer> e : all.entrySet()) {
-            plugin.sips().drink(h.round, e.getKey(), e.getValue(), SipLedger.Source.HANDOUT, "von " + giverName, "from " + giverName);
+            plugin.sips().drink(h.round, e.getKey(), e.getValue(), SipLedger.Source.HANDOUT,
+                    viewer -> Msg.str(viewer, "handout.from", V.of("player", giverName)));
             given += e.getValue();
         }
         if (g != null) {
@@ -272,7 +264,7 @@ public final class Rewards implements Listener {
         BukkitTask timeout = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (done[0] || prepared.isEmpty()) return;
             done[0] = true;
-            expired(winner, "Zeit abgelaufen - eine zufällige Regel wurde gewählt.", "Time's up - a random rule was picked.");
+            expired(winner, "rule.expired");
             ruleInputs.close(winner);
             addRule(r, winner, prepared.get(rnd.nextInt(prepared.size())));
         }, rewardTicks());
@@ -288,8 +280,7 @@ public final class Rewards implements Listener {
             timeout.cancel();
             settled(winner);
             ruleInputs.open(winner, r, deadline());
-            Msg.tell(p, "Schreib deine Regel in den Chat (max. " + plugin.cfg().customRuleMaxLength() + " Zeichen) - \"abbrechen\" bricht ab.",
-                    "Type your rule into chat (max " + plugin.cfg().customRuleMaxLength() + " characters) - \"cancel\" stops.");
+            Msg.tell(p, "rule.type_prompt", V.of("max", plugin.cfg().customRuleMaxLength()));
         }).until(deadline()));
     }
 
@@ -326,8 +317,7 @@ public final class Rewards implements Listener {
         else r.addRule(rule, plugin.cfg().rulesMaxActive());
         maker.tally.rulesMade++;
         plugin.stats().add(maker.id, maker.name, StatsField.RULES, 1);
-        String name = Msg.esc(maker.name);
-        Msg.roundEach(r, id -> Msg.HL + name + (Msg.de(id) ? " <gray>stellt eine Regel auf: <white>" : " <gray>makes a rule: <white>") + Msg.esc(rule.text(Msg.lang(id))));
+        Msg.roundEach(r, id -> Msg.str(id, "rule.made", V.of("name", maker.name), V.of("text", rule.text(Msg.lang(id)))));
         plugin.rounds().save();
     }
 
@@ -349,17 +339,15 @@ public final class Rewards implements Listener {
         BukkitTask timeout = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (done[0]) return;
             done[0] = true;
-            expired(winner, "Zeit abgelaufen - eine zufällige Herausforderung kommt als Nächstes.",
-                    "Time's up - a random challenge comes next.");
+            expired(winner, "next.expired");
             DrawRules.Choice c = cards.get(rnd.nextInt(cards.size()));
             r.queued = new Round.Queued(c.def().id(), c.kind(), List.of());
         }, rewardTicks());
-        boolean de = Msg.de(winner);
         String lang = Msg.lang(winner);
         List<ChoiceMenu.Option> list = new ArrayList<>();
         for (DrawRules.Choice c : cards) {
-            ItemStack card = Items.item(Material.MAP, Msg.HL + Msg.esc(c.def().name(lang)), List.of(
-                    "<gray>" + Msg.esc(c.def().text(lang)), "<dark_gray>" + c.kind().key + " · " + c.def().sips() + (de ? " Schlucke" : " sips")));
+            ItemStack card = Items.item(Material.MAP, "<hl>" + Msg.esc(c.def().name(lang)), List.of(
+                    "<gray>" + Msg.esc(c.def().text(lang)), "<dark_gray>" + Msg.str(winner, "kind." + c.kind().key) + " · " + Msg.sips(winner, c.def().sips())));
             list.add(new ChoiceMenu.Option(card, () -> {
                 if (done[0]) return;
                 done[0] = true;
@@ -386,13 +374,13 @@ public final class Rewards implements Listener {
         for (UUID id : r.activeIds()) {
             if (picked.contains(id)) continue;
             Member m = r.member(id);
-            list.add(new ChoiceMenu.Option(Items.head(id, Msg.HL + Msg.esc(m.name), List.of()), () -> {
+            list.add(new ChoiceMenu.Option(Items.head(id, "<hl>" + Msg.esc(m.name), List.of()), () -> {
                 List<UUID> now = new ArrayList<>(picked);
                 now.add(id);
                 if (now.size() >= needed) {
                     settled(chooser.getUniqueId());
                     r.queued = new Round.Queued(c.def().id(), c.kind(), List.copyOf(now));
-                    Msg.tell(chooser, "Gemerkt - kommt als Nächstes.", "Noted - it comes next.");
+                    Msg.tell(chooser, "next.noted");
                 } else pickPlayers(r, chooser, c, now, needed);
             }));
         }

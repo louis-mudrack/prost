@@ -5,6 +5,7 @@ import dev.louismudrack.prost.catalogue.ChallengeDef;
 import dev.louismudrack.prost.catalogue.Need;
 import dev.louismudrack.prost.drink.SipLedger;
 import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.reward.Reward;
 import dev.louismudrack.prost.reward.RewardRules;
 import dev.louismudrack.prost.storage.StatsField;
@@ -35,7 +36,6 @@ import java.util.UUID;
  * A participant who stops being active drops out without drinking; a Duel opponent dropping out = walkover.
  */
 public final class ChallengeRun {
-    private static final String GRADIENT = "<gradient:#ffd94d:#ff8f3f>";
     /** a watcher's boss bar lists at most this many players, then "+N" */
     private static final int WATCH_MAX = 3;
 
@@ -78,8 +78,7 @@ public final class ChallengeRun {
     void tick() {
         if (over) return;
         if (gateClosed()) {
-            cancel("Der Nether oder das End wurde geschlossen - abgebrochen, niemand trinkt.",
-                    "The Nether or the End was closed - cancelled, nobody drinks.");
+            cancel("challenge.gate_closed");
             return;
         }
         for (UUID id : new ArrayList<>(participants)) if (!round.isActive(id)) drop(id);
@@ -95,16 +94,17 @@ public final class ChallengeRun {
     void drop(UUID id) {
         if (over || !participants.remove(id)) return;
         doneAt.remove(id);
-        if (participants.isEmpty()) cancel(null, null);
+        if (participants.isEmpty()) cancel(null);
         else if (kind == Kind.DUEL && participants.size() == 1) finish();
     }
 
-    void cancel(String de, String en) {
+    /** {@code key} is told to the round; null = silent */
+    void cancel(String key) {
         if (over) return;
         over = true;
         tracker.stop();
         hideBars();
-        if (de != null) Msg.round(round, g -> g ? de : en);
+        if (key != null) Msg.round(round, key);
         plugin.director().ended(round, false);
     }
 
@@ -168,7 +168,7 @@ public final class ChallengeRun {
             else m.tally.lost++;
             plugin.stats().add(id, m.name, won ? StatsField.WON : StatsField.LOST, 1);
         }
-        o.drinks().forEach((id, n) -> plugin.sips().drink(round, id, n, SipLedger.Source.CHALLENGE, def.name("de"), def.name("en")));
+        o.drinks().forEach((id, n) -> plugin.sips().drink(round, id, n, SipLedger.Source.CHALLENGE, viewer -> def.name(Msg.lang(viewer))));
         if (kind == Kind.TEAM) {
             if (!o.rewarded().isEmpty()) plugin.rewards().grant(round, o.mvp(), def, true, o.winners());
         } else {
@@ -184,86 +184,82 @@ public final class ChallengeRun {
         for (UUID id : round.members.keySet()) {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
-            boolean de = Msg.de(id);
             String lang = Msg.lang(id);
-            String headline = Hud.kindName(kind, de) + " · " + Msg.esc(def.name(lang));
-            String goal = Msg.esc(def.text(lang)) + teamGoal(de);
-            if (participants.contains(id)) Hud.announce(p, GRADIENT + headline, "<white>" + goal);
-            else Hud.announce(p, GRADIENT + whoPlays(de, lang), "<white>" + goal + " <dark_gray>(" + (de ? "du schaust zu" : "you are watching") + ")");
-            String who = kind == Kind.SOLO || kind == Kind.DUEL ? " <dark_gray>» " + Msg.HL + names(participants, kind == Kind.DUEL ? " vs " : ", ") : "";
-            p.sendMessage(Msg.mm(Msg.PREFIX + GRADIENT + headline + "</gradient>" + who));
-            p.sendMessage(Msg.mm(Msg.PREFIX + "<white>" + goal));
-            p.sendMessage(Msg.mm(Msg.PREFIX + (de ? "Zeit: <white>" : "Time: <white>") + Fmt.clock(def.seconds() * 1000L) + " <dark_gray>· " + stakes(de)));
+            String headline = kindAndName(id, lang);
+            String goal = Msg.esc(def.text(lang)) + teamGoal(id);
+            if (participants.contains(id)) Hud.announce(p, "<primary>" + headline + "</primary>", "<white>" + goal);
+            else Hud.announce(p, "<primary>" + whoPlays(id, lang) + "</primary>", "<white>" + goal + " " + Msg.str(id, "challenge.watching"));
+            String who = kind == Kind.SOLO || kind == Kind.DUEL ? " " + Msg.str(id, "challenge.who", V.of("names", names(participants, kind == Kind.DUEL ? " vs " : ", "))) : "";
+            Msg.send(p, "<primary>" + headline + "</primary>" + who);
+            Msg.send(p, "<white>" + goal);
+            Msg.tell(p, "challenge.time", V.of("time", Fmt.clock(def.seconds() * 1000L)), V.mm("stakes", stakes(id)));
             Sounds.ding(p);
         }
     }
 
-    private String teamGoal(boolean de) {
-        return kind == Kind.TEAM ? (de ? " <dark_gray>(zusammen " + teamTarget() + ")" : " <dark_gray>(" + teamTarget() + " together)") : "";
+    private String kindAndName(UUID viewer, String lang) { return Msg.str(viewer, "kind." + kind.key) + " · " + Msg.esc(def.name(lang)); }
+
+    private String teamGoal(UUID viewer) {
+        return kind == Kind.TEAM ? " " + Msg.str(viewer, "challenge.team_goal", V.of("target", teamTarget())) : "";
     }
 
     /** the title for round members who do not play this one */
-    private String whoPlays(boolean de, String lang) {
+    private String whoPlays(UUID viewer, String lang) {
         return switch (kind) {
-            case SOLO -> names(participants, ", ") + (de ? " spielt Solo" : " plays Solo");
-            case DUEL -> names(participants, " vs ");
-            default -> Hud.kindName(kind, de) + " · " + Msg.esc(def.name(lang));
+            case SOLO -> Msg.str(viewer, "challenge.solo_plays", V.of("names", names(participants, ", ")));
+            case DUEL -> Msg.esc(names(participants, " vs "));
+            default -> kindAndName(viewer, lang);
         };
     }
 
     /** what is at stake, honest per kind: rewards only come when nobody drinks (Resolution.Outcome#rewarded) */
-    private String stakes(boolean de) {
-        String sips = Msg.ERR + Fmt.sips(def.sips(), de), reward = Msg.OK + rewardText(de);
+    private String stakes(UUID viewer) {
+        V sips = V.mm("sips", Msg.sips(viewer, def.sips())), reward = V.mm("reward", rewardText(viewer));
         return switch (kind) {
-            case SOLO -> (de ? "<gray>Verfehlt: " : "<gray>Miss it: ") + sips + " <dark_gray>· " + (de ? "<gray>Geschafft: " : "<gray>Make it: ") + reward;
-            case EACH -> (de ? "<gray>Wer es verfehlt: " : "<gray>Miss it: ") + sips + " <dark_gray>· "
-                    + (de ? "<gray>Schaffen es alle: " : "<gray>Everyone makes it: ") + reward;
-            case TEAM -> (de ? "<gray>Verfehlt: alle " : "<gray>Miss it: everyone drinks ") + sips + " <dark_gray>· "
-                    + (de ? "<gray>Geschafft, der Beste wählt: " : "<gray>Make it, the top player picks: ") + reward;
-            case RACE -> (de ? "<gray>Der Langsamste trinkt " : "<gray>The slowest drinks ") + sips;
-            case DUEL -> (de ? "<gray>Der Verlierer trinkt " : "<gray>The loser drinks ") + sips;
+            case SOLO -> Msg.str(viewer, "challenge.stakes.solo", sips, reward);
+            case EACH -> Msg.str(viewer, "challenge.stakes.each", sips, reward);
+            case TEAM -> Msg.str(viewer, "challenge.stakes.team", sips, reward);
+            case RACE -> Msg.str(viewer, "challenge.stakes.race", sips);
+            case DUEL -> Msg.str(viewer, "challenge.stakes.duel", sips);
         };
     }
 
-    private String rewardText(boolean de) {
+    private String rewardText(UUID viewer) {
         List<Reward> rewards = kind == Kind.TEAM ? RewardRules.teamOptions(def.rewards()) : def.rewards();
-        StringJoiner j = new StringJoiner(de ? " oder " : " or ");
+        StringJoiner j = new StringJoiner(Msg.str(viewer, "challenge.reward_or"));
         for (Reward r : rewards) j.add(switch (r) {
-            case HANDOUT -> de ? def.give() + " Schlucke verteilen" : "hand out " + def.give() + " sips";
-            case RULE -> de ? "eine Regel" : "a rule";
-            case JOKER -> kind == Kind.TEAM ? (de ? "ein Joker für jeden" : "a joker each") : "Joker";
-            case NEXT -> de ? "die nächste Herausforderung wählen" : "pick the next challenge";
+            case HANDOUT -> Msg.str(viewer, "challenge.reward.handout", V.of("sips", def.give()));
+            case RULE -> Msg.str(viewer, "challenge.reward.rule");
+            case JOKER -> Msg.str(viewer, kind == Kind.TEAM ? "challenge.reward.joker_each" : "challenge.reward.joker");
+            case NEXT -> Msg.str(viewer, "challenge.reward.next");
         });
         return j.toString();
     }
 
     private void announceResult(Resolution.Outcome o, int sum, int target) {
-        String winners = names(o.winners(), ", ");
         boolean noReward = !o.winners().isEmpty() && o.rewarded().isEmpty();
         for (UUID id : round.members.keySet()) {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
-            boolean de = Msg.de(id);
             String lang = Msg.lang(id);
             String line;
-            if (kind == Kind.TEAM) line = o.success() ? Msg.OK + (de ? "Ziel erreicht!" : "Target reached!")
-                    : Msg.ERR + (de ? "Ziel verfehlt (" + sum + "/" + target + ")." : "Target missed (" + sum + "/" + target + ").");
-            else line = o.winners().isEmpty() ? Msg.ERR + (de ? "Niemand hat es geschafft." : "Nobody made it.")
-                    : Msg.OK + (de ? "Geschafft: " : "Made it: ") + Msg.HL + winners
-                    + (noReward ? " <dark_gray>(" + (de ? "keine Belohnung, es wird getrunken" : "no reward, someone drinks") + ")" : "");
-            p.sendMessage(Msg.mm(Msg.PREFIX + "<gradient:#ffd94d:#ff8f3f>" + Msg.esc(def.name(lang)) + "</gradient> <dark_gray>» " + line));
+            if (kind == Kind.TEAM) line = o.success() ? Msg.str(id, "result.team_ok") : Msg.str(id, "result.team_missed", V.of("sum", sum), V.of("target", target));
+            else if (o.winners().isEmpty()) line = Msg.str(id, "result.nobody");
+            else line = Msg.str(id, "result.made_it", V.of("winners", names(o.winners(), ", "))) + (noReward ? " " + Msg.str(id, "result.no_reward") : "");
+            Msg.tell(p, "result.line", V.of("name", def.name(lang)), V.mm("result", line));
             if (!participants.contains(id)) continue;
             boolean won = o.winners().contains(id);
-            Hud.title(p, won ? Msg.OK + (de ? "Geschafft!" : "Made it!") : Msg.ERR + (de ? "Verloren" : "Lost"), "<gray>" + Msg.esc(def.name(lang)));
+            Hud.title(p, Msg.str(id, won ? "result.won" : "result.lost"), "<gray>" + Msg.esc(def.name(lang)));
             if (won) Sounds.win(p);
         }
     }
 
+    /** the players' names, not escaped: callers insert them with V.of or Msg.esc */
     private String names(List<UUID> ids, String separator) {
         StringJoiner j = new StringJoiner(separator);
         for (UUID id : ids) {
             Member m = round.member(id);
-            j.add(Msg.esc(m == null ? "?" : m.name));
+            j.add(m == null ? "?" : m.name);
         }
         return j.toString();
     }
@@ -279,17 +275,16 @@ public final class ChallengeRun {
             if (p == null) continue;
             BossBar bar = bars.computeIfAbsent(id, k -> BossBar.bossBar(Component.empty(), 1f, Hud.color(kind), BossBar.Overlay.PROGRESS));
             p.showBossBar(bar);   // no-op while shown; shows it again after a reconnect
-            boolean de = Msg.de(id), playing = participants.contains(id);
-            String lang = Msg.lang(id);
-            String status = playing ? "<white>" + progressText(id, de) : watchText(de);
-            bar.name(Msg.mm(Msg.HL + Msg.esc(def.name(lang)) + " <dark_gray>· " + status + " <dark_gray>· <gray>" + Fmt.clock(endsAt - now)
-                    + (playing ? "" : " <dark_gray>(" + (de ? "zuschauen" : "watching") + ")")));
+            boolean playing = participants.contains(id);
+            String status = playing ? "<white>" + progressText(id, id) : watchText(id);
+            bar.name(Msg.mm("<hl>" + Msg.esc(def.name(Msg.lang(id))) + " <dark_gray>· " + status + " <dark_gray>· <gray>" + Fmt.clock(endsAt - now)
+                    + (playing ? "" : " " + Msg.str(id, "challenge.bar_watching"))));
             bar.progress(left);
-            if (playing) Hud.actionBar(p, hint(id, de) + " <dark_gray>- <white>" + Fmt.clock(endsAt - now));
+            if (playing) Hud.actionBar(p, hint(id) + " <dark_gray>- <white>" + Fmt.clock(endsAt - now));
         }
     }
 
-    private String watchText(boolean de) {
+    private String watchText(UUID viewer) {
         if (kind == Kind.TEAM && !def.avoidType()) return "<white>" + teamSum() + "/" + teamTarget();
         StringJoiner j = new StringJoiner(" <dark_gray>· ");
         for (int i = 0; i < participants.size(); i++) {
@@ -299,26 +294,27 @@ public final class ChallengeRun {
             }
             UUID id = participants.get(i);
             Member m = round.member(id);
-            j.add("<white>" + Msg.esc(m == null ? "?" : m.name) + " " + progressText(id, de));
+            j.add("<white>" + Msg.esc(m == null ? "?" : m.name) + " " + progressText(viewer, id));
         }
         return j.toString();
     }
 
     /** the action bar's live hint (spec §10.1): "Noch 3 - 0:42" */
-    private String hint(UUID id, boolean de) {
-        if (def.avoidType()) return tracker.broken(id) ? Msg.ERR + (de ? "Gebrochen" : "Broken") : Msg.OK + (de ? "Durchhalten" : "Hold on");
-        if (tracker.broken(id)) return Msg.ERR + (de ? "Raus" : "Out");
+    private String hint(UUID id) {
+        if (def.avoidType()) return Msg.str(id, tracker.broken(id) ? "challenge.hint.broken" : "challenge.hint.hold");
+        if (tracker.broken(id)) return Msg.str(id, "challenge.hint.out");
         int missing = kind == Kind.TEAM ? teamTarget() - teamSum() : def.amount() - tracker.progress(id);
-        if (missing <= 0 || doneAt.containsKey(id)) return Msg.OK + (de ? "Geschafft" : "Done");
-        return de ? "<gray>Noch " + Msg.HL + missing : Msg.HL + missing + " <gray>to go";
+        if (missing <= 0 || doneAt.containsKey(id)) return Msg.str(id, "challenge.hint.done");
+        return Msg.str(id, "challenge.hint.to_go", V.of("missing", missing));
     }
 
-    private String progressText(UUID id, boolean de) {
-        if (def.avoidType()) return tracker.broken(id) ? Msg.ERR + (de ? "gebrochen" : "broken") : Msg.OK + (de ? "hält" : "holding");
-        if (tracker.broken(id)) return Msg.ERR + (de ? "raus" : "out");
+    /** how far {@code who} is, worded for {@code viewer} */
+    private String progressText(UUID viewer, UUID who) {
+        if (def.avoidType()) return Msg.str(viewer, tracker.broken(who) ? "challenge.progress.broken" : "challenge.progress.holding");
+        if (tracker.broken(who)) return Msg.str(viewer, "challenge.progress.out");
         if (kind == Kind.TEAM) return teamSum() + "/" + teamTarget();
-        if (doneAt.containsKey(id)) return Msg.OK + (de ? "geschafft" : "done");
-        return Math.min(tracker.progress(id), def.amount()) + "/" + def.amount();
+        if (doneAt.containsKey(who)) return Msg.str(viewer, "challenge.progress.done");
+        return Math.min(tracker.progress(who), def.amount()) + "/" + def.amount();
     }
 
     private void hideBar(UUID id) {

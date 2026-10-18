@@ -5,6 +5,7 @@ import dev.louismudrack.prost.drink.SipLedger;
 import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.ui.Sounds;
 import io.papermc.paper.event.player.PlayerTradeEvent;
@@ -51,14 +52,14 @@ public final class Roulette implements Listener {
     public Roulette(ProstPlugin plugin) { this.plugin = plugin; }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBreak(BlockBreakEvent e) { roll(e.getPlayer(), "block", "Block abgebaut", "broke a block"); }
+    public void onBreak(BlockBreakEvent e) { roll(e.getPlayer(), "block", "break"); }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlace(BlockPlaceEvent e) { roll(e.getPlayer(), "block", "Block gesetzt", "placed a block"); }
+    public void onPlace(BlockPlaceEvent e) { roll(e.getPlayer(), "block", "place"); }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCraft(CraftItemEvent e) {
-        if (e.getWhoClicked() instanceof Player p) roll(p, "craft", "etwas gecraftet", "crafted something");
+        if (e.getWhoClicked() instanceof Player p) roll(p, "craft", "craft");
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -66,48 +67,49 @@ public final class Roulette implements Listener {
         if (e instanceof PlayerDeathEvent || e.getEntity() instanceof Player) return;   // a player's death is the "death" category
         Player killer = e.getEntity().getKiller();
         if (killer == null) return;
-        if (BOSSES.contains(e.getEntityType())) roll(killer, "boss", "Boss besiegt", "beat a boss");
-        else roll(killer, "kill", "Mob getötet", "killed a mob");
+        if (BOSSES.contains(e.getEntityType())) roll(killer, "boss", "boss");
+        else roll(killer, "kill", "kill");
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEat(PlayerItemConsumeEvent e) { roll(e.getPlayer(), "eat", "etwas gegessen", "ate something"); }
+    public void onEat(PlayerItemConsumeEvent e) { roll(e.getPlayer(), "eat", "eat"); }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onFish(PlayerFishEvent e) {
-        if (e.getState() == PlayerFishEvent.State.CAUGHT_FISH) roll(e.getPlayer(), "fish", "Fisch geangelt", "caught a fish");
+        if (e.getState() == PlayerFishEvent.State.CAUGHT_FISH) roll(e.getPlayer(), "fish", "fish");
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreed(EntityBreedEvent e) {
-        if (e.getBreeder() instanceof Player p) roll(p, "breed", "Tiere gezüchtet", "bred animals");
+        if (e.getBreeder() instanceof Player p) roll(p, "breed", "breed");
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onTrade(PlayerTradeEvent e) { roll(e.getPlayer(), "trade", "gehandelt", "traded"); }
+    public void onTrade(PlayerTradeEvent e) { roll(e.getPlayer(), "trade", "trade"); }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEnchant(EnchantItemEvent e) { roll(e.getEnchanter(), "enchant", "verzaubert", "enchanted"); }
+    public void onEnchant(EnchantItemEvent e) { roll(e.getEnchanter(), "enchant", "enchant"); }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onAdvancement(PlayerAdvancementDoneEvent e) {
         if (e.getAdvancement().getDisplay() != null)   // real advancements only - recipe unlocks have no display
-            roll(e.getPlayer(), "advancement", "Fortschritt erzielt", "made an advancement");
+            roll(e.getPlayer(), "advancement", "advancement");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onDeath(PlayerDeathEvent e) { roll(e.getEntity(), "death", "gestorben", "died"); }
+    public void onDeath(PlayerDeathEvent e) { roll(e.getEntity(), "death", "death"); }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSleep(PlayerBedEnterEvent e) {
-        if (e.getBedEnterResult() == PlayerBedEnterEvent.BedEnterResult.OK) roll(e.getPlayer(), "sleep", "schlafen gegangen", "went to bed");
+        if (e.getBedEnterResult() == PlayerBedEnterEvent.BedEnterResult.OK) roll(e.getPlayer(), "sleep", "sleep");
     }
 
     /** /prost admin debug: every roll of a round member is logged with its outcome */
     public boolean debug;
 
     /** a capped roll does not count (spec §8); the hit is recorded before the spin, so the gap holds during it */
-    private void roll(Player p, String category, String whatDe, String whatEn) {
+    /** {@code whatKey} names the action in the language files (roulette.what.*) */
+    private void roll(Player p, String category, String whatKey) {
         UUID id = p.getUniqueId();
         Round r = plugin.rounds().of(id);
         if (r == null) return;
@@ -127,14 +129,14 @@ public final class Roulette implements Listener {
         m.rouletteHits.add(now);
         int sips = RouletteRules.spin(s.weights(), rnd.nextDouble());
         trace(p, category, "HIT: " + sips);
-        spin(r, id, sips, s.weights().length, whatDe, whatEn);
+        spin(r, id, sips, s.weights().length, whatKey);
     }
 
     private void trace(Player p, String category, String outcome) {
         if (debug) plugin.getLogger().info("[debug] roulette " + p.getName() + " " + category + ": " + outcome);
     }
 
-    private void spin(Round r, UUID id, int sips, int faces, String whatDe, String whatEn) {
+    private void spin(Round r, UUID id, int sips, int faces, String whatKey) {
         int frames = SPIN_DELAYS.length;
         long at = 0;
         for (int i = 0; i < frames; i++) {
@@ -143,25 +145,25 @@ public final class Roulette implements Listener {
             int shown = Math.floorMod(sips - 1 - (frames - 1 - i), faces) + 1;   // counts up and lands on the result
             Bukkit.getScheduler().runTaskLater(plugin, () -> frame(id, shown, frame, frames), at);
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> land(r, id, sips, whatDe, whatEn), at);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> land(r, id, sips, whatKey), at);
     }
 
     private void frame(UUID id, int shown, int frame, int frames) {
         Player p = Bukkit.getPlayer(id);
         if (p == null) return;
         boolean last = frame == frames - 1;
-        boolean de = Msg.de(id);
-        String sub = (last ? "<#ff8f3f>" : "<white>") + shown + (de ? (shown == 1 ? " Schluck" : " Schlucke") : (shown == 1 ? " sip" : " sips"));
-        p.showTitle(Title.title(Msg.mm("<gradient:#ffd94d:#ff8f3f>Roulette"), Msg.mm(sub), last ? RESULT : FRAME));
+        String sub = last ? "<primary>" + Msg.sips(id, shown) + "</primary>" : "<white>" + Msg.sips(id, shown);
+        p.showTitle(Title.title(Msg.mm(Msg.str(id, "roulette.title")), Msg.mm(sub), last ? RESULT : FRAME));
         if (last) Sounds.ding(p);
         else Sounds.tick(p, PITCH_LOW + (PITCH_HIGH - PITCH_LOW) * frame / (frames - 1));
     }
 
-    private void land(Round r, UUID id, int sips, String whatDe, String whatEn) {
+    private void land(Round r, UUID id, int sips, String whatKey) {
         Member m = r.member(id);
         if (m == null || plugin.rounds().of(id) != r) return;   // left the round (or it ended) during the spin
         m.tally.roulette++;
         plugin.stats().add(id, m.name, StatsField.ROULETTE, 1);
-        plugin.sips().drink(r, id, sips, SipLedger.Source.ROULETTE, "Roulette: " + whatDe, "Roulette: " + whatEn);
+        plugin.sips().drink(r, id, sips, SipLedger.Source.ROULETTE,
+                viewer -> Msg.str(viewer, "roulette.label", V.mm("what", Msg.str(viewer, "roulette.what." + whatKey))));
     }
 }

@@ -2,6 +2,7 @@ package dev.louismudrack.prost.game;
 
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.ui.Sounds;
 import org.bukkit.Bukkit;
@@ -75,8 +76,7 @@ public final class Rounds {
         if (result != JoinRules.Result.OK) return result;
         r.add(p.getUniqueId(), p.getName(), plugin.cfg().limitDefault(), false, System.currentTimeMillis());
         invites.remove(p.getUniqueId());
-        String name = Msg.esc(p.getName());
-        Msg.round(r, de -> Msg.HL + name + (de ? " <gray>spielt jetzt mit." : " <gray>joined the round."));
+        Msg.round(r, "round.joined", V.of("name", p.getName()));
         save();
         return result;
     }
@@ -96,12 +96,8 @@ public final class Rounds {
             close(r);
             return;
         }
-        String name = Msg.esc(m.name);
-        Msg.round(r, de -> Msg.HL + name + (de ? " <gray>hat die Runde verlassen." : " <gray>left the round."));
-        if (newHost != null) {
-            String host = Msg.esc(r.member(newHost).name);
-            Msg.round(r, de -> Msg.HL + host + (de ? " <gray>ist jetzt Host." : " <gray>is the host now."));
-        }
+        Msg.round(r, "round.left", V.of("name", m.name));
+        if (newHost != null) Msg.round(r, "round.host_now", V.of("name", r.member(newHost).name));
         save();
     }
 
@@ -121,12 +117,7 @@ public final class Rounds {
 
     public void invite(Player from, Player to, Round r) {
         invites.put(to.getUniqueId(), new Invite(r.code, from.getUniqueId(), System.currentTimeMillis() + INVITE_MS));
-        String join = "/prost join " + r.code, name = Msg.esc(from.getName());
-        to.sendMessage(Msg.mm(Msg.PREFIX + Msg.t(to.getUniqueId(),
-                Msg.HL + name + " <gray>lädt dich zum Trinkspiel ein. <click:run_command:'" + join + "'><#55e07a>[Annehmen]</click> "
-                        + "<click:run_command:'/prost ablehnen'><#ff5555>[Ablehnen]</click>",
-                Msg.HL + name + " <gray>invites you to the drinking game. <click:run_command:'" + join + "'><#55e07a>[Accept]</click> "
-                        + "<click:run_command:'/prost ablehnen'><#ff5555>[Decline]</click>")));
+        Msg.tell(to, "round.invite", V.of("name", from.getName()), V.of("join", "/prost join " + r.code));
         Sounds.bell(to);
     }
 

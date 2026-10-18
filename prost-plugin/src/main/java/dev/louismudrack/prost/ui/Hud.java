@@ -25,16 +25,6 @@ public final class Hud {
         };
     }
 
-    public static String kindName(Kind k, boolean de) {
-        return switch (k) {
-            case TEAM -> "Team";
-            case EACH -> de ? "Jeder für sich" : "Each";
-            case RACE -> de ? "Rennen" : "Race";
-            case DUEL -> de ? "Duell" : "Duel";
-            case SOLO -> "Solo";
-        };
-    }
-
     public static void title(Player p, String titleMini, String subMini) { p.showTitle(Title.title(Msg.mm(titleMini), Msg.mm(subMini), TIMES)); }
 
     public static void announce(Player p, String titleMini, String subMini) { p.showTitle(Title.title(Msg.mm(titleMini), Msg.mm(subMini), ANNOUNCE)); }

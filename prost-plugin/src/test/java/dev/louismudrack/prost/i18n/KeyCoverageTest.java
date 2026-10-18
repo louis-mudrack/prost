@@ -30,7 +30,9 @@ class KeyCoverageTest {
     /** keys built at runtime: prefix -> every ending that exists */
     static final Map<String, List<String>> EXPANSIONS = Map.of(
             "kind.", List.of("team", "each", "race", "duel", "solo"),
-            "pace.", List.of("chill", "normal", "party"));
+            "pace.", List.of("chill", "normal", "party"),
+            "roulette.what.", List.of("break", "place", "craft", "kill", "boss", "eat", "fish", "breed", "trade", "enchant", "advancement", "death", "sleep"),
+            "reward.option.", List.of("handout", "rule", "joker", "next"));
 
     private static Set<String> english() throws Exception { return LangParityTest.keys(LangParityTest.load("en")); }
 

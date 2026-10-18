@@ -81,26 +81,4 @@ public final class Msg {
 
     /** player-provided text never becomes markup: not a MiniMessage tag, not a value tag, not a theme tag */
     public static String esc(String text) { return V.escape(text); }
-
-    // --- the old DE/EN pairs, only until Task 11 has moved every text into the language files ---
-
-    @Deprecated public static final String PREFIX = "<primary>Prost</primary> <dark_gray>»</dark_gray> <gray>", HL = "<hl>", OK = "<ok>", ERR = "<err>";
-
-    @Deprecated
-    public static boolean de(UUID id) { return "de".equals(lang(id)); }
-
-    @Deprecated
-    public static String t(UUID id, String de, String en) { return de(id) ? de : en; }
-
-    @Deprecated
-    public static void tell(Player p, String de, String en) { send(p, t(p.getUniqueId(), de, en)); }
-
-    @Deprecated
-    public static void error(Player p, String de, String en) {
-        send(p, "<err>" + t(p.getUniqueId(), de, en));
-        Sounds.error(p);
-    }
-
-    @Deprecated
-    public static void round(Round r, Function<Boolean, String> text) { roundEach(r, id -> text.apply(de(id))); }
 }

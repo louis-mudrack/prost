@@ -6,6 +6,7 @@ import dev.louismudrack.prost.catalogue.ChallengeDef;
 import dev.louismudrack.prost.catalogue.DrawRules;
 import dev.louismudrack.prost.catalogue.Rule;
 import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.ui.Hud;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,8 +67,7 @@ public final class Director {
     private void failed(ChallengeRun run, RuntimeException e) {
         plugin.getLogger().log(Level.WARNING, "challenge " + run.def.id() + " in round " + run.round.code + " failed - cancelled", e);
         try {
-            run.cancel("Diese Herausforderung hatte einen Fehler - abgebrochen, niemand trinkt.",
-                    "This challenge hit an error - cancelled, nobody drinks.");
+            run.cancel("challenge.error");
         } catch (RuntimeException again) {
             ended(run.round, false);   // cancel broke halfway: the run is marked over, drop it anyway
         }
@@ -78,7 +78,7 @@ public final class Director {
         for (Member m : r.members.values()) {
             if (!m.selfPaused && !r.paused) continue;
             Player p = Bukkit.getPlayer(m.id);
-            if (p != null) Hud.actionBar(p, "<yellow>" + Msg.t(m.id, "Trinkspiel pausiert", "Drinking game paused"));
+            if (p != null) Hud.actionBar(p, Msg.str(m.id, "round.paused_bar"));
         }
     }
 
@@ -139,10 +139,9 @@ public final class Director {
         if (r.rules.isEmpty() || now - r.lastRuleReminder < plugin.cfg().rulesReminderMinutes() * MINUTE_MS) return;
         r.lastRuleReminder = now;
         Msg.roundEach(r, id -> {
-            boolean de = Msg.de(id);
             StringJoiner j = new StringJoiner(" <dark_gray>· <white>");
             for (Rule rule : r.rules) j.add(Msg.esc(rule.text(Msg.lang(id))));
-            return (de ? "Aktive Regeln: <white>" : "Active rules: <white>") + j;
+            return Msg.str(id, "rule.reminder", V.mm("rules", j.toString()));
         });
     }
 
