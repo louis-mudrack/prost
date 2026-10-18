@@ -269,6 +269,8 @@ language:
 # %prost_tag%, for scoreboards and TAB
 placeholder:
   tag: "<primary>[Prost]</primary>"
+update:
+  available: "Eine neue Prost-Version ist da: <hl><version> <gray>- modrinth.com/plugin/prost"
 # Deutsche Namen der Unterbefehle; die englischen gehen immer.
 commands:
   invite: [einladen]

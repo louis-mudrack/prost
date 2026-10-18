@@ -30,6 +30,8 @@ import dev.louismudrack.prost.i18n.LanguageResolver;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.Theme;
 import dev.louismudrack.prost.menu.MenuListener;
+import dev.louismudrack.prost.meta.ProstMetrics;
+import dev.louismudrack.prost.meta.UpdateChecker;
 import dev.louismudrack.prost.reward.Rewards;
 import dev.louismudrack.prost.roulette.Roulette;
 import dev.louismudrack.prost.storage.PlayerPrefs;
@@ -105,6 +107,13 @@ public class ProstPlugin extends JavaPlugin {
         rounds.load();
         getServer().getScheduler().runTaskTimer(this, () -> rounds.tickPresence(), 20L, 20L);
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) ProstExpansion.registerFor(this);
+        boolean offline = Boolean.getBoolean("prost.offline");   // the test build: no network
+        if (!offline && pluginConfig.metrics()) ProstMetrics.start(this);
+        if (!offline && pluginConfig.updateChecker()) {
+            UpdateChecker updates = new UpdateChecker(this);
+            getServer().getPluginManager().registerEvents(updates, this);
+            updates.check();
+        }
         getLogger().info("Prost enabled: " + challenges.size() + " challenges, " + preparedRules.size() + " rules, "
                 + lang.languages().size() + " languages, " + rounds.all().size() + " round(s) restored");
     }

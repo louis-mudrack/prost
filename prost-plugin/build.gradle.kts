@@ -12,6 +12,7 @@ java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
 
 dependencies {
     implementation(project(":prost-api"))
+    implementation("org.bstats:bstats-bukkit:3.2.1")
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("net.essentialsx:EssentialsX:2.21.2") { isTransitive = false }
     compileOnly("me.clip:placeholderapi:2.12.3")
@@ -35,6 +36,7 @@ tasks.jar { archiveClassifier.set("plain") }
 tasks.shadowJar {
     archiveBaseName.set("Prost")
     archiveClassifier.set("")
+    relocate("org.bstats", "dev.louismudrack.prost.libs.bstats")
 }
 tasks.assemble { dependsOn(tasks.shadowJar) }
 tasks.test {
