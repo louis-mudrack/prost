@@ -118,7 +118,7 @@ public final class ProstCommand implements BasicCommand {
         Player target = Bukkit.getPlayerExact(args[1]);
         if (target == null || plugin.hooks().bot(target)) { Msg.error(p, "command.not_online", V.of("player", args[1])); return; }
         if (plugin.rounds().of(target.getUniqueId()) != null) { Msg.error(p, "command.already_playing", V.of("player", target.getName())); return; }
-        plugin.rounds().invite(p, target, r);
+        if (!plugin.rounds().invite(p, target, r)) { Msg.error(p, "command.invite_pending", V.of("player", target.getName())); return; }
         Msg.tell(p, "command.invite_sent", V.of("player", target.getName()));
     }
 

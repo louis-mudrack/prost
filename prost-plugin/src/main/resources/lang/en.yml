@@ -253,6 +253,7 @@ command:
   not_online: "<player> is not online."
   already_playing: "<player> is already in a round."
   invite_sent: "Invite sent to <hl><player><gray>."
+  invite_pending: "<player> already has your invite."
   unknown_player: "I don't know that player."
   no_permission: "You don't have permission for that."
   help: "<white>/prost <gray>menu · <white>start <gray>· <white>invite <name> <gray>· <white>join <code> <gray>· <white>pause [round] <gray>· <white>next <gray>· <white>pace <gray>· <white>kick <gray>· <white>end <gray>· <white>leave <gray>· <white>stats <gray>· <white>language"

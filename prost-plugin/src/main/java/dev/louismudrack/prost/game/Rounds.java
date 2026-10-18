@@ -130,10 +130,14 @@ public final class Rounds {
         save();
     }
 
-    public void invite(Player from, Player to, Round r) {
+    /** false when the target still holds this sender's invite to this round: a repeat would only ring their bell again */
+    public boolean invite(Player from, Player to, Round r) {
+        Invite pending = invite(to.getUniqueId());
+        if (pending != null && pending.from().equals(from.getUniqueId()) && pending.code().equals(r.code)) return false;
         invites.put(to.getUniqueId(), new Invite(r.code, from.getUniqueId(), System.currentTimeMillis() + INVITE_MS));
         Msg.tell(to, "round.invite", V.of("name", from.getName()), V.of("join", ProstCommand.runJoin(r.code)), V.of("decline", ProstCommand.RUN_DECLINE));
         Sounds.bell(to);
+        return true;
     }
 
     public Invite invite(UUID id) {

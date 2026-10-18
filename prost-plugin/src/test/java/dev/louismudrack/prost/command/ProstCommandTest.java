@@ -105,6 +105,22 @@ class ProstCommandTest {
         assertTrue(TestServer.messages(guest).stream().anyMatch(m -> m.contains("Invite declined")));
     }
 
+    /** a repeated invite would only ring the target's bell again: one pending invite per sender and target */
+    @Test
+    void anInviteIsNotSentTwice() {
+        host.performCommand("prost start");
+        host.performCommand("prost invite Guest");
+        assertTrue(TestServer.messages(guest).stream().anyMatch(m -> m.contains("Host")), "the first invite arrives");
+        TestServer.messages(host);
+        host.performCommand("prost invite Guest");
+        assertEquals(List.of(), TestServer.messages(guest), "no second line, no second bell");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("Guest already has your invite")));
+        guest.performCommand("prost decline");
+        TestServer.messages(guest);
+        host.performCommand("prost invite Guest");
+        assertFalse(TestServer.messages(guest).isEmpty(), "after a decline it can be sent again");
+    }
+
     @Test
     void theJokerButtonRunsTheJokerAndTheOfferSaysOneSip() {
         host.performCommand("prost start");
