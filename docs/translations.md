@@ -6,9 +6,10 @@ Every text a player or admin sees comes from a language file; nothing is written
 
 ## Files
 
-Language files are in `plugins/Prost/lang/`, one per language, named by the two-letter language code: `en.yml`,
-`de.yml`, `pt.yml`. Region variants such as `pt_br.yml` cannot be selected, because Prost reduces every language to its
-language part (`pt_BR` and `PT-br` both mean `pt`).
+Language files are in `plugins/Prost/lang/`, one per language, named by a language code such as `en` or `de`
+(`en.yml`, `de.yml`, `pt.yml`; three-letter ISO codes work too). Region variants such as `pt_br.yml` are not selectable,
+because Prost reduces every language to its language part (`pt_BR` and `PT-br` both mean `pt`); the file is
+`lang/<code>.yml`.
 
 On every start Prost writes the shipped files if they are missing and appends the keys a new version added to `en.yml`
 and `de.yml`, with their comments. Your edits are never overwritten. A language file you added yourself does not get new

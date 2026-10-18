@@ -22,11 +22,17 @@ challenges have been drawn once.
 | `duel` | 2 | Two members (the ones with the fewest duels). The first to reach the goal wins, otherwise the one with more progress; the loser drinks, a tie means both drink. |
 
 **One penalty per challenge:** when anybody drinks, the winners get no reward on top. Rewards are only given when
-nobody drinks, so in a Race or a Duel there is never a reward (somebody always loses). This is not configurable.
+nobody drinks, so in a Race or a Duel there is normally no reward (somebody always loses; only when the others left mid-challenge and one participant remains, the lone winner is rewarded). This is not configurable.
 
 When a reward is due, each winner (for a Team: the player with the most progress) gets its menu. A winner who does not
-choose in time (`reward-seconds`) gets the first option listed in `rewards`; a rule, a handout or a next-challenge pick
-that is left open in time is completed at random. An entry with one reward gives it without asking.
+choose in time (`reward-seconds`) gets the first option listed in `rewards`. An entry with one reward gives it without asking. What happens when a
+follow-up choice is left open, each with its own `reward-seconds` window:
+
+- **handout:** the sips already assigned go out, the rest to random members who can receive them.
+- **rule:** the rule picker opens after the reward choice. On time-out a random rule from `rules.yml` is made (none when
+  `rules.yml` is empty). "Own rule" with nothing typed in time makes no rule. When the round already has
+  `rules.max-active` rules, a second picker asks which active rule is replaced; it has no time limit.
+- **next:** a random one of the offered challenges is queued (with its players picked automatically).
 
 ## The entry format
 

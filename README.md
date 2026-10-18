@@ -65,7 +65,7 @@ Both always work. "Host" means the player who opened the round.
 | `/prost stats [player]` | all-time stats and the top lists | `prost.play` |
 | `/prost language [code\|auto]` | show or choose your language | `prost.play` |
 | `/prost admin reload` | read all files again (also `/prost reload`) | `prost.admin`, console |
-| `/prost admin list` | list running rounds | `prost.admin`, console |
+| `/prost admin list` | list running rounds (also what `/prost admin` does without an argument) | `prost.admin`, console |
 | `/prost admin end <code>` | end a round | `prost.admin`, console |
 | `/prost admin force <code> <id> <kind>` | start a specific challenge in a round | `prost.admin`, console |
 | `/prost admin debug [on\|off]` | roulette trace in the console | `prost.admin`, console |

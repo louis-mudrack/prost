@@ -60,9 +60,9 @@ A hook lets your plugin decide something Prost otherwise decides by itself. Rule
 | `registerAreaFilter(owner, AreaFilter)` | `boolean isExcluded(Location)`: positions that never count for reach goals | `excluded-areas` in `config.yml` |
 
 The language provider has one more effect: while one is registered, `/prost language` only tells players that the
-language is managed by the server. A code it returns is used when Prost has a file for it (`en`, `de`, your own); an
-empty result, an unknown code, or one with a region (`DE-at`, `de_AT`, which is read as `de`) falls back to Prost's own
-choice.
+language is managed by the server. A code it returns is used when Prost has a file for it (`en`, `de`, your own). A region
+is dropped (`DE-at` and `de_AT` mean `de`); only an empty result or a language Prost has no file for falls back to
+Prost's own choice.
 
 ```java
 prost.registerAfkProvider(this, player -> myAfkPlugin.isAfk(player.getUniqueId()));

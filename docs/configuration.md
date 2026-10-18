@@ -5,7 +5,7 @@ Both are yours to edit. When a new Prost version adds a key, it is appended to y
 start; your values are never changed. Catalogues are covered in [challenges.md](challenges.md), texts in
 [translations.md](translations.md).
 
-`/prost reload` (or `/prost admin reload`) reads the files again. Keys marked **(restart)** are read once at start and
+`/prost reload` (or `/prost admin reload`) reads the files again. (`/prost admin` without an argument runs `/prost admin list`.) Keys marked **(restart)** are read once at start and
 need a server restart. A file that is not valid YAML is ignored with a warning (the shipped copy is used until you fix it).
 
 YAML 1.1 turns a bare `on`, `off`, `yes` or `no` into a boolean. Prost treats those as you mean them: `nether: off` is
@@ -19,7 +19,7 @@ Invalid values fall back to the default and log one warning on start and on relo
 
 | key | default | meaning |
 |---|---|---|
-| `language.default` | `en` | The server language: what everyone sees unless they get their own, and the fallback before English. Two or three lowercase letters. Without a readable `lang/<code>.yml` for it, Prost warns and uses `en`. |
+| `language.default` | `en` | The server language: what everyone sees unless they get their own, and the fallback before English. A language code such as `en` or `de` (three-letter ISO codes work too); region variants like `pt_br` are not selectable, the file is `lang/<code>.yml`. Without a readable `lang/<code>.yml` for it, Prost warns and uses `en`. |
 | `language.per-player` | `true` | Each player sees their own choice (`/prost language`) or their Minecraft client language when a file exists for it. `false`: everyone sees the server language. A language set through the API still wins. |
 
 ### theme
@@ -88,7 +88,7 @@ Stats are stored in SQLite or MySQL/MariaDB. All of `storage:` needs a restart.
 | key | default | meaning |
 |---|---|---|
 | `storage.type` | `sqlite` | `sqlite` (the file `stats.db` in the plugin folder, nothing to set up) or `mysql` (MySQL or MariaDB, shareable between servers). Anything else: `sqlite` with a warning. |
-| `storage.table-prefix` | `"prost_"` | Prefix of the table names: up to 16 letters, digits and `_`, not starting with a digit. Invalid: `prost_` with a warning. |
+| `storage.table-prefix` | `"prost_"` | Prefix of the table names (`<prefix>stats`, `<prefix>rounds`): up to 16 letters, digits and `_`, not starting with a digit; an empty prefix is allowed. Invalid: `prost_` with a warning. Prost refuses to use an existing table of that name that is not its own (for example another plugin's `stats`) and says so in the console; set a prefix then. |
 | `storage.mysql.host` | `localhost` | |
 | `storage.mysql.port` | `3306` | 1-65535, else `3306` with a warning. |
 | `storage.mysql.database` | `prost` | |
