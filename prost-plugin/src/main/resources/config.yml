@@ -1,0 +1,66 @@
+# Prost - general settings (https://modrinth.com/plugin/prost).
+# New settings are added here on start with their defaults; your values stay. /prost reload reads this file again;
+# settings marked (restart) need a server restart.
+
+language:
+  # Server language: what everyone sees unless they get their own (see per-player), and the fallback before English.
+  default: en
+  # true: each player sees their client language (or what they picked with /prost language) when a file exists for it.
+  per-player: true
+
+# Colours for all language files: <primary>text</primary> is a gradient, <hl> <ok> <err> <muted> switch the colour.
+# Hex (#ffd94d) or a colour name (gray, dark_gray, gold, ...); primary takes two hex colours "start:end".
+theme:
+  primary: "#ffd94d:#ff8f3f"
+  highlight: "#ffd94d"
+  ok: "#55e07a"
+  error: "#ff5555"
+  muted: dark_gray
+
+commands:
+  # Extra names for /prost (restart). Subcommand names per language live in lang/<code>.yml.
+  aliases: [drinks]
+
+# Worlds where rounds play. Empty = every world. A member in another world counts as away (no challenges, no roulette).
+worlds: []
+
+# Areas where a position never counts for "reach a height or distance" goals, e.g. a spawn island:
+# excluded-areas:
+#   - {world: world, min: [-50, 150, -50], max: [50, 320, 50]}
+excluded-areas: []
+
+# Nether and End challenges: auto = only while such a world is loaded and enabled (allow-nether / allow-end); on; off.
+dimensions:
+  nether: auto
+  end: auto
+
+afk:
+  # No movement, look, chat or command for this many minutes = AFK: no challenges, no roulette. 0 = never AFK.
+  minutes: 5
+  # Use EssentialsX's AFK state instead, when EssentialsX is installed.
+  use-essentials: true
+
+placeholderapi:
+  # Resolve %placeholders% in Prost's messages for each viewer (needs PlaceholderAPI).
+  parse-messages: true
+
+notices:
+  # The first time a player joins any round: any drink counts, know your limits.
+  first-round: true
+
+storage:
+  # sqlite (a file next to this one, nothing to set up) or mysql (MySQL / MariaDB, shared by several servers). (restart)
+  type: sqlite
+  table-prefix: "prost_"
+  mysql:
+    host: localhost
+    port: 3306
+    database: prost
+    user: prost
+    password: ""
+    parameters: "useSSL=false"
+
+# Anonymous usage statistics on bstats.org (also off when bStats is switched off server-wide). (restart)
+metrics: true
+# Look for a newer Prost on Modrinth at startup and tell admins. (restart)
+update-checker: true

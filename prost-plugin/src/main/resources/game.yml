@@ -1,5 +1,5 @@
-# AniDrinks tunables (spec docs/superpowers/specs/2026-10-15-anidrinks-design.md §12.1). Written once, then yours:
-# a deploy never overwrites it. /prost reload reads it again. Missing or invalid values use these defaults.
+# Prost game tunables: pace, kinds, rewards, jokers, limits, roulette, rules. New keys are added on start; your values
+# stay. /prost reload reads the file again. Missing or invalid values use these defaults.
 max-players: 8
 warmup-seconds: 120
 pace: {chill: [720, 1080], normal: [480, 720], party: [240, 420]}   # seconds between two challenges

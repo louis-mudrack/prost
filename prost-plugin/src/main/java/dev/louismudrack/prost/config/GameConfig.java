@@ -8,16 +8,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** drinks.yml (spec §12.1). Missing or invalid values fall back to the spec's defaults, so a half-edited file still works. */
-public record DrinksConfig(int maxPlayers, int warmupSeconds, Map<Pace, int[]> pace, Map<Kind, Integer> kindWeights, int rewardSeconds,
+/** game.yml: the game's tunables. Missing or invalid values fall back to the defaults, so a half-edited file still works. */
+public record GameConfig(int maxPlayers, int warmupSeconds, Map<Pace, int[]> pace, Map<Kind, Integer> kindWeights, int rewardSeconds,
                     int jokerMax, int jokerOfferSeconds, int limitDefault, int limitMin, int limitMax, RouletteRules.Settings roulette,
                     int rulesMaxActive, int rulesReminderMinutes, int customRuleMaxLength, int offlineGraceMinutes) {
 
     private static final long MINUTE_MS = 60_000L;
 
-    public static final DrinksConfig DEFAULTS = parse(Map.of());
+    public static final GameConfig DEFAULTS = parse(Map.of());
 
-    public static DrinksConfig parse(Map<?, ?> y) {
+    public static GameConfig parse(Map<?, ?> y) {
         Map<?, ?> root = y == null ? Map.of() : y;
         Map<Pace, int[]> pace = new EnumMap<>(Pace.class);
         pace.put(Pace.CHILL, window(sub(root, "pace").get("chill"), 720, 1080));
@@ -44,7 +44,7 @@ public record DrinksConfig(int maxPlayers, int warmupSeconds, Map<Pace, int[]> p
         RouletteRules.Settings roulette = new RouletteRules.Settings(Map.copyOf(chances), num(r.get("max-hits"), 3),
                 num(r.get("window-minutes"), 30) * MINUTE_MS, num(r.get("min-gap-minutes"), 4) * MINUTE_MS, weights(r.get("weights")));
         Map<?, ?> joker = sub(root, "joker"), rules = sub(root, "rules");
-        return new DrinksConfig(num(root.get("max-players"), 8), num(root.get("warmup-seconds"), 120), pace, kw,
+        return new GameConfig(num(root.get("max-players"), 8), num(root.get("warmup-seconds"), 120), pace, kw,
                 num(root.get("reward-seconds"), 60), num(joker.get("max"), 2), num(joker.get("offer-seconds"), 10), def, min, max,
                 roulette, num(rules.get("max-active"), 5), num(rules.get("reminder-minutes"), 10), num(rules.get("custom-max-length"), 60),
                 num(root.get("offline-grace-minutes"), 10));

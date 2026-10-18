@@ -1,5 +1,5 @@
-# AniDrinks challenge catalogue (spec docs/superpowers/specs/2026-10-15-anidrinks-design.md §6-7).
-# Written once by the plugin, then yours: /prost reload reads it again. A broken entry is skipped with a warning.
+# Prost challenge catalogue. Written once by the plugin, then yours: /prost reload reads it again. A broken entry is skipped
+# with a warning.
 # sips = fixed penalty shown at the start (1-6); give = what a winner hands out (default sips); kinds: team each race duel solo;
 # rewards: handout rule joker next; needs: nether end night day rain thunder. Team without rule/joker/next = a joker each.
 

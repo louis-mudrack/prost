@@ -151,7 +151,8 @@ public final class Rounds {
                 if (away && !m.away) m.awaySince = now;
                 m.away = away;
                 m.afk = !away && Gate.afk(m.id);
-                m.wrongMode = !away && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR);
+                m.wrongMode = !away && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR
+                        || !plugin.pluginConfig().gameWorld(p.getWorld().getName()));
                 if (p != null) m.name = p.getName();
                 if (JoinRules.graceOver(m.away, m.awaySince, now, grace)) leave(m.id);
             }

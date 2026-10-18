@@ -6,7 +6,9 @@ import dev.louismudrack.prost.catalogue.Rule;
 import dev.louismudrack.prost.catalogue.RulesFile;
 import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.config.DataFiles;
-import dev.louismudrack.prost.config.DrinksConfig;
+import dev.louismudrack.prost.config.GameConfig;
+import dev.louismudrack.prost.config.PluginConfig;
+import dev.louismudrack.prost.config.YamlMerge;
 import dev.louismudrack.prost.drink.Sips;
 import dev.louismudrack.prost.game.Director;
 import dev.louismudrack.prost.game.PlacedBlocks;
@@ -19,9 +21,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
 
-/** Prost - the drinking game. Game rules: docs of the AniDrinks spec (rounds, challenges, roulette). */
+/** Prost - the drinking game. Rounds, challenges and the roulette. */
 public final class ProstPlugin extends JavaPlugin {
-    private DrinksConfig cfg = DrinksConfig.DEFAULTS;
+    private PluginConfig pluginConfig = PluginConfig.DEFAULTS;
+    private GameConfig cfg = GameConfig.DEFAULTS;
     private List<ChallengeDef> challenges = List.of();
     private List<Rule> preparedRules = List.of();
     private DataFiles files;
@@ -36,6 +39,8 @@ public final class ProstPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         files = new DataFiles(this);
+        YamlMerge.ensure(this, "config.yml");
+        YamlMerge.ensure(this, "game.yml");
         reloadData();
         stats = new Stats(this);
         try {
@@ -73,12 +78,15 @@ public final class ProstPlugin extends JavaPlugin {
     }
 
     public void reloadData() {
-        cfg = DrinksConfig.parse(files.map("drinks.yml"));
+        pluginConfig = PluginConfig.parse(files.map("config.yml"), getLogger()::warning);
+        cfg = GameConfig.parse(files.map("game.yml"));
         challenges = Catalogue.load(files.load("challenges.yml"), getLogger());
         preparedRules = RulesFile.parse(files.load("rules.yml"));
     }
 
-    public DrinksConfig cfg() { return cfg; }
+    public PluginConfig pluginConfig() { return pluginConfig; }
+
+    public GameConfig cfg() { return cfg; }
     public List<ChallengeDef> challenges() { return challenges; }
     public List<Rule> preparedRules() { return preparedRules; }
     public DataFiles files() { return files; }

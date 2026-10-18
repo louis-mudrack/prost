@@ -17,7 +17,7 @@ public final class Member {
     public boolean afk;
     /** disconnected or /unplug (the bot never plays) */
     public boolean away;
-    /** creative or spectator */
+    /** creative or spectator, or outside config.yml worlds */
     public boolean wrongMode;
     long awaySince, joinedAt;
     public int jokers, solos, duels;

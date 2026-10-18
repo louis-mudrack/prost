@@ -9,10 +9,10 @@ import java.util.Map;
 
 import static dev.louismudrack.prost.Checks.*;
 
-class DrinksConfigTest {
+class GameConfigTest {
     @Test
     void config() {
-        DrinksConfig d = DrinksConfig.DEFAULTS;
+        GameConfig d = GameConfig.DEFAULTS;
         eq("max players", 8, d.maxPlayers());
         eq("warm-up", 120, d.warmupSeconds());
         eq("party pace window", "[240, 420]", java.util.Arrays.toString(d.pace().get(Pace.PARTY)));
@@ -25,7 +25,7 @@ class DrinksConfigTest {
         eq("block chance", 0.003, d.roulette().chances().get("block"));
         eq("rules max", 5, d.rulesMaxActive());
 
-        DrinksConfig c = DrinksConfig.parse(Map.of("max-players", 4, "pace", Map.of("party", List.of(60, 120)),
+        GameConfig c = GameConfig.parse(Map.of("max-players", 4, "pace", Map.of("party", List.of(60, 120)),
                 "limit", Map.of("default", 10, "min", 5, "max", 40), "roulette", Map.of("max-hits", 5, "chances", Map.of("block", 0.01))));
         eq("override max players", 4, c.maxPlayers());
         eq("override one pace, keep the others", "[60, 120]", java.util.Arrays.toString(c.pace().get(Pace.PARTY)));
@@ -34,13 +34,13 @@ class DrinksConfigTest {
         eq("unlisted chances keep defaults", 0.02, c.roulette().chances().get("kill"));
         eq("override max hits", 5, c.roulette().maxHits());
 
-        DrinksConfig bad = DrinksConfig.parse(Map.of("max-players", "lots", "pace", Map.of("chill", List.of(900, 100)),
+        GameConfig bad = GameConfig.parse(Map.of("max-players", "lots", "pace", Map.of("chill", List.of(900, 100)),
                 "limit", Map.of("min", 50, "max", 10)));
         eq("a word instead of a number keeps the default", 8, bad.maxPlayers());
         eq("a reversed window keeps the default", "[720, 1080]", java.util.Arrays.toString(bad.pace().get(Pace.CHILL)));
         eq("min above max keeps the defaults", 5, bad.limitMin());
-        eq("clamp below", 5, DrinksConfig.DEFAULTS.clampLimit(1));
-        eq("clamp above", 40, DrinksConfig.DEFAULTS.clampLimit(99));
+        eq("clamp below", 5, GameConfig.DEFAULTS.clampLimit(1));
+        eq("clamp above", 40, GameConfig.DEFAULTS.clampLimit(99));
 
     }
 }
