@@ -27,4 +27,16 @@ class VersionsTest {
         assertEquals("0.4.0", Versions.latestRelease(json));
         assertNull(Versions.latestRelease("[]"));
     }
+
+    /** Prost is built against Paper 1.21.4: older 1.21 servers load it (api-version 1.21) but must not run it */
+    @Test
+    void theServerVersionCheck() {
+        assertTrue(Versions.atLeast("1.21.4", "1.21.4"));
+        assertTrue(Versions.atLeast("1.21.11", "1.21.4"));
+        assertTrue(Versions.atLeast("26.1", "1.21.4"));
+        assertTrue(Versions.atLeast("26.3", "1.21.4"));
+        assertFalse(Versions.atLeast("1.21.3", "1.21.4"));
+        assertFalse(Versions.atLeast("1.21", "1.21.4"));
+        assertFalse(Versions.atLeast("1.20.6", "1.21.4"));
+    }
 }

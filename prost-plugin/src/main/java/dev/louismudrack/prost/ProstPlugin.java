@@ -33,6 +33,7 @@ import dev.louismudrack.prost.i18n.Theme;
 import dev.louismudrack.prost.menu.MenuListener;
 import dev.louismudrack.prost.meta.ProstMetrics;
 import dev.louismudrack.prost.meta.UpdateChecker;
+import dev.louismudrack.prost.meta.Versions;
 import dev.louismudrack.prost.migration.AniDrinksMigration;
 import dev.louismudrack.prost.migration.AniDrinksMigration.Outcome;
 import dev.louismudrack.prost.reward.Rewards;
@@ -66,6 +67,8 @@ import java.util.logging.Level;
 /** Prost - the drinking game. Rounds, challenges and the roulette. Not final: MockBukkit loads it as a subclass. */
 public class ProstPlugin extends JavaPlugin {
     private static final String COMMAND = "prost";
+    /** the API Prost is built against; api-version 1.21 alone would let 1.21.0-1.21.3 load it */
+    private static final String MINIMUM_MINECRAFT = "1.21.4";
 
     private PluginConfig pluginConfig = PluginConfig.DEFAULTS;
     private GameConfig cfg = GameConfig.DEFAULTS;
@@ -87,6 +90,12 @@ public class ProstPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        if (!Versions.atLeast(Bukkit.getMinecraftVersion(), MINIMUM_MINECRAFT)) {
+            getLogger().severe("Prost needs Paper " + MINIMUM_MINECRAFT + " or newer - this server runs " + Bukkit.getMinecraftVersion()
+                    + ", so Prost is disabled");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         files = new DataFiles(this);
         YamlMerge.ensure(this, "config.yml");
         // silent here: reloadData() below parses the file again and logs its warnings once

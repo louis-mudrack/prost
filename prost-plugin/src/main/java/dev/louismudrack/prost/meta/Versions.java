@@ -10,6 +10,8 @@ public final class Versions {
 
     public static boolean newer(String candidate, String current) { return compare(candidate, current) > 0; }
 
+    public static boolean atLeast(String version, String minimum) { return compare(version, minimum) >= 0; }
+
     static int compare(String a, String b) {
         int[] x = numbers(a), y = numbers(b);
         for (int i = 0; i < Math.max(x.length, y.length); i++) {
