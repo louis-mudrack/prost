@@ -215,15 +215,26 @@ public class ProstPlugin extends JavaPlugin {
                 new ConfigAreas(() -> pluginConfig));
     }
 
+    /** each step on its own: one that throws must not cost the stats and rounds.yml after it; nothing here may schedule */
     @Override
     public void onDisable() {
-        if (snapshotTask != null) snapshotTask.cancel();
-        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) ProstExpansion.unregisterFor();
-        if (director != null) director.shutdown();
-        if (rewards != null) rewards.flushAll();
-        if (sips != null) sips.flushAll();
-        if (stats != null) stats.close();
-        if (rounds != null) rounds.save();
+        shutdownStep("the placeholder copy", () -> { if (snapshotTask != null) snapshotTask.cancel(); });
+        shutdownStep("the PlaceholderAPI expansion", () -> {
+            if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) ProstExpansion.unregisterFor();
+        });
+        shutdownStep("the running challenges", () -> { if (director != null) director.shutdown(); });
+        shutdownStep("the open hand-outs", () -> { if (rewards != null) rewards.flushAll(); });
+        shutdownStep("the open joker prompts", () -> { if (sips != null) sips.flushAll(); });
+        shutdownStep("the stats", () -> { if (stats != null) stats.close(); });
+        shutdownStep("rounds.yml", () -> { if (rounds != null) rounds.save(); });
+    }
+
+    private void shutdownStep(String what, Runnable step) {
+        try {
+            step.run();
+        } catch (RuntimeException | LinkageError e) {
+            getLogger().log(Level.SEVERE, "stopping " + what + " failed - going on with the rest", e);
+        }
     }
 
     public void reloadData() {
