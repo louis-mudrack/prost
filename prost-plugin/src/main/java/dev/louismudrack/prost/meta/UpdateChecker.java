@@ -17,12 +17,14 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 
 /** One asynchronous look at Modrinth at startup; a newer release is told to the console and to admins on join. */
 public final class UpdateChecker implements Listener {
     private static final String API = "https://api.modrinth.com/v2/project/prost/version";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final String ADMIN = "prost.admin";
+    private static final int HTTP_NOT_FOUND = 404;
 
     private final ProstPlugin plugin;
     private volatile String available;
@@ -37,7 +39,7 @@ public final class UpdateChecker implements Listener {
                 .header("User-Agent", "Kasheyy/Prost/" + current + " (https://modrinth.com/plugin/prost)").GET().build();
         HttpClient.newHttpClient().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
             if (response.statusCode() != 200) {
-                plugin.getLogger().info("update check failed: HTTP " + response.statusCode());
+                plugin.getLogger().log(failureLevel(response.statusCode()), "update check failed: HTTP " + response.statusCode());
                 return;
             }
             String latest = Versions.latestRelease(response.body());
@@ -50,6 +52,9 @@ public final class UpdateChecker implements Listener {
             return null;
         });
     }
+
+    /** until Prost's project is on Modrinth the API answers 404 on every start: not worth a line in the console */
+    static Level failureLevel(int status) { return status == HTTP_NOT_FOUND ? Level.FINE : Level.INFO; }
 
     private static String enc(String s) { return URLEncoder.encode(s, StandardCharsets.UTF_8); }
 
