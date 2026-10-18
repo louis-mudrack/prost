@@ -6,7 +6,7 @@ import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.hook.Gate;
 import dev.louismudrack.prost.i18n.Msg;
-import dev.louismudrack.prost.storage.Stats;
+import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.ui.Sounds;
 import io.papermc.paper.event.player.PlayerTradeEvent;
 import net.kyori.adventure.title.Title;
@@ -162,7 +162,7 @@ public final class Roulette implements Listener {
         Member m = r.member(id);
         if (m == null || plugin.rounds().of(id) != r) return;   // left the round (or it ended) during the spin
         m.tally.roulette++;
-        plugin.stats().add(id, m.name, Stats.Field.ROULETTE, 1);
+        plugin.stats().add(id, m.name, StatsField.ROULETTE, 1);
         plugin.sips().drink(r, id, sips, SipLedger.Source.ROULETTE, "Roulette: " + whatDe, "Roulette: " + whatEn);
     }
 }

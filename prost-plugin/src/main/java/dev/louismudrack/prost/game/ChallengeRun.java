@@ -8,7 +8,7 @@ import dev.louismudrack.prost.hook.Gate;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.reward.Reward;
 import dev.louismudrack.prost.reward.RewardRules;
-import dev.louismudrack.prost.storage.Stats;
+import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.tracker.TrackContext;
 import dev.louismudrack.prost.tracker.Tracker;
 import dev.louismudrack.prost.tracker.Trackers;
@@ -162,7 +162,7 @@ public final class ChallengeRun {
             boolean won = o.winners().contains(id);
             if (won) m.tally.won++;
             else m.tally.lost++;
-            plugin.stats().add(id, m.name, won ? Stats.Field.WON : Stats.Field.LOST, 1);
+            plugin.stats().add(id, m.name, won ? StatsField.WON : StatsField.LOST, 1);
         }
         o.drinks().forEach((id, n) -> plugin.sips().drink(round, id, n, SipLedger.Source.CHALLENGE, def.nameDe(), def.nameEn()));
         if (kind == Kind.TEAM) {

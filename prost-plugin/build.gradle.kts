@@ -12,6 +12,9 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.xerial:sqlite-jdbc:3.53.4.0")
+    testImplementation("org.testcontainers:mariadb:1.21.4")
+    testImplementation("org.mariadb.jdbc:mariadb-java-client:3.5.10")
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -26,3 +29,10 @@ tasks.shadowJar {
 }
 tasks.assemble { dependsOn(tasks.shadowJar) }
 tasks.test { useJUnitPlatform { excludeTags("integration") } }
+val integrationTest by tasks.registering(Test::class) {
+    description = "Tests against a MariaDB container (needs Docker)"
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("integration") }
+}

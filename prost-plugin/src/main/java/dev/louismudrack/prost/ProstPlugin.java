@@ -16,10 +16,15 @@ import dev.louismudrack.prost.game.Rounds;
 import dev.louismudrack.prost.menu.MenuListener;
 import dev.louismudrack.prost.reward.Rewards;
 import dev.louismudrack.prost.roulette.Roulette;
-import dev.louismudrack.prost.storage.Stats;
+import dev.louismudrack.prost.storage.PlayerPrefs;
+import dev.louismudrack.prost.storage.SqlStatsStore;
+import dev.louismudrack.prost.storage.StatsStore;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 /** Prost - the drinking game. Rounds, challenges and the roulette. */
 public final class ProstPlugin extends JavaPlugin {
@@ -30,7 +35,8 @@ public final class ProstPlugin extends JavaPlugin {
     private DataFiles files;
     private Rounds rounds;
     private PlacedBlocks placed;
-    private Stats stats;
+    private StatsStore stats;
+    private PlayerPrefs prefs;
     private Sips sips;
     private Rewards rewards;
     private Director director;
@@ -42,12 +48,20 @@ public final class ProstPlugin extends JavaPlugin {
         YamlMerge.ensure(this, "config.yml");
         YamlMerge.ensure(this, "game.yml");
         reloadData();
-        stats = new Stats(this);
+        Executor sync = task -> { if (isEnabled()) getServer().getScheduler().runTask(this, task); };
+        PluginConfig.Storage storage = pluginConfig.storage();
+        SqlStatsStore store = storage.mysql() ? SqlStatsStore.mysql(storage, getLogger(), sync)
+                : SqlStatsStore.sqlite(new File(getDataFolder(), "stats.db"), storage.tablePrefix(), getLogger(), sync);
         try {
-            stats.open();
-        } catch (java.sql.SQLException e) {
-            getLogger().severe("stats.db could not be opened (" + e.getMessage() + ") - the game runs, all-time stats are not kept");
+            store.open();
+        } catch (SQLException e) {
+            getLogger().severe("the stats database could not be opened (" + e.getMessage() + ") - the game runs; "
+                    + "stats are written once the database is reachable");
         }
+        stats = store;
+        prefs = new PlayerPrefs(stats);
+        getServer().getPluginManager().registerEvents(prefs, this);
+        getServer().getOnlinePlayers().forEach(p -> prefs.load(p));
         sips = new Sips(this);
         rewards = new Rewards(this);
         getServer().getPluginManager().registerEvents(rewards, this);
@@ -92,7 +106,8 @@ public final class ProstPlugin extends JavaPlugin {
     public DataFiles files() { return files; }
     public Rounds rounds() { return rounds; }
     public PlacedBlocks placed() { return placed; }
-    public Stats stats() { return stats; }
+    public StatsStore stats() { return stats; }
+    public PlayerPrefs prefs() { return prefs; }
     public Sips sips() { return sips; }
     public Rewards rewards() { return rewards; }
     public Director director() { return director; }

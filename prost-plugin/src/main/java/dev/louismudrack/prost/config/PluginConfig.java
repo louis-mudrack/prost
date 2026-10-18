@@ -33,6 +33,12 @@ public record PluginConfig(String defaultLanguage, boolean perPlayerLanguage, Th
     public record Storage(String type, String host, int port, String database, String user, String password, String tablePrefix,
                           String parameters) {
         public boolean mysql() { return "mysql".equals(type); }
+
+        @Override
+        public String toString() {
+            return "Storage[type=" + type + ", host=" + host + ", port=" + port + ", database=" + database + ", user=" + user
+                    + ", password=***, tablePrefix=" + tablePrefix + ", parameters=" + parameters + "]";
+        }
     }
 
     private static final Pattern LANGUAGE = Pattern.compile("[a-z]{2,3}");

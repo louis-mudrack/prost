@@ -4,7 +4,9 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.game.Rounds;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.roulette.Roulette;
-import dev.louismudrack.prost.storage.Stats;
+import dev.louismudrack.prost.storage.StatsField;
+import dev.louismudrack.prost.storage.StatsRow;
+import dev.louismudrack.prost.storage.StatsStore;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -16,10 +18,10 @@ import java.util.UUID;
 public final class StatsMenu extends Menu {
     private final UUID target;
     private final String name;
-    private final Stats.Row row;
-    private final List<Stats.Row> drunk, given, won;
+    private final StatsRow row;
+    private final List<StatsRow> drunk, given, won;
 
-    private StatsMenu(ProstPlugin plugin, Player viewer, UUID target, String name, Stats.Row row, List<Stats.Row> drunk, List<Stats.Row> given, List<Stats.Row> won) {
+    private StatsMenu(ProstPlugin plugin, Player viewer, UUID target, String name, StatsRow row, List<StatsRow> drunk, List<StatsRow> given, List<StatsRow> won) {
         super(plugin, viewer);
         this.target = target;
         this.name = name;
@@ -30,8 +32,8 @@ public final class StatsMenu extends Menu {
     }
 
     public static void load(ProstPlugin plugin, Player viewer, UUID target, String name) {
-        Stats s = plugin.stats();
-        s.row(target, row -> s.top(Stats.Field.DRUNK, drunk -> s.top(Stats.Field.GIVEN, given -> s.top(Stats.Field.WON, won -> {
+        StatsStore s = plugin.stats();
+        s.row(target, row -> s.top(StatsField.DRUNK, drunk -> s.top(StatsField.GIVEN, given -> s.top(StatsField.WON, won -> {
             if (viewer.isOnline()) new StatsMenu(plugin, viewer, target, name, row, drunk, given, won).open();
         }))));
     }
@@ -52,15 +54,15 @@ public final class StatsMenu extends Menu {
             lore.add("<gray>" + t("Regeln: ", "Rules: ") + Msg.HL + row.rules() + " <dark_gray>· <gray>" + t("Runden: ", "Rounds: ") + Msg.HL + row.rounds());
         }
         set(13, Items.head(target, Msg.HL + Msg.esc(name), lore), null);
-        set(29, board(Material.HONEY_BOTTLE, t("Meiste Schlucke", "Most sips"), drunk, Stats.Field.DRUNK), null);
-        set(31, board(Material.CAKE, t("Großzügigste", "Most generous"), given, Stats.Field.GIVEN), null);
-        set(33, board(Material.GOLDEN_APPLE, t("Meiste Siege", "Most wins"), won, Stats.Field.WON), null);
+        set(29, board(Material.HONEY_BOTTLE, t("Meiste Schlucke", "Most sips"), drunk, StatsField.DRUNK), null);
+        set(31, board(Material.CAKE, t("Großzügigste", "Most generous"), given, StatsField.GIVEN), null);
+        set(33, board(Material.GOLDEN_APPLE, t("Meiste Siege", "Most wins"), won, StatsField.WON), null);
     }
 
-    private org.bukkit.inventory.ItemStack board(Material icon, String title, List<Stats.Row> rows, Stats.Field field) {
+    private org.bukkit.inventory.ItemStack board(Material icon, String title, List<StatsRow> rows, StatsField field) {
         List<String> lore = new ArrayList<>();
         int place = 1;
-        for (Stats.Row r : rows) {
+        for (StatsRow r : rows) {
             int value = switch (field) {
                 case DRUNK -> r.drunk();
                 case GIVEN -> r.given();

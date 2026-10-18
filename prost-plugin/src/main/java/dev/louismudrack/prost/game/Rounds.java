@@ -3,7 +3,7 @@ package dev.louismudrack.prost.game;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.hook.Gate;
 import dev.louismudrack.prost.i18n.Msg;
-import dev.louismudrack.prost.storage.Stats;
+import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.ui.Sounds;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -87,12 +87,12 @@ public final class Rounds {
         Round r = of(id);
         if (r == null) return;
         Member m = r.member(id);
-        plugin.stats().add(id, m.name, Stats.Field.ROUNDS, 1);
+        plugin.stats().add(id, m.name, StatsField.ROUNDS, 1);
         Player leaving = Bukkit.getPlayer(id);
         if (leaving != null) Summary.member(leaving, r, m);
         UUID newHost = r.remove(id);
         if (r.members.isEmpty()) {
-            plugin.stats().roundEnded(r, System.currentTimeMillis());
+            plugin.stats().roundEnded(r.code, r.host, r.createdAt, System.currentTimeMillis(), r.members.size(), r.challenges);
             close(r);
             return;
         }
@@ -108,8 +108,8 @@ public final class Rounds {
     /** the host (or staff) ends the round for everyone: summary, stats, gone */
     public void end(Round r) {
         Summary.round(r);
-        for (Member m : r.members.values()) plugin.stats().add(m.id, m.name, Stats.Field.ROUNDS, 1);
-        plugin.stats().roundEnded(r, System.currentTimeMillis());
+        for (Member m : r.members.values()) plugin.stats().add(m.id, m.name, StatsField.ROUNDS, 1);
+        plugin.stats().roundEnded(r.code, r.host, r.createdAt, System.currentTimeMillis(), r.members.size(), r.challenges);
         close(r);
     }
 

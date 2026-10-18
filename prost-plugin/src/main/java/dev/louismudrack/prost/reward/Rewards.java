@@ -15,7 +15,7 @@ import dev.louismudrack.prost.menu.HandoutMenu;
 import dev.louismudrack.prost.menu.Items;
 import dev.louismudrack.prost.menu.Menu;
 import dev.louismudrack.prost.menu.RulesMenu;
-import dev.louismudrack.prost.storage.Stats;
+import dev.louismudrack.prost.storage.StatsField;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
@@ -180,7 +180,7 @@ public final class Rewards implements Listener {
         if (RewardRules.realLifeHandout(r.members.size())) {
             Msg.round(r, de -> Msg.HL + name + (de ? " <gray>verteilt " + Msg.HL + amount + " <gray>Schlucke in echt." : " <gray>hands out " + Msg.HL + amount + " <gray>sips in real life."));
             g.tally.given += amount;
-            plugin.stats().add(g.id, g.name, Stats.Field.GIVEN, amount);
+            plugin.stats().add(g.id, g.name, StatsField.GIVEN, amount);
             plugin.rounds().save();
             return;
         }
@@ -252,7 +252,7 @@ public final class Rewards implements Listener {
         }
         if (g != null) {
             g.tally.given += given;
-            plugin.stats().add(g.id, g.name, Stats.Field.GIVEN, given);
+            plugin.stats().add(g.id, g.name, StatsField.GIVEN, given);
         }
         plugin.rounds().save();   // the giver's tally changes after the receivers' saves
     }
@@ -325,7 +325,7 @@ public final class Rewards implements Listener {
         if (index >= 0 && index < r.rules.size()) r.rules.set(index, rule);
         else r.addRule(rule, plugin.cfg().rulesMaxActive());
         maker.tally.rulesMade++;
-        plugin.stats().add(maker.id, maker.name, Stats.Field.RULES, 1);
+        plugin.stats().add(maker.id, maker.name, StatsField.RULES, 1);
         String name = Msg.esc(maker.name), de = Msg.esc(rule.de()), en = Msg.esc(rule.en());
         Msg.round(r, g -> Msg.HL + name + (g ? " <gray>stellt eine Regel auf: <white>" + de : " <gray>makes a rule: <white>" + en));
         plugin.rounds().save();

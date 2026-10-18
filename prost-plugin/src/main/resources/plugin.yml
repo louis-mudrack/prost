@@ -5,6 +5,8 @@ api-version: "1.21"
 author: Kasheyy
 website: https://modrinth.com/plugin/prost
 description: "The drinking game: rounds, challenges and a roulette - played in real life, no in-game advantage"
+libraries:
+  - org.mariadb.jdbc:mariadb-java-client:3.5.10
 commands:
   prost:
     aliases: [drinks]

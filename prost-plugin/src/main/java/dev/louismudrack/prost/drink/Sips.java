@@ -4,7 +4,7 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.i18n.Msg;
-import dev.louismudrack.prost.storage.Stats;
+import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.ui.Sounds;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
@@ -66,7 +66,7 @@ public final class Sips {
         }
         m.jokers--;
         m.tally.jokersUsed++;
-        plugin.stats().add(m.id, m.name, Stats.Field.JOKERS, 1);
+        plugin.stats().add(m.id, m.name, StatsField.JOKERS, 1);
         String name = Msg.esc(m.name);
         Msg.round(x.round(), de -> Msg.HL + name + (de ? " <gray>setzt einen Joker ein - kein Schluck." : " <gray>uses a joker - no sip."));
         Sounds.success(p);
@@ -89,7 +89,7 @@ public final class Sips {
         SipLedger.Applied a = SipLedger.apply(m.history, System.currentTimeMillis(), x.amount(), m.limit);
         if (m.water) m.tally.water += a.drunk();
         else m.tally.drunk += a.drunk();
-        plugin.stats().add(m.id, m.name, m.water ? Stats.Field.WATER : Stats.Field.DRUNK, a.drunk());
+        plugin.stats().add(m.id, m.name, m.water ? StatsField.WATER : StatsField.DRUNK, a.drunk());
         String name = Msg.esc(m.name), whyDe = Msg.esc(x.whyDe()), whyEn = Msg.esc(x.whyEn());
         int drunk = a.drunk();
         String limit = a.lapsed() > 0 ? " <dark_gray>(Limit)" : "";   // the same word in both languages
