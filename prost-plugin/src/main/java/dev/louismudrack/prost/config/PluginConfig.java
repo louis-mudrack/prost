@@ -43,7 +43,7 @@ public record PluginConfig(String defaultLanguage, boolean perPlayerLanguage, Th
 
     private static final Pattern LANGUAGE = Pattern.compile("[a-z]{2,3}");
     private static final Pattern ALIAS = Pattern.compile("[a-z0-9_-]{1,32}");
-    private static final Pattern TABLE_PREFIX = Pattern.compile("[A-Za-z0-9_]{0,16}");
+    private static final Pattern TABLE_PREFIX = Pattern.compile("([A-Za-z_][A-Za-z0-9_]{0,15})?");
     private static final String MAIN_COMMAND = "prost";
     private static final int DEFAULT_PORT = 3306, MAX_PORT = 65535;
 

@@ -113,6 +113,35 @@ class SqlStatsStoreTest {
     }
 
     @Test
+    void countersAddedDuringAnOutageAreWrittenWhenTheDatabaseIsBack() throws Exception {
+        java.io.File missing = dir.resolve("later").resolve("outage.db").toFile();
+        SqlStatsStore outage = SqlStatsStore.sqlite(missing, "prost_", Logger.getLogger("test"), Runnable::run, new ManualWorker());
+        assertThrows(java.sql.SQLException.class, outage::open);
+        outage.add(A, "old", DRUNK, 3);
+        outage.add(A, "new", DRUNK, 2);
+        outage.add(A, "new", WON, 1);
+        assertTrue(missing.getParentFile().mkdirs());
+        outage.add(B, "B", DRUNK, 1);
+        StatsRow a = this.<StatsRow>get(c -> outage.row(A, c));
+        assertEquals(5, a.drunk());
+        assertEquals(1, a.won());
+        assertEquals("new", a.name());
+        assertEquals(1, this.<StatsRow>get(c -> outage.row(B, c)).drunk());
+        outage.close();
+    }
+
+    @Test
+    void aCorruptRowStillAnswersTheCallback() throws Exception {
+        store.add(A, "A", DRUNK, 1);
+        flush();
+        try (java.sql.Connection c = java.sql.DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("stats.db"));
+             java.sql.Statement st = c.createStatement()) {
+            st.executeUpdate("UPDATE prost_stats SET uuid = 'not-a-uuid'");
+        }
+        assertEquals(List.of(), this.<List<StatsRow>>get(c -> store.top(DRUNK, c)));
+    }
+
+    @Test
     void storageSettingsNeverPrintThePassword() {
         PluginConfig.Storage s = new PluginConfig.Storage("mysql", "h", 3306, "d", "u", "s3cret-pw", "prost_", "");
         assertFalse(s.toString().contains("s3cret-pw"));

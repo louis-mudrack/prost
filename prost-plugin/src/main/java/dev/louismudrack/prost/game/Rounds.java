@@ -90,9 +90,10 @@ public final class Rounds {
         plugin.stats().add(id, m.name, StatsField.ROUNDS, 1);
         Player leaving = Bukkit.getPlayer(id);
         if (leaving != null) Summary.member(leaving, r, m);
+        int memberCount = r.members.size();
         UUID newHost = r.remove(id);
         if (r.members.isEmpty()) {
-            plugin.stats().roundEnded(r.code, r.host, r.createdAt, System.currentTimeMillis(), r.members.size(), r.challenges);
+            plugin.stats().roundEnded(r.code, r.host, r.createdAt, System.currentTimeMillis(), memberCount, r.challenges);
             close(r);
             return;
         }

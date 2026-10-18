@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,7 +30,9 @@ import java.util.logging.Logger;
  * All-time numbers per player in SQLite (stats.db) or MySQL/MariaDB. One background thread owns the connection, so
  * reads and writes never race; counters are deltas (sips = sips + ?), so servers sharing a database never overwrite
  * each other. A dead connection is reopened before the next statement, and a statement cut by a lost connection
- * (SQLState class 08) is retried once.
+ * (SQLState class 08) is retried once. A counter delta that still fails (database down) is kept in memory, merged per
+ * player and counter, and written first thing after the next successful connection - lost only if the server stops
+ * before the database is back.
  */
 public final class SqlStatsStore implements StatsStore {
     private static final long TOP_CACHE_MS = 30_000L;
@@ -40,6 +43,12 @@ public final class SqlStatsStore implements StatsStore {
     private static final String CONNECTION_LOST = "08";
 
     private interface Work<T> { T run(Connection c) throws SQLException; }
+
+    private record PendingKey(UUID id, StatsField field) {}
+
+    private record Pending(int amount, String name, long at) {
+        Pending plus(Pending later) { return new Pending(amount + later.amount, later.name, later.at); }
+    }
 
     private final Dialect dialect;
     private final String url, user, password, stats, rounds;
@@ -52,6 +61,8 @@ public final class SqlStatsStore implements StatsStore {
     private Connection conn;   // worker thread only
     private boolean schemaReady;   // worker thread only
     private long lastWarnAt;       // worker thread only
+    private long lastWriteWarnAt;  // worker thread only
+    private final Map<PendingKey, Pending> pending = new LinkedHashMap<>();   // worker thread only
 
     private SqlStatsStore(Dialect dialect, String url, String user, String password, String prefix, Logger log, Executor sync,
                           ExecutorService worker) {
@@ -162,10 +173,11 @@ public final class SqlStatsStore implements StatsStore {
         CompletableFuture<Void> done = new CompletableFuture<>();
         worker.execute(() -> {
             try {
+                writePending();
                 attempt(work);
                 done.complete(null);
-            } catch (SQLException e) {
-                warn(what + " not written: " + e.getMessage());
+            } catch (SQLException | RuntimeException e) {
+                warnWrite(what + " not written: " + e.getMessage());
                 done.completeExceptionally(e);
             }
         });
@@ -180,20 +192,46 @@ public final class SqlStatsStore implements StatsStore {
         log.warning(message);
     }
 
+    /** write failures get their own timer, so a failed read cannot hide them */
+    private void warnWrite(String message) {
+        long now = System.currentTimeMillis();
+        if (now - lastWriteWarnAt < WARN_GAP_MS) return;
+        lastWriteWarnAt = now;
+        log.warning(message + (pending.isEmpty() ? "" : " (" + pending.size() + " counter(s) kept in memory until the database is back)"));
+    }
+
+    /** worker thread: oldest deltas first; stops at the first failure and keeps the rest */
+    private void writePending() {
+        for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            try {
+                attempt(c -> writeDelta(c, e.getKey(), e.getValue()));
+            } catch (SQLException | RuntimeException ex) {
+                warnWrite("stats not written: " + ex.getMessage());
+                return;
+            }
+            it.remove();
+        }
+    }
+
+    private Void writeDelta(Connection c, PendingKey key, Pending p) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement(dialect.addSql(stats, key.field().column))) {
+            ps.setString(1, key.id().toString());
+            ps.setString(2, p.name());
+            ps.setInt(3, p.amount());
+            ps.setLong(4, p.at());
+            ps.executeUpdate();
+        }
+        return null;
+    }
+
     @Override
     public void add(UUID id, String name, StatsField field, int n) {
         if (n == 0) return;
-        long now = System.currentTimeMillis();
-        String sql = dialect.addSql(stats, field.column);
-        submit("stats " + field.column + " for " + name, c -> {
-            try (PreparedStatement ps = c.prepareStatement(sql)) {
-                ps.setString(1, id.toString());
-                ps.setString(2, name);
-                ps.setInt(3, n);
-                ps.setLong(4, now);
-                ps.executeUpdate();
-            }
-            return null;
+        Pending delta = new Pending(n, name, System.currentTimeMillis());
+        worker.execute(() -> {
+            pending.merge(new PendingKey(id, field), delta, Pending::plus);
+            writePending();
         });
     }
 
@@ -230,7 +268,7 @@ public final class SqlStatsStore implements StatsStore {
                         try (ResultSet rs = ps.executeQuery()) { return rs.next() ? read(rs) : null; }
                     }
                 });
-            } catch (SQLException e) {
+            } catch (SQLException | RuntimeException e) {
                 warn("stats read failed: " + e.getMessage());
             }
             StatsRow result = found;
@@ -270,7 +308,7 @@ public final class SqlStatsStore implements StatsStore {
         return cached != null && System.currentTimeMillis() - topAt.getOrDefault(field, 0L) < TOP_CACHE_MS ? cached : null;
     }
 
-    /** worker thread; a failed load keeps the last known list instead of caching an empty one */
+    /** worker thread; a failed load keeps the last known list but still counts as a try, so an outage is not hammered */
     private List<StatsRow> loadTop(StatsField field) {
         try {
             List<StatsRow> rows = attempt(c -> {
@@ -284,9 +322,12 @@ public final class SqlStatsStore implements StatsStore {
             top.put(field, rows);
             topAt.put(field, System.currentTimeMillis());
             return rows;
-        } catch (SQLException e) {
+        } catch (SQLException | RuntimeException e) {
             warn("stats top failed: " + e.getMessage());
-            return top.getOrDefault(field, List.of());
+            List<StatsRow> last = top.getOrDefault(field, List.of());
+            top.put(field, last);
+            topAt.put(field, System.currentTimeMillis());
+            return last;
         }
     }
 
@@ -303,7 +344,7 @@ public final class SqlStatsStore implements StatsStore {
                         }
                     }
                 });
-            } catch (SQLException e) {
+            } catch (SQLException | RuntimeException e) {
                 warn("player settings read failed: " + e.getMessage());
             }
             Prefs result = p;
@@ -368,16 +409,20 @@ public final class SqlStatsStore implements StatsStore {
 
     @Override
     public void close() {
+        worker.execute(() -> {
+            writePending();
+            if (!pending.isEmpty()) log.warning("stats: " + pending.size() + " counter(s) could not be written before shutdown");
+            closeQuietly();
+        });
         worker.shutdown();
         try {
-            if (!worker.awaitTermination(CLOSE_WAIT_SECONDS, TimeUnit.SECONDS)) log.warning("stats: writes still queued at shutdown were dropped");
+            if (!worker.awaitTermination(CLOSE_WAIT_SECONDS, TimeUnit.SECONDS)) {
+                worker.shutdownNow();
+                log.warning("stats: writes still queued at shutdown were dropped");
+            }
         } catch (InterruptedException e) {
+            worker.shutdownNow();
             Thread.currentThread().interrupt();
-        }
-        try {
-            if (conn != null) conn.close();
-        } catch (SQLException e) {
-            log.warning("stats database close: " + e.getMessage());
         }
     }
 }

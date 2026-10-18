@@ -75,6 +75,13 @@ class PluginConfigTest {
     }
 
     @Test
+    void tablePrefixCannotStartWithADigit() {
+        PluginConfig c = parse("storage: {table-prefix: '1_prost'}");
+        assertEquals("prost_", c.storage().tablePrefix());
+        assertEquals(1, warnings.size());
+    }
+
+    @Test
     void worldsLimitTheGame() {
         PluginConfig c = parse("worlds: [survival]");
         assertTrue(c.gameWorld("survival"));
