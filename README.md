@@ -32,6 +32,8 @@ someone joins a round they get a short notice saying so (`notices.first-round`).
 
 - Paper or a Paper fork, Minecraft 1.21.4 - 26.x
 - Java 21 or newer
+- Internet access on the first start: Paper downloads the MariaDB driver Prost declares into `libraries/` (also when you
+  use SQLite). Without it Prost does not load; later starts use the downloaded copy.
 - Optional: [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/), EssentialsX (its AFK state is used)
 
 ## Install and a first round

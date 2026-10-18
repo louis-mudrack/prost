@@ -6,7 +6,9 @@ start; your values are never changed. Catalogues are covered in [challenges.md](
 [translations.md](translations.md).
 
 `/prost reload` (or `/prost admin reload`) reads the files again. (`/prost admin` without an argument runs `/prost admin list`.) Keys marked **(restart)** are read once at start and
-need a server restart. A file that is not valid YAML is ignored with a warning (the shipped copy is used until you fix it).
+need a server restart. A file that is not valid YAML is ignored with a warning naming the line (the shipped copy is used
+until you fix it). For `config.yml` that includes `storage:`: a MySQL server whose `config.yml` breaks writes its stats to
+the local SQLite `stats.db` after the next restart, until the file is fixed. Check the console after editing it.
 
 YAML 1.1 turns a bare `on`, `off`, `yes` or `no` into a boolean. Prost treats those as you mean them: `nether: off` is
 OFF, `end: on` is ON.
@@ -94,7 +96,7 @@ Stats are stored in SQLite or MySQL/MariaDB. All of `storage:` needs a restart.
 | `storage.mysql.database` | `prost` | |
 | `storage.mysql.user` | `prost` | |
 | `storage.mysql.password` | `""` | Never logged. |
-| `storage.mysql.parameters` | `"useSSL=false"` | Appended to the JDBC URL. |
+| `storage.mysql.parameters` | `"useSSL=false"` | Appended to the JDBC URL. MySQL 8 logs users in with `caching_sha2_password`; without SSL that usually also needs `allowPublicKeyRetrieval=true`: `"useSSL=false&allowPublicKeyRetrieval=true"`. |
 
 Counters are written as increments, so several servers can share one database. A dropped connection is reopened on the
 next write. If the database cannot be opened on start, the game still runs and stats are written once it is reachable.
