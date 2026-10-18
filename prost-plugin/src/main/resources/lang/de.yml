@@ -283,7 +283,7 @@ placeholder:
 notice:
   first_round: "<hl>Prost ist ein Partyspiel: <gray>jedes Getränk zählt - Wasser, Limo oder Alkohol, wenn du alt genug bist. Kenne deine Grenzen: stell deine Schlucke pro Stunde im Menü ein oder spiel mit Wasser."
 update:
-  available: "Eine neue Prost-Version ist da: <hl><version> <gray>- modrinth.com/plugin/prost"
+  available: "Eine neue Prost-Version ist da: <hl><version> <gray>- modrinth.com/plugin/prost-game"
 # Deutsche Namen der Unterbefehle; die englischen gehen immer.
 commands:
   invite: [einladen]

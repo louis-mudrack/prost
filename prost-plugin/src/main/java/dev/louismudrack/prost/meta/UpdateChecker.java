@@ -21,7 +21,9 @@ import java.util.logging.Level;
 
 /** One asynchronous look at Modrinth at startup; a newer release is told to the console and to admins on join. */
 public final class UpdateChecker implements Listener {
-    private static final String API = "https://api.modrinth.com/v2/project/prost/version";
+    /** by project id, not slug: the id survives a rename, and the slug "prost" belongs to another project */
+    static final String API = "https://api.modrinth.com/v2/project/q9F9i8rt/version";
+    private static final String PAGE = "https://modrinth.com/plugin/prost-game";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final String ADMIN = "prost.admin";
     private static final int HTTP_NOT_FOUND = 404;
@@ -36,7 +38,7 @@ public final class UpdateChecker implements Listener {
         String current = plugin.getPluginMeta().getVersion();
         String query = "?loaders=" + enc("[\"paper\"]");
         HttpRequest request = HttpRequest.newBuilder(URI.create(API + query)).timeout(TIMEOUT)
-                .header("User-Agent", "Kasheyy/Prost/" + current + " (https://modrinth.com/plugin/prost)").GET().build();
+                .header("User-Agent", "Kasheyy/Prost/" + current + " (" + PAGE + ")").GET().build();
         HttpClient.newHttpClient().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
             if (response.statusCode() != 200) {
                 plugin.getLogger().log(failureLevel(response.statusCode()), "update check failed: HTTP " + response.statusCode());
@@ -45,7 +47,7 @@ public final class UpdateChecker implements Listener {
             String latest = Versions.latestRelease(response.body());
             if (latest != null && Versions.newer(latest, current)) {
                 available = latest;
-                plugin.getLogger().info("Prost " + latest + " is available on Modrinth (this server runs " + current + ")");
+                plugin.getLogger().info("Prost " + latest + " is available: " + PAGE + " (this server runs " + current + ")");
             }
         }).exceptionally(e -> {
             plugin.getLogger().info("update check failed: " + e.getMessage());
@@ -53,7 +55,7 @@ public final class UpdateChecker implements Listener {
         });
     }
 
-    /** until Prost's project is on Modrinth the API answers 404 on every start: not worth a line in the console */
+    /** a draft project answers 404 until Modrinth approves it: not worth a line in the console */
     static Level failureLevel(int status) { return status == HTTP_NOT_FOUND ? Level.FINE : Level.INFO; }
 
     private static String enc(String s) { return URLEncoder.encode(s, StandardCharsets.UTF_8); }
