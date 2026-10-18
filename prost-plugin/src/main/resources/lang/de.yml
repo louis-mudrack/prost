@@ -1,0 +1,30 @@
+# Prost - Deutsch. Neue Texte kommen bei jedem Start dazu; deine Änderungen bleiben.
+# Format: MiniMessage (https://docs.advntr.dev/minimessage/format.html).
+# Theme-Tags (Farben in config.yml): <primary>Text</primary> Verlauf, <hl> <ok> <err> <muted> Farbwechsel.
+# Werte wie <player> oder <sips> setzt Prost ein - lass sie in der Übersetzung stehen.
+prefix: "<primary>Prost</primary> <dark_gray>»</dark_gray> <gray>"
+sips:
+  one: "<n> Schluck"
+  other: "<n> Schlucke"
+kind:
+  team: "Team"
+  each: "Jeder für sich"
+  race: "Rennen"
+  duel: "Duell"
+  solo: "Solo"
+pace:
+  chill: "chill"
+  normal: "normal"
+  party: "party"
+# Deutsche Namen der Unterbefehle; die englischen gehen immer.
+commands:
+  invite: [einladen]
+  decline: [ablehnen]
+  leave: [verlassen]
+  next: [weiter]
+  pace: [tempo]
+  end: [ende]
+  language: [sprache]
+  reward: [belohnung]
+  handout: [verteilen]
+  round: [runde]

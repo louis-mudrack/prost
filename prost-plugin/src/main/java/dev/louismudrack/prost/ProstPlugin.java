@@ -20,6 +20,11 @@ import dev.louismudrack.prost.hook.ConfigAreas;
 import dev.louismudrack.prost.hook.DimensionDefaults;
 import dev.louismudrack.prost.hook.EssentialsAfk;
 import dev.louismudrack.prost.hook.Hooks;
+import dev.louismudrack.prost.i18n.Lang;
+import dev.louismudrack.prost.i18n.LangFiles;
+import dev.louismudrack.prost.i18n.LanguageResolver;
+import dev.louismudrack.prost.i18n.Msg;
+import dev.louismudrack.prost.i18n.Theme;
 import dev.louismudrack.prost.menu.MenuListener;
 import dev.louismudrack.prost.reward.Rewards;
 import dev.louismudrack.prost.roulette.Roulette;
@@ -52,41 +57,20 @@ public final class ProstPlugin extends JavaPlugin {
     private Director director;
     private Roulette roulette;
     private Hooks hooks;
+    private Lang lang = Lang.empty();
 
     @Override
     public void onEnable() {
         files = new DataFiles(this);
         YamlMerge.ensure(this, "config.yml");
-        YamlMerge.ensure(this, "game.yml");
-        reloadData();
-        Executor sync = task -> { if (isEnabled()) getServer().getScheduler().runTask(this, task); };
-        PluginConfig.Storage storage = pluginConfig.storage();
-        SqlStatsStore store = storage.mysql() ? SqlStatsStore.mysql(storage, getLogger(), sync)
-                : SqlStatsStore.sqlite(new File(getDataFolder(), "stats.db"), storage.tablePrefix(), getLogger(), sync);
-        try {
-            store.open();
-        } catch (SQLException e) {
-            getLogger().severe("the stats database could not be opened (" + e.getMessage() + ") - the game runs; "
-                    + "stats are written once the database is reachable");
-        }
-        stats = store;
-        AfkDetector detector = new AfkDetector(() -> pluginConfig.afkMinutes(), () -> System.currentTimeMillis());
-        getServer().getPluginManager().registerEvents(detector, this);
-        Plugin essentials = getServer().getPluginManager().getPlugin("Essentials");
-        AfkProvider defaultAfk = detector;
-        if (pluginConfig.useEssentials() && essentials != null && essentials.isEnabled()) {
-            defaultAfk = new EssentialsAfk(essentials, detector, getLogger());
-            getLogger().info("AFK: EssentialsX decides");
-        }
-        hooks = new Hooks(getLogger(), defaultAfk,
-                new DimensionDefaults(() -> pluginConfig, env -> getServer().getWorlds().stream().anyMatch(w -> w.getEnvironment() == env),
-                        () -> Bukkit.getAllowNether(), () -> Bukkit.getAllowEnd()),
-                new ConfigAreas(() -> pluginConfig));
+        // silent here: reloadData() below parses the file again and logs its warnings once
+        pluginConfig = PluginConfig.parse(files.map("config.yml"), warning -> { });
+        openStorage();
+        hooks = createHooks();
         getServer().getPluginManager().registerEvents(hooks, this);
         getServer().getServicesManager().register(ProstApi.class, new ApiImpl(this), this, ServicePriority.Normal);
-        prefs = new PlayerPrefs(stats);
-        getServer().getPluginManager().registerEvents(prefs, this);
-        getServer().getOnlinePlayers().forEach(p -> prefs.load(p));
+        YamlMerge.ensure(this, "game.yml");
+        reloadData();
         sips = new Sips(this);
         rewards = new Rewards(this);
         getServer().getPluginManager().registerEvents(rewards, this);
@@ -104,7 +88,39 @@ public final class ProstPlugin extends JavaPlugin {
         rounds.load();
         getServer().getScheduler().runTaskTimer(this, () -> rounds.tickPresence(), 20L, 20L);
         getLogger().info("Prost enabled: " + challenges.size() + " challenges, " + preparedRules.size() + " rules, "
-                + rounds.all().size() + " round(s) restored");
+                + lang.languages().size() + " languages, " + rounds.all().size() + " round(s) restored");
+    }
+
+    private void openStorage() {
+        Executor sync = task -> { if (isEnabled()) getServer().getScheduler().runTask(this, task); };
+        PluginConfig.Storage storage = pluginConfig.storage();
+        SqlStatsStore store = storage.mysql() ? SqlStatsStore.mysql(storage, getLogger(), sync)
+                : SqlStatsStore.sqlite(new File(getDataFolder(), "stats.db"), storage.tablePrefix(), getLogger(), sync);
+        try {
+            store.open();
+        } catch (SQLException e) {
+            getLogger().severe("the stats database could not be opened (" + e.getMessage() + ") - the game runs; "
+                    + "stats are written once the database is reachable");
+        }
+        stats = store;
+        prefs = new PlayerPrefs(stats);
+        getServer().getPluginManager().registerEvents(prefs, this);
+        getServer().getOnlinePlayers().forEach(p -> prefs.load(p));
+    }
+
+    private Hooks createHooks() {
+        AfkDetector detector = new AfkDetector(() -> pluginConfig.afkMinutes(), () -> System.currentTimeMillis());
+        getServer().getPluginManager().registerEvents(detector, this);
+        Plugin essentials = getServer().getPluginManager().getPlugin("Essentials");
+        AfkProvider defaultAfk = detector;
+        if (pluginConfig.useEssentials() && essentials != null && essentials.isEnabled()) {
+            defaultAfk = new EssentialsAfk(essentials, detector, getLogger());
+            getLogger().info("AFK: EssentialsX decides");
+        }
+        return new Hooks(getLogger(), defaultAfk,
+                new DimensionDefaults(() -> pluginConfig, env -> getServer().getWorlds().stream().anyMatch(w -> w.getEnvironment() == env),
+                        () -> Bukkit.getAllowNether(), () -> Bukkit.getAllowEnd()),
+                new ConfigAreas(() -> pluginConfig));
     }
 
     @Override
@@ -121,6 +137,9 @@ public final class ProstPlugin extends JavaPlugin {
         cfg = GameConfig.parse(files.map("game.yml"));
         challenges = Catalogue.load(files.load("challenges.yml"), getLogger());
         preparedRules = RulesFile.parse(files.load("rules.yml"));
+        lang = LangFiles.load(this, pluginConfig.defaultLanguage());
+        Msg.bind(lang, new LanguageResolver(lang, hooks, prefs, pluginConfig.perPlayerLanguage()),
+                Theme.of(pluginConfig.theme(), getLogger()::warning), (player, text) -> text);   // PlaceholderAPI: Task 14
     }
 
     public PluginConfig pluginConfig() { return pluginConfig; }
@@ -138,4 +157,5 @@ public final class ProstPlugin extends JavaPlugin {
     public Director director() { return director; }
     public Roulette roulette() { return roulette; }
     public Hooks hooks() { return hooks; }
+    public Lang lang() { return lang; }
 }
