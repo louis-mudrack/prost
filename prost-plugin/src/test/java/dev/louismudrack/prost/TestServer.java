@@ -37,7 +37,7 @@ public final class TestServer {
         ProstPlugin plugin = (ProstPlugin) server.getPluginManager().loadPlugin(ProstPlugin.class, new Object[0]);
         beforeEnable.accept(plugin.getDataFolder());
         // what MockBukkit.load does between loading and enabling
-        server.getPluginManager().addPermissions(plugin.getDescription().getPermissions().stream()
+        server.getPluginManager().addPermissions(plugin.getPluginMeta().getPermissions().stream()
                 .filter(permission -> server.getPluginManager().getPermission(permission.getName()) == null).toList());
         server.getPluginManager().enablePlugin(plugin);
         // a real server registers commands (LifecycleEvents.COMMANDS) once startup is done; MockBukkit on the first dispatch
