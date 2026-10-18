@@ -302,7 +302,7 @@ public final class Rewards implements Listener {
         String text = PlainTextComponentSerializer.plainText().serialize(e.message());
         Bukkit.getScheduler().runTask(plugin, () -> {
             String rule = RewardRules.cleanRule(text, plugin.cfg().customRuleMaxLength());
-            if (rule != null && in.round().member(id) != null) addRule(in.round(), id, new Rule(rule, rule));
+            if (rule != null && in.round().member(id) != null) addRule(in.round(), id, Rule.custom(rule));
         });
     }
 
@@ -326,8 +326,8 @@ public final class Rewards implements Listener {
         else r.addRule(rule, plugin.cfg().rulesMaxActive());
         maker.tally.rulesMade++;
         plugin.stats().add(maker.id, maker.name, StatsField.RULES, 1);
-        String name = Msg.esc(maker.name), de = Msg.esc(rule.de()), en = Msg.esc(rule.en());
-        Msg.round(r, g -> Msg.HL + name + (g ? " <gray>stellt eine Regel auf: <white>" + de : " <gray>makes a rule: <white>" + en));
+        String name = Msg.esc(maker.name);
+        Msg.roundEach(r, id -> Msg.HL + name + (Msg.de(id) ? " <gray>stellt eine Regel auf: <white>" : " <gray>makes a rule: <white>") + Msg.esc(rule.text(Msg.lang(id))));
         plugin.rounds().save();
     }
 
@@ -355,10 +355,11 @@ public final class Rewards implements Listener {
             r.queued = new Round.Queued(c.def().id(), c.kind(), List.of());
         }, rewardTicks());
         boolean de = Msg.de(winner);
+        String lang = Msg.lang(winner);
         List<ChoiceMenu.Option> list = new ArrayList<>();
         for (DrawRules.Choice c : cards) {
-            ItemStack card = Items.item(Material.MAP, Msg.HL + Msg.esc(c.def().name(de)), List.of(
-                    "<gray>" + Msg.esc(c.def().text(de)), "<dark_gray>" + c.kind().key + " · " + c.def().sips() + (de ? " Schlucke" : " sips")));
+            ItemStack card = Items.item(Material.MAP, Msg.HL + Msg.esc(c.def().name(lang)), List.of(
+                    "<gray>" + Msg.esc(c.def().text(lang)), "<dark_gray>" + c.kind().key + " · " + c.def().sips() + (de ? " Schlucke" : " sips")));
             list.add(new ChoiceMenu.Option(card, () -> {
                 if (done[0]) return;
                 done[0] = true;

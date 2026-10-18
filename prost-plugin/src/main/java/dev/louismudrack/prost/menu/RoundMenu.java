@@ -48,11 +48,11 @@ public final class RoundMenu extends Menu {
         ChallengeRun run = plugin.director().running(round);
         List<String> now = run == null
                 ? List.of("<gray>" + t("Nächste in ", "Next in ") + Msg.HL + Fmt.clock(Math.max(0, round.nextDrawAt - System.currentTimeMillis())))
-                : List.of("<white>" + Msg.esc(run.def.text(de)), "<gray>" + Hud.kindName(run.kind, de) + " <dark_gray>· <gray>" + Fmt.clock(run.remainingMs())
+                : List.of("<white>" + Msg.esc(run.def.text(lang)), "<gray>" + Hud.kindName(run.kind, de) + " <dark_gray>· <gray>" + Fmt.clock(run.remainingMs())
                         + " <dark_gray>· " + Msg.ERR + run.def.sips() + t(" Schlucke", " sips"));
-        set(28, Items.item(Material.MAP, Msg.HL + (run == null ? t("Keine Herausforderung", "No challenge") : Msg.esc(run.def.name(de))), now), null);
+        set(28, Items.item(Material.MAP, Msg.HL + (run == null ? t("Keine Herausforderung", "No challenge") : Msg.esc(run.def.name(lang))), now), null);
         List<String> rules = new ArrayList<>();
-        for (Rule r : round.rules) rules.add("<white>• " + Msg.esc(r.text(de)));
+        for (Rule r : round.rules) rules.add("<white>• " + Msg.esc(r.text(lang)));
         if (rules.isEmpty()) rules.add("<gray>" + t("Noch keine", "None yet"));
         set(30, Items.item(Material.WRITABLE_BOOK, Msg.HL + t("Regeln", "Rules"), rules), null);
         Member me = round.member(viewer.getUniqueId());

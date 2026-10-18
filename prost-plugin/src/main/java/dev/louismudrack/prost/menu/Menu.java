@@ -28,6 +28,7 @@ public abstract class Menu implements InventoryHolder {
     protected final ProstPlugin plugin;
     protected final Player viewer;
     protected final boolean de;
+    protected final String lang;
     private final Map<Integer, Consumer<InventoryClickEvent>> actions = new HashMap<>();
     private Inventory inv;
     /** a timed decision (reward, rule, pick next, hand-out): when it runs out; 0 = no time limit */
@@ -38,6 +39,7 @@ public abstract class Menu implements InventoryHolder {
         this.plugin = plugin;
         this.viewer = viewer;
         this.de = Msg.de(viewer.getUniqueId());
+        this.lang = Msg.lang(viewer.getUniqueId());
     }
 
     protected abstract int size();

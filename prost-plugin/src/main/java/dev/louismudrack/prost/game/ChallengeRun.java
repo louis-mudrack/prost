@@ -168,7 +168,7 @@ public final class ChallengeRun {
             else m.tally.lost++;
             plugin.stats().add(id, m.name, won ? StatsField.WON : StatsField.LOST, 1);
         }
-        o.drinks().forEach((id, n) -> plugin.sips().drink(round, id, n, SipLedger.Source.CHALLENGE, def.nameDe(), def.nameEn()));
+        o.drinks().forEach((id, n) -> plugin.sips().drink(round, id, n, SipLedger.Source.CHALLENGE, def.name("de"), def.name("en")));
         if (kind == Kind.TEAM) {
             if (!o.rewarded().isEmpty()) plugin.rewards().grant(round, o.mvp(), def, true, o.winners());
         } else {
@@ -185,10 +185,11 @@ public final class ChallengeRun {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
             boolean de = Msg.de(id);
-            String headline = Hud.kindName(kind, de) + " · " + Msg.esc(def.name(de));
-            String goal = Msg.esc(def.text(de)) + teamGoal(de);
+            String lang = Msg.lang(id);
+            String headline = Hud.kindName(kind, de) + " · " + Msg.esc(def.name(lang));
+            String goal = Msg.esc(def.text(lang)) + teamGoal(de);
             if (participants.contains(id)) Hud.announce(p, GRADIENT + headline, "<white>" + goal);
-            else Hud.announce(p, GRADIENT + whoPlays(de), "<white>" + goal + " <dark_gray>(" + (de ? "du schaust zu" : "you are watching") + ")");
+            else Hud.announce(p, GRADIENT + whoPlays(de, lang), "<white>" + goal + " <dark_gray>(" + (de ? "du schaust zu" : "you are watching") + ")");
             String who = kind == Kind.SOLO || kind == Kind.DUEL ? " <dark_gray>» " + Msg.HL + names(participants, kind == Kind.DUEL ? " vs " : ", ") : "";
             p.sendMessage(Msg.mm(Msg.PREFIX + GRADIENT + headline + "</gradient>" + who));
             p.sendMessage(Msg.mm(Msg.PREFIX + "<white>" + goal));
@@ -202,11 +203,11 @@ public final class ChallengeRun {
     }
 
     /** the title for round members who do not play this one */
-    private String whoPlays(boolean de) {
+    private String whoPlays(boolean de, String lang) {
         return switch (kind) {
             case SOLO -> names(participants, ", ") + (de ? " spielt Solo" : " plays Solo");
             case DUEL -> names(participants, " vs ");
-            default -> Hud.kindName(kind, de) + " · " + Msg.esc(def.name(de));
+            default -> Hud.kindName(kind, de) + " · " + Msg.esc(def.name(lang));
         };
     }
 
@@ -243,16 +244,17 @@ public final class ChallengeRun {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
             boolean de = Msg.de(id);
+            String lang = Msg.lang(id);
             String line;
             if (kind == Kind.TEAM) line = o.success() ? Msg.OK + (de ? "Ziel erreicht!" : "Target reached!")
                     : Msg.ERR + (de ? "Ziel verfehlt (" + sum + "/" + target + ")." : "Target missed (" + sum + "/" + target + ").");
             else line = o.winners().isEmpty() ? Msg.ERR + (de ? "Niemand hat es geschafft." : "Nobody made it.")
                     : Msg.OK + (de ? "Geschafft: " : "Made it: ") + Msg.HL + winners
                     + (noReward ? " <dark_gray>(" + (de ? "keine Belohnung, es wird getrunken" : "no reward, someone drinks") + ")" : "");
-            p.sendMessage(Msg.mm(Msg.PREFIX + "<gradient:#ffd94d:#ff8f3f>" + Msg.esc(def.name(de)) + "</gradient> <dark_gray>» " + line));
+            p.sendMessage(Msg.mm(Msg.PREFIX + "<gradient:#ffd94d:#ff8f3f>" + Msg.esc(def.name(lang)) + "</gradient> <dark_gray>» " + line));
             if (!participants.contains(id)) continue;
             boolean won = o.winners().contains(id);
-            Hud.title(p, won ? Msg.OK + (de ? "Geschafft!" : "Made it!") : Msg.ERR + (de ? "Verloren" : "Lost"), "<gray>" + Msg.esc(def.name(de)));
+            Hud.title(p, won ? Msg.OK + (de ? "Geschafft!" : "Made it!") : Msg.ERR + (de ? "Verloren" : "Lost"), "<gray>" + Msg.esc(def.name(lang)));
             if (won) Sounds.win(p);
         }
     }
@@ -278,8 +280,9 @@ public final class ChallengeRun {
             BossBar bar = bars.computeIfAbsent(id, k -> BossBar.bossBar(Component.empty(), 1f, Hud.color(kind), BossBar.Overlay.PROGRESS));
             p.showBossBar(bar);   // no-op while shown; shows it again after a reconnect
             boolean de = Msg.de(id), playing = participants.contains(id);
+            String lang = Msg.lang(id);
             String status = playing ? "<white>" + progressText(id, de) : watchText(de);
-            bar.name(Msg.mm(Msg.HL + Msg.esc(def.name(de)) + " <dark_gray>· " + status + " <dark_gray>· <gray>" + Fmt.clock(endsAt - now)
+            bar.name(Msg.mm(Msg.HL + Msg.esc(def.name(lang)) + " <dark_gray>· " + status + " <dark_gray>· <gray>" + Fmt.clock(endsAt - now)
                     + (playing ? "" : " <dark_gray>(" + (de ? "zuschauen" : "watching") + ")")));
             bar.progress(left);
             if (playing) Hud.actionBar(p, hint(id, de) + " <dark_gray>- <white>" + Fmt.clock(endsAt - now));

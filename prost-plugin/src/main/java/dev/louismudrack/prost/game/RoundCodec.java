@@ -22,7 +22,7 @@ final class RoundCodec {
         m.put("challenges", r.challenges);
         m.put("used", new ArrayList<>(r.used));
         List<Map<String, String>> rules = new ArrayList<>();
-        for (Rule rule : r.rules) rules.add(Map.of("de", rule.de(), "en", rule.en()));
+        for (Rule rule : r.rules) rules.add(new LinkedHashMap<>(rule.texts()));
         m.put("rules", rules);
         Map<String, Object> members = new LinkedHashMap<>();
         for (Member x : r.members.values()) {
@@ -56,8 +56,11 @@ final class RoundCodec {
         r.challenges = (int) num(m.get("challenges"));
         if (m.get("used") instanceof List<?> used) for (Object u : used) r.used.add(String.valueOf(u));
         if (m.get("rules") instanceof List<?> rules)
-            for (Object o : rules) if (o instanceof Map<?, ?> rm && rm.get("de") != null && rm.get("en") != null)
-                r.rules.add(new Rule(String.valueOf(rm.get("de")), String.valueOf(rm.get("en"))));
+            for (Object o : rules) if (o instanceof Map<?, ?> rm) {
+                Map<String, String> texts = new LinkedHashMap<>();
+                rm.forEach((k, v) -> { if (v != null) texts.put(String.valueOf(k), String.valueOf(v)); });
+                if (!texts.isEmpty()) r.rules.add(new Rule(texts));
+            }
         if (m.get("members") instanceof Map<?, ?> members) {
             for (Map.Entry<?, ?> e : members.entrySet()) {
                 if (!(e.getValue() instanceof Map<?, ?> mm)) continue;

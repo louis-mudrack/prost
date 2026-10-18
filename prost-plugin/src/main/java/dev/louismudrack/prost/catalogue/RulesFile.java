@@ -1,10 +1,12 @@
 package dev.louismudrack.prost.catalogue;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
-/** rules.yml: a list of {de, en}; incomplete items are skipped. */
+/** rules.yml: a list of {language: text}; items without any text are skipped. */
 public final class RulesFile {
     private RulesFile() {}
 
@@ -13,9 +15,9 @@ public final class RulesFile {
         if (!(root instanceof List<?> list)) return out;
         for (Object o : list) {
             if (!(o instanceof Map<?, ?> m)) continue;
-            Object de = m.get("de"), en = m.get("en");
-            if (de == null || en == null || String.valueOf(de).isBlank() || String.valueOf(en).isBlank()) continue;
-            out.add(new Rule(String.valueOf(de), String.valueOf(en)));
+            Map<String, String> texts = new LinkedHashMap<>();
+            m.forEach((k, v) -> { if (v != null && !String.valueOf(v).isBlank()) texts.put(String.valueOf(k).toLowerCase(Locale.ROOT), String.valueOf(v)); });
+            if (!texts.isEmpty()) out.add(new Rule(texts));
         }
         return out;
     }

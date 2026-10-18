@@ -37,8 +37,8 @@ class CatalogueRulesTest {
         eq("two broken entries are reported, not fatal", 2, p.problems().size());
         check("the problem names the entry", p.problems().stream().anyMatch(s -> s.startsWith("broken:")));
         ChallengeDef d = p.defs().stream().filter(x -> x.id().equals("mine_iron")).findFirst().orElseThrow();
-        eq("text fills the amount (DE)", "Baue 16 Eisenerz ab", d.text(true));
-        eq("text fills the amount (EN)", "Mine 16 iron ore", d.text(false));
+        eq("text fills the amount (DE)", "Baue 16 Eisenerz ab", d.text("de"));
+        eq("text fills the amount (EN)", "Mine 16 iron ore", d.text("en"));
         eq("give defaults to sips", 3, d.give());
         eq("five kinds in file order", List.of(Kind.EACH, Kind.RACE, Kind.DUEL, Kind.SOLO, Kind.TEAM), d.kinds());
         eq("no needs", Set.of(), d.needs());
@@ -72,7 +72,7 @@ class CatalogueRulesTest {
 
     static ChallengeDef def(String tracker, String stat, String source, String mode, String value, List<String> targets,
                             List<Kind> kinds, Set<Need> needs, List<String> alsoAvoid, int sips, int seconds) {
-        return new ChallengeDef("t_" + tracker, "Name", "Name", "Text", "Text", tracker, stat, source, mode, value, targets, 1,
+        return new ChallengeDef("t_" + tracker, Map.of("de", "Name", "en", "Name"), Map.of("de", "Text", "en", "Text"), tracker, stat, source, mode, value, targets, 1,
                 seconds, sips, sips, kinds, List.of(Reward.HANDOUT), needs, alsoAvoid, 1, 1);
     }
 
@@ -151,14 +151,15 @@ class CatalogueRulesTest {
     @Test
     void rulesFile() {
         List<Rule> rules = RulesFile.parse(List.of(Map.of("de", "Niemand sagt \"ich\".", "en", "Nobody says \"I\"."),
-                Map.of("de", "nur deutsch"), "junk"));
-        eq("only complete rules count", 1, rules.size());
-        eq("the language is picked", "Nobody says \"I\".", rules.get(0).text(false));
+                Map.of("de", "nur deutsch"), Map.of("de", " "), "junk"));
+        eq("rules with any text count, blank and junk items do not", 2, rules.size());
+        eq("the language is picked", "Nobody says \"I\".", rules.get(0).text("en"));
+        eq("a missing language falls back", "nur deutsch", rules.get(1).text("en"));
         eq("a non-list file gives no rules", List.of(), RulesFile.parse("text"));
     }
 
     static ChallengeDef entry(String id, List<Kind> kinds, Set<Need> needs, String tracker, String mode, String value, int minPlayers) {
-        return new ChallengeDef(id, id, id, id, id, tracker, "", "", mode, value, List.of(), 1, 300, 2, 2, kinds,
+        return new ChallengeDef(id, Map.of("en", id), Map.of("en", id), tracker, "", "", mode, value, List.of(), 1, 300, 2, 2, kinds,
                 List.of(Reward.HANDOUT), needs, List.of(), minPlayers, 1);
     }
 

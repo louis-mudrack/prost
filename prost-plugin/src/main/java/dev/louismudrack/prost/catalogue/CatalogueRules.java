@@ -32,8 +32,7 @@ final class CatalogueRules {
 
     static List<String> validate(ChallengeDef d, Names names) {
         List<String> p = new ArrayList<>();
-        if (d.nameDe().isBlank() || d.nameEn().isBlank()) p.add("name needs de + en");
-        if (d.textDe().isBlank() || d.textEn().isBlank()) p.add("text needs de + en");
+        if (d.names().isEmpty() || d.texts().isEmpty()) p.add("needs a name and a text in at least one language");
         if (!TRACKERS.contains(d.tracker())) p.add("unknown tracker '" + d.tracker() + "'");
         if (d.sips() < MIN_SIPS || d.sips() > MAX_SIPS) p.add("sips must be 1-6");
         if (d.seconds() < MIN_SECONDS || d.seconds() > MAX_SECONDS) p.add("seconds must be 10-900");

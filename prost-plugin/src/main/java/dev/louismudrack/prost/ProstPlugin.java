@@ -4,6 +4,7 @@ import dev.louismudrack.prost.catalogue.Catalogue;
 import dev.louismudrack.prost.catalogue.ChallengeDef;
 import dev.louismudrack.prost.catalogue.Rule;
 import dev.louismudrack.prost.catalogue.RulesFile;
+import dev.louismudrack.prost.catalogue.Texts;
 import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.config.DataFiles;
 import dev.louismudrack.prost.config.GameConfig;
@@ -138,6 +139,7 @@ public final class ProstPlugin extends JavaPlugin {
         challenges = Catalogue.load(files.load("challenges.yml"), getLogger());
         preparedRules = RulesFile.parse(files.load("rules.yml"));
         lang = LangFiles.load(this, pluginConfig.defaultLanguage());
+        Texts.serverDefault(lang.defaultLanguage());
         Msg.bind(lang, new LanguageResolver(lang, hooks, prefs, pluginConfig.perPlayerLanguage()),
                 Theme.of(pluginConfig.theme(), getLogger()::warning), (player, text) -> text);   // PlaceholderAPI: Task 14
     }

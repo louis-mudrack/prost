@@ -43,7 +43,8 @@ class ShippedCatalogueTest {
         Set<String> trackers = new HashSet<>();
         for (ChallengeDef d : parsed.defs()) {
             for (String problem : CatalogueRules.validate(d, api)) check(d.id() + ": " + problem, false);
-            check(d.id() + ": text mentions what to do in both languages", !d.text(true).isBlank() && !d.text(false).isBlank());
+            check(d.id() + ": name and text in English and German",
+                    d.names().containsKey("en") && d.names().containsKey("de") && d.texts().containsKey("en") && d.texts().containsKey("de"));
             kinds.addAll(d.kinds());
             trackers.add(d.tracker());
         }

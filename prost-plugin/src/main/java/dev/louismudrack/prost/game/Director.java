@@ -138,9 +138,10 @@ public final class Director {
     private void remindRules(Round r, long now) {
         if (r.rules.isEmpty() || now - r.lastRuleReminder < plugin.cfg().rulesReminderMinutes() * MINUTE_MS) return;
         r.lastRuleReminder = now;
-        Msg.round(r, de -> {
+        Msg.roundEach(r, id -> {
+            boolean de = Msg.de(id);
             StringJoiner j = new StringJoiner(" <dark_gray>· <white>");
-            for (Rule rule : r.rules) j.add(Msg.esc(rule.text(de)));
+            for (Rule rule : r.rules) j.add(Msg.esc(rule.text(Msg.lang(id))));
             return (de ? "Aktive Regeln: <white>" : "Active rules: <white>") + j;
         });
     }

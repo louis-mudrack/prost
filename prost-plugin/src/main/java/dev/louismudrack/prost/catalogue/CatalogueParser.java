@@ -4,7 +4,9 @@ import dev.louismudrack.prost.game.Kind;
 import dev.louismudrack.prost.reward.Reward;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,7 +36,7 @@ final class CatalogueParser {
     }
 
     static ChallengeDef entry(String id, Map<?, ?> m) {
-        Map<?, ?> name = section(m, "name"), text = section(m, "text");
+        Map<String, String> names = languages(section(m, "name")), texts = languages(section(m, "text"));
         int sips = number(m, "sips", -1);
         List<Kind> kinds = new ArrayList<>();
         for (String k : strings(m, "kinds")) {
@@ -54,7 +56,7 @@ final class CatalogueParser {
             if (need == null) throw new IllegalArgumentException("unknown need " + n);
             needs.add(need);
         }
-        return new ChallengeDef(id, text(name, "de"), text(name, "en"), text(text, "de"), text(text, "en"), text(m, "tracker"),
+        return new ChallengeDef(id, names, texts, text(m, "tracker"),
                 text(m, "stat"), text(m, "source"), text(m, "mode"), text(m, "value"), strings(m, "targets"),
                 number(m, "amount", 1), number(m, "seconds", -1), sips, number(m, "give", sips), List.copyOf(kinds),
                 List.copyOf(rewards), Set.copyOf(needs), strings(m, "also-avoid"), number(m, "min-players", 1), number(m, "weight", 1));
@@ -64,6 +66,13 @@ final class CatalogueParser {
         Object v = m.get(key);
         if (v instanceof Map<?, ?> s) return s;
         throw new IllegalArgumentException("missing section " + key);
+    }
+
+    /** {en: ..., de: ...} -> the non-blank texts in file order */
+    private static Map<String, String> languages(Map<?, ?> section) {
+        Map<String, String> out = new LinkedHashMap<>();
+        section.forEach((k, v) -> { if (v != null && !String.valueOf(v).isBlank()) out.put(String.valueOf(k).toLowerCase(Locale.ROOT), String.valueOf(v)); });
+        return out;
     }
 
     private static String text(Map<?, ?> m, String key) {

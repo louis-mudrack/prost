@@ -37,7 +37,7 @@ public final class RulesMenu extends Menu {
         int from = page * CONTENT.length;
         for (int i = 0; i < CONTENT.length && from + i < rules.size(); i++) {
             int index = from + i;
-            set(CONTENT[i], Items.item(Material.PAPER, "<white>" + Msg.esc(rules.get(index).text(de)), List.of()), e -> {
+            set(CONTENT[i], Items.item(Material.PAPER, "<white>" + Msg.esc(rules.get(index).text(lang)), List.of()), e -> {
                 viewer.closeInventory();
                 picked.accept(index);
             });

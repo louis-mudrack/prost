@@ -16,6 +16,18 @@ class GameRulesTest {
     static Resolution.Progress pr(UUID id, int value, boolean done, long doneAt) { return new Resolution.Progress(id, value, done, false, doneAt); }
 
     @Test
+    void roundsFromAniDrinksKeepTheirRules() {
+        Map<String, Object> old = new java.util.HashMap<>(Map.of("code", "L9D5", "host", A.toString(), "pace", "party", "created", 1L,
+                "rules", java.util.List.of(Map.of("de", "Niemand darf \"ich\" sagen.", "en", "Nobody may say \"I\"."))));
+        Round r = RoundCodec.decode(old, 20);
+        eq("German text", "Niemand darf \"ich\" sagen.", r.rules.get(0).text("de"));
+        eq("English text", "Nobody may say \"I\".", r.rules.get(0).text("en"));
+        r.rules.add(dev.louismudrack.prost.catalogue.Rule.custom("Diggi"));
+        Round again = RoundCodec.decode(RoundCodec.encode(r), 20);
+        eq("a typed rule survives a restart", "Diggi", again.rules.get(1).text("en"));
+    }
+
+    @Test
     void resolution() {
         Resolution.Outcome solo = Resolution.resolve(Kind.SOLO, false, 3, 0, List.of(pr(A, 16, true, 10)));
         eq("solo done: winner", List.of(A), solo.winners());
@@ -94,9 +106,9 @@ class GameRulesTest {
         check("an empty round", r.members.isEmpty());
 
         Round rr = new Round("ZZ22", A, Pace.PARTY, 5);
-        for (int i = 0; i < 6; i++) rr.addRule(new Rule("R" + i, "R" + i), 5);
+        for (int i = 0; i < 6; i++) rr.addRule(Rule.custom("R" + i), 5);
         eq("rules stay at the maximum", 5, rr.rules.size());
-        eq("the oldest rule made room", "R1", rr.rules.get(0).de());
+        eq("the oldest rule made room", "R1", rr.rules.get(0).text("de"));
 
         String code = Round.newCode(new Random(5), Set.of());
         check("codes are 4 characters without look-alikes", code.length() == 4 && code.chars().noneMatch(ch -> "0O1I".indexOf(ch) >= 0));
@@ -104,7 +116,7 @@ class GameRulesTest {
         Round s = new Round("AB34", A, Pace.CHILL, 7);
         Member m = s.add(A, "Kasheyy", 25, true, 7);
         m.jokers = 2; m.solos = 1; m.history.add(new SipLedger.Sip(100, 3)); m.rouletteHits.add(200L); m.tally.drunk = 9;
-        s.rules.add(new Rule("Linke Hand", "Left hand"));
+        s.rules.add(new Rule(Map.of("de", "Linke Hand", "en", "Left hand")));
         s.used.add("mine_iron");
         s.challenges = 4;
         Round back = RoundCodec.decode(RoundCodec.encode(s), 20);
@@ -116,7 +128,7 @@ class GameRulesTest {
         eq("the last hour's sips survive (the limit keeps working)", 3, SipLedger.recent(back.member(A).history, 150));
         eq("roulette hits survive", List.of(200L), back.member(A).rouletteHits);
         eq("tally survives", 9, back.member(A).tally.drunk);
-        eq("rules survive", "Left hand", back.rules.get(0).en());
+        eq("rules survive", "Left hand", back.rules.get(0).text("en"));
         check("used challenges survive", back.used.contains("mine_iron"));
         check("after a restart everyone is away until they rejoin", back.member(A).away);
         Round partial = RoundCodec.decode(Map.of("code", "QQ77", "host", A.toString(), "members", Map.of(A.toString(), Map.of("name", "X"))), 20);
