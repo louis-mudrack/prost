@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/** A player in a round and their pause states (spec §3.3). */
+/** A player in a round and their pause states. */
 public final class Member {
     public final UUID id;
     public String name;
@@ -13,9 +13,9 @@ public final class Member {
     public boolean water;
     /** /prost pause */
     public boolean selfPaused;
-    /** AniCore AFK */
+    /** AFK, as the AFK hook decides (EssentialsX, Prost's own detection or a provider) */
     public boolean afk;
-    /** disconnected or /unplug (the bot never plays) */
+    /** disconnected, or a bot (bots never play) */
     public boolean away;
     /** creative or spectator, or outside config.yml worlds */
     public boolean wrongMode;

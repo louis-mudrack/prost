@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** One catalogue entry of challenges.yml (spec §6). */
+/** One catalogue entry of challenges.yml. */
 public record ChallengeDef(String id, Map<String, String> names, Map<String, String> texts, String tracker, String stat,
                     String source, String mode, String value, List<String> targets, int amount, int seconds, int sips,
                     int give, List<Kind> kinds, List<Reward> rewards, Set<Need> needs, List<String> alsoAvoid,

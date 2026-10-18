@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
-/** Every running round (spec §3): open, join, leave, end, invites, pause states, rounds.yml. Main thread only. */
+/** Every running round: open, join, leave, end, invites, pause states, rounds.yml. Main thread only. */
 public final class Rounds {
     public record Invite(String code, UUID from, long until) {}
 
@@ -151,7 +151,7 @@ public final class Rounds {
 
     public void decline(UUID id) { invites.remove(id); }
 
-    /** every second: AFK, away (offline or /unplug bot), creative/spectator; removes members after the offline grace */
+    /** every second: AFK, away (offline or a bot), creative/spectator; removes members after the offline grace */
     public void tickPresence() {
         long now = System.currentTimeMillis(), grace = plugin.cfg().offlineGraceMinutes() * MINUTE_MS;
         for (Round r : new ArrayList<>(byCode.values())) {

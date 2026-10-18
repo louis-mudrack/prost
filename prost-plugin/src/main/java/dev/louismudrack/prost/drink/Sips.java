@@ -23,9 +23,9 @@ import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * Everything a member drinks goes through here (spec §9): a joker prompt where it applies, then the ledger (personal
+ * Everything a member drinks goes through here: a joker prompt where it applies, then the ledger (personal
  * limit, rest lapses), the tally, the stats and one line to the round. A member who leaves while a prompt is open
- * simply has the sips recorded when it runs out (Review Focus 1).
+ * simply has the sips recorded when it runs out.
  */
 public final class Sips {
     private record Pending(Round round, UUID id, int amount, SipLedger.Source source, Function<UUID, String> why, BukkitTask timeout) {}

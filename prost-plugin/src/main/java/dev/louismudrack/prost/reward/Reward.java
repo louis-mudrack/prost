@@ -2,7 +2,7 @@ package dev.louismudrack.prost.reward;
 
 import java.util.Locale;
 
-/** What winning a challenge can give - real life only (spec §4.5). */
+/** What winning a challenge can give - real life only. */
 public enum Reward {
     HANDOUT("handout"), RULE("rule"), JOKER("joker"), NEXT("next");
 

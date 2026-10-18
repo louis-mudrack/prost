@@ -10,7 +10,7 @@ import org.bukkit.inventory.meta.SkullMeta;
 import java.util.List;
 import java.util.UUID;
 
-/** Menu items in the UX standard's look: MiniMessage names, no italics, no attribute noise. */
+/** Menu items: MiniMessage names, no italics, no attribute noise. */
 public final class Items {
     private Items() {}
 

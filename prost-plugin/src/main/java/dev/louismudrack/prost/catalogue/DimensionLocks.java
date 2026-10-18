@@ -3,7 +3,7 @@ package dev.louismudrack.prost.catalogue;
 import java.util.Set;
 
 /**
- * Blocks, items and mobs that only exist in the Nether or the End (spec §4.4). A challenge targeting one must declare
+ * Blocks, items and mobs that only exist in the Nether or the End. A challenge targeting one must declare
  * needs: [nether] / [end], so it is only drawn while that dimension is open (owner 2026-10-15). Things with an
  * overworld source (ender pearls, glowstone dust from witches, gold nuggets) are deliberately not listed.
  */

@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * collect: picked-up items that nobody threw (drop-and-pick-up loops never count, spec §5).
+ * collect: picked-up items that nobody threw (drop-and-pick-up loops never count).
  * gift: picked-up items thrown by ANOTHER member of the round - counts once per gift.
  */
 final class CollectTracker extends BaseTracker {

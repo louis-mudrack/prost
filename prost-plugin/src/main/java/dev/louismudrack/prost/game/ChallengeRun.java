@@ -32,7 +32,7 @@ import java.util.StringJoiner;
 import java.util.UUID;
 
 /**
- * One running challenge (spec §4.1): announces it with its fixed sips, shows a boss bar to the whole round, polls the
+ * One running challenge: announces it with its fixed sips, shows a boss bar to the whole round, polls the
  * tracker every 10 ticks, ends early when decided, then resolves: drinks through Sips, rewards through Rewards (only
  * when nobody drinks).
  * A participant who stops being active drops out without drinking; a Duel opponent dropping out = walkover.
@@ -93,7 +93,7 @@ public final class ChallengeRun {
         if (now >= endsAt || decided()) finish();
     }
 
-    /** paused, AFK, away, wrong mode or left: out without drinking (spec §3.3); still in the round = watches on */
+    /** paused, AFK, away, wrong mode or left: out without drinking; still in the round = watches on */
     void drop(UUID id) {
         if (over || !participants.remove(id)) return;
         doneAt.remove(id);
@@ -184,7 +184,7 @@ public final class ChallengeRun {
 
     // ---------------------------------------------------------------------------------------------- text
 
-    /** test game 2026-10-17: the old title showed only the name - kind, goal and who plays were easy to miss in chat */
+    /** kind, name, goal and who plays, in the title and in chat: the name alone was easy to miss */
     private void announce() {
         for (UUID id : round.members.keySet()) {
             Player p = Bukkit.getPlayer(id);
@@ -307,7 +307,7 @@ public final class ChallengeRun {
         return j.toString();
     }
 
-    /** the action bar's live hint (spec §10.1): "Noch 3 - 0:42" */
+    /** the action bar's live hint: "Noch 3 - 0:42" */
     private String hint(UUID id) {
         if (def.avoidType()) return Msg.str(id, tracker.broken(id) ? "challenge.hint.broken" : "challenge.hint.hold");
         if (tracker.broken(id)) return Msg.str(id, "challenge.hint.out");

@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/** Semantic checks of one catalogue entry (spec §6, §7, §15): run on the shipped file at build and on every load. */
+/** Semantic checks of one catalogue entry: run on the shipped file at build and on every load. */
 final class CatalogueRules {
     /** does a name exist in the running Paper API (reflection at build, Bukkit at runtime) */
     interface Names {

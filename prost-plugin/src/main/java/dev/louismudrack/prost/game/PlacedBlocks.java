@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** Blocks placed by a round's members during that round: "mine X" never counts them (no place-and-mine loops, spec §5). */
+/** Blocks placed by a round's members during that round: "mine X" never counts them (no place-and-mine loops). */
 public final class PlacedBlocks implements Listener {
     private record Pos(UUID world, int x, int y, int z) {}
 

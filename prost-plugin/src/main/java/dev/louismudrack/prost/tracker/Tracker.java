@@ -5,7 +5,7 @@ import org.bukkit.entity.Player;
 import java.util.List;
 import java.util.UUID;
 
-/** Measures one challenge for its participants from the moment it starts (spec §5). */
+/** Measures one challenge for its participants from the moment it starts. */
 public interface Tracker {
     void start(List<Player> players);
 

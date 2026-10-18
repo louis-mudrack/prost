@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Which challenge comes next (spec §4.4): only what is possible at this moment - Nether/End entries only while that
+ * Which challenge comes next: only what is possible at this moment - Nether/End entries only while that
  * dimension is open (owner 2026-10-15), time and weather needs, "enter X" never while someone is already there, kinds
  * that fit the number of active members, no repeats until the pool runs dry; then kind by kind-weights and entry by its
  * weight. Solo goes to the member with the fewest solos, Duel to the two with the fewest duels.

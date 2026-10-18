@@ -11,7 +11,7 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-/** your settings in a round: sips per hour (-5 -1 +1 +5) and water mode (spec §3.2, §9); changes apply at once */
+/** your settings in a round: sips per hour (-5 -1 +1 +5) and water mode; changes apply at once */
 public final class JoinMenu extends Menu {
     private final Round round;
 

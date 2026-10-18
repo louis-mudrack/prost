@@ -6,7 +6,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Open "type your own rule" windows (spec §4.5). Read from the async chat thread, so the map is concurrent. A window
+ * Open "type your own rule" windows. Read from the async chat thread, so the map is concurrent. A window
  * that ran out is dropped on the next message and does not claim it: that message stays normal chat.
  */
 final class RuleInputs {

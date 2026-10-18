@@ -9,7 +9,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
 
-/** An AniDrinks 0.2.0 folder as survival has it: the same schema, two players, one finished round. */
+/** An AniDrinks 0.2.0 folder: its schema, two players, one finished round. */
 public final class OldInstall {
     public static final UUID KASHEYY = UUID.fromString("0e14c9a2-bd52-402a-a715-302d6c0bf0b5");
     public static final UUID ALEX = UUID.fromString("a8cee66a-0f13-4058-9b1b-2d3190e07922");

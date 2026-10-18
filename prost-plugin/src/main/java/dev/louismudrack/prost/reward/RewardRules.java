@@ -2,7 +2,7 @@ package dev.louismudrack.prost.reward;
 
 import java.util.List;
 
-/** Reward decisions without Bukkit (spec §4.3, §4.5). */
+/** Reward decisions without Bukkit. */
 public final class RewardRules {
     private static final String COLOUR_CODES = "[§&][0-9a-fk-orA-FK-OR]";
 

@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
-/** Sips a winner did not assign before the picker closed go to random eligible members (spec §4.5), within their limit. */
+/** Sips a winner did not assign before the picker closed go to random eligible members, within their limit. */
 public final class HandoutRules {
     private HandoutRules() {}
 

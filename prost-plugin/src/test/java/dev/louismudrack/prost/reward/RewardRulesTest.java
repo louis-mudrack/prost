@@ -28,7 +28,7 @@ class RewardRulesTest {
         eq("a word that is not a cancel word in this language is a rule", "abbrechen", RewardRules.cleanRule("abbrechen", 60, List.of("annuler")));
     }
 
-    /** review finding 1: an own-rule window that ran out must not swallow the player's next chat message */
+    /** an own-rule window that ran out must not swallow the player's next chat message */
     @Test
     void ruleInputs() {
         RuleInputs in = new RuleInputs();

@@ -1,6 +1,6 @@
 package dev.louismudrack.prost.game;
 
-/** When the next challenge may start (spec §3.2, §4.1). One running challenge per round, never two. */
+/** When the next challenge may start. One running challenge per round, never two. */
 public final class DirectorRules {
     private static final long DAY_TICKS = 24_000L, NIGHT_START = 13_000L, NIGHT_END = 23_000L;
 
@@ -17,7 +17,7 @@ public final class DirectorRules {
 
     public static long afterResume(long now, long nextDrawAt, long minWaitMs) { return Math.max(nextDrawAt, now + minWaitMs); }
 
-    /** overworld time of day 13000-23000 = night (spec §4.4; the time keeps counting across days) */
+    /** overworld time of day 13000-23000 = night (the time keeps counting across days) */
     public static boolean isNight(long overworldTime) {
         long t = Math.floorMod(overworldTime, DAY_TICKS);
         return t >= NIGHT_START && t < NIGHT_END;

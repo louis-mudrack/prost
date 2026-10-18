@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * The UX standard's GUI skeleton (§3): filler everywhere, "» Title" in the brand gradient, Back bottom-left, Close
+ * The menus' skeleton: filler everywhere, "» Title" in the brand gradient, Back bottom-left, Close
  * bottom-right, sounds. Clicks are routed by this holder and the slot's action - never by the title.
  */
 public abstract class Menu implements InventoryHolder {
@@ -53,7 +53,7 @@ public abstract class Menu implements InventoryHolder {
     /** the inventory closed (by the player or by us) */
     protected void closed() { }
 
-    /** shows a countdown in the top row while the menu is open (test game: a timeout looked like a wrong pick) */
+    /** shows a countdown in the top row while the menu is open (without it a timeout looked like a wrong pick) */
     public final Menu until(long deadlineMs) {
         deadline = deadlineMs;
         return this;

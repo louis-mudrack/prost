@@ -66,7 +66,7 @@ public final class AniDrinksMigration {
 
     public boolean found() { return source().isDirectory(); }
 
-    /** the start's guard (spec §9): Prost's own stats, or those of an earlier take-over, are never replaced unasked */
+    /** the start's guard: Prost's own stats, or those of an earlier take-over, are never replaced unasked */
     public boolean prostHasStats() throws SQLException { return await(store.hasData()); }
 
     /** null when there is nothing to take over */

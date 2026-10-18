@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Round <-> plain maps for rounds.yml (spec §12.4). Decoding tolerates missing fields; members come back "away". */
+/** Round <-> plain maps for rounds.yml. Decoding tolerates missing fields; members come back "away". */
 final class RoundCodec {
     private RoundCodec() {}
 

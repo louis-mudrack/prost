@@ -3,7 +3,7 @@ package dev.louismudrack.prost.ui;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
-/** UX standard §4 sounds plus the game's own (a won challenge uses the quieter level-up sound, like AniCore achievements). */
+/** The game's sounds: menus, success, error, and the round's own (a won challenge uses the quieter level-up sound). */
 public final class Sounds {
     private Sounds() {}
 

@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
-/** config.yml (spec §6): general settings. Missing or invalid values fall back to the defaults with one warning each. */
+/** config.yml: general settings. Missing or invalid values fall back to the defaults with one warning each. */
 public record PluginConfig(String defaultLanguage, boolean perPlayerLanguage, ThemeColors theme, List<String> commandAliases,
                            Set<String> worlds, List<AreaBox> excludedAreas, DimensionMode nether, DimensionMode end,
                            int afkMinutes, boolean useEssentials, boolean parsePlaceholders, boolean firstRoundNotice,

@@ -17,9 +17,8 @@ import java.util.Set;
 import static dev.louismudrack.prost.Checks.*;
 
 /**
- * The SHIPPED challenges.yml and rules.yml against the Paper 26.3 API (spec §15). Needs paper-api + snakeyaml on the
- * classpath, so it runs in host/build.sh, not locally. Enum names are looked up by reflection WITHOUT initialising the
- * enum classes (Material/EntityType must not need a running server here).
+ * The SHIPPED challenges.yml and rules.yml against the Paper API on the test classpath. Enum names are looked up by
+ * reflection WITHOUT initialising the enum classes (Material/EntityType must not need a running server here).
  */
 class ShippedCatalogueTest {
     @Test
@@ -30,7 +29,7 @@ class ShippedCatalogueTest {
         try (Reader r = Files.newBufferedReader(Path.of("src/main/resources/challenges.yml"))) { root = new Yaml(options).load(r); }
         CatalogueParser.Parsed parsed = CatalogueParser.parse(root);
         eq("every entry parses", List.of(), parsed.problems());
-        eq("delivery 1 ships 103 challenges (spec §7.1-7.9)", 103, parsed.defs().size());
+        eq("the catalogue ships 103 challenges", 103, parsed.defs().size());
         CatalogueRules.Names api = new CatalogueRules.Names() {
             public boolean material(String n) { return field("org.bukkit.Material", n); }
             public boolean entity(String n) { return field("org.bukkit.entity.EntityType", n); }

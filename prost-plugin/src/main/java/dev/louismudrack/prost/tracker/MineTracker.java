@@ -9,7 +9,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 
 import java.util.Set;
 
-/** blocks broken in survival mode; blocks a member placed during the round never count (spec §5) */
+/** blocks broken in survival mode; blocks a member placed during the round never count */
 final class MineTracker extends BaseTracker {
     private final Set<Material> targets;
 

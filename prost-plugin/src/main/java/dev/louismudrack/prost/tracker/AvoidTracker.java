@@ -19,8 +19,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Not doing something until the time is up (spec §5). Chat arrives on the async chat thread: the only thing it
- * touches is the concurrent "broken" set, which the run reads on the main thread (Review Focus 2).
+ * Not doing something until the time is up. Chat arrives on the async chat thread: the only thing it
+ * touches is the concurrent "broken" set, which the run reads on the main thread.
  */
 final class AvoidTracker extends BaseTracker {
     private final Set<String> modes;

@@ -1,6 +1,6 @@
 package dev.louismudrack.prost.game;
 
-/** Who may join a round, and when an absent member is removed (spec §3.2). */
+/** Who may join a round, and when an absent member is removed. */
 public final class JoinRules {
     public enum Result { OK, ALREADY_IN_ROUND, NO_SUCH_ROUND, FULL }
 

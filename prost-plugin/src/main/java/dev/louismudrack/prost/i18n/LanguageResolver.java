@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
-/** Which language a player sees (spec §4.2): provider, own choice, client language, server default - first that exists. */
+/** Which language a player sees: provider, own choice, client language, server default - first that exists. */
 public final class LanguageResolver {
     private final Lang lang;
     private final Hooks hooks;

@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 
 import java.time.Duration;
 
-/** Boss bar colours per kind, titles, action bar (spec §10.1). */
+/** Boss bar colours per kind, titles, action bar. */
 public final class Hud {
     private static final Title.Times TIMES = Title.Times.times(Duration.ofMillis(250), Duration.ofMillis(3000), Duration.ofMillis(500));
     /** a new challenge stays longer: kind, name and goal have to be read, not glimpsed */

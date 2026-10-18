@@ -22,7 +22,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The places where a server's own plugins may decide for Prost (spec §3.1): one provider per hook, else Prost's
+ * The places where a server's own plugins may decide for Prost: one provider per hook, else Prost's
  * default. A provider that throws - including a LinkageError when its plugin's own dependency is missing - or answers
  * null is logged once and the default answers that call, so a broken integration never stops a round.
  */

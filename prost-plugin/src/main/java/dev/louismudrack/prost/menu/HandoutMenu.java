@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** spread a winner's sips over the eligible members: left-click +1, right-click -1, confirm (spec §4.5) */
+/** spread a winner's sips over the eligible members: left-click +1, right-click -1, confirm */
 public final class HandoutMenu extends Menu {
     private final Rewards rewards;
     private final Rewards.Handout handout;

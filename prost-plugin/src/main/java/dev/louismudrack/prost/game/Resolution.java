@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Progress at the end of a challenge -> who drinks how much and who wins (spec §4.3). Callers shuffle the list first,
+ * Progress at the end of a challenge -> who drinks how much and who wins. Callers shuffle the list first,
  * so a tie goes to whoever came first in the shuffled order (= random).
  */
 final class Resolution {

@@ -35,7 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * The random events (spec §8): an action of an active member who is not in a running challenge may hit them - at most
+ * The random events: an action of an active member who is not in a running challenge may hit them - at most
  * max-hits per window and min-gap apart - then a ~3 s spin lands on 1-4 sips, which go through Sips like a challenge
  * penalty (joker, limit, water). A restart mid-spin drops that spin: nobody drinks, like a challenge cut by a restart.
  */
@@ -108,7 +108,7 @@ public final class Roulette implements Listener {
     /** /prost admin debug: every roll of a round member is logged with its outcome */
     public boolean debug;
 
-    /** a capped roll does not count (spec §8); the hit is recorded before the spin, so the gap holds during it */
+    /** a capped roll does not count; the hit is recorded before the spin, so the gap holds during it */
     /** {@code whatKey} names the action in the language files (roulette.what.*) */
     private void roll(Player p, String category, String whatKey) {
         UUID id = p.getUniqueId();

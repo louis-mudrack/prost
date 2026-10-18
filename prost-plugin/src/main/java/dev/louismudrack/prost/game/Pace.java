@@ -2,7 +2,7 @@ package dev.louismudrack.prost.game;
 
 import java.util.Locale;
 
-/** How often challenges come (spec §3.2); the windows live in game.yml pace.* */
+/** How often challenges come; the windows live in game.yml pace.* */
 public enum Pace {
     CHILL("chill"), NORMAL("normal"), PARTY("party");
 

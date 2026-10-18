@@ -20,7 +20,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 /**
- * The game loop (spec §3.2, §4.1, §4.4): every 10 ticks it advances the running challenges and, per round, draws the
+ * The game loop: every 10 ticks it advances the running challenges and, per round, draws the
  * next one when its time has come - only what is possible right now, the winner's queued pick first. One run per
  * round, never two; rule reminders every rules.reminder-minutes.
  */
@@ -74,7 +74,7 @@ public final class Director {
         }
     }
 
-    /** the action bar says so while you or the whole round is paused (spec §10.1) */
+    /** the action bar says so while you or the whole round is paused */
     private static void showPaused(Round r) {
         for (Member m : r.members.values()) {
             if (!m.selfPaused && !r.paused) continue;
@@ -146,7 +146,7 @@ public final class Director {
         });
     }
 
-    /** /prost next: refused while a challenge runs (Review Focus 3) */
+    /** /prost next: refused while a challenge runs */
     public boolean next(Round r) {
         if (!DirectorRules.mayDrawNow(runs.containsKey(r.code))) return false;
         r.nextDrawAt = 0;

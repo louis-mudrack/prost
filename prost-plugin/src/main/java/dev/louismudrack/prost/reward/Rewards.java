@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
-/** What winners get - real life only (spec §4.5): hand out sips, make a rule, a joker, pick the next challenge. */
+/** What winners get - real life only: hand out sips, make a rule, a joker, pick the next challenge. */
 public final class Rewards implements Listener {
     /** an open hand-out: who may receive how much (room), what the giver assigned so far */
     public static final class Handout {
@@ -226,7 +226,7 @@ public final class Rewards implements Listener {
         if (h.timeout != null) h.timeout.cancel();
         handouts.remove(h.giver);
         Map<UUID, Integer> all = new LinkedHashMap<>(h.assigned);
-        all.keySet().removeIf(id -> !canReceive(h.round, id));   // paused or gone since the picker opened (spec §3.3)
+        all.keySet().removeIf(id -> !canReceive(h.round, id));   // paused or gone since the picker opened
         all.values().removeIf(n -> n <= 0);
         int rest = h.amount - all.values().stream().mapToInt(n -> n).sum();
         if (rest > 0) {
@@ -289,7 +289,7 @@ public final class Rewards implements Listener {
     public void onChat(AsyncChatEvent e) {
         UUID id = e.getPlayer().getUniqueId();
         RuleInputs.Input in = ruleInputs.take(id, System.currentTimeMillis());
-        if (in == null) return;   // no window, or it ran out: the message stays normal chat (Review Focus 2)
+        if (in == null) return;   // no window, or it ran out: the message stays normal chat
         e.setCancelled(true);
         String text = PlainTextComponentSerializer.plainText().serialize(e.message());
         Bukkit.getScheduler().runTask(plugin, () -> {

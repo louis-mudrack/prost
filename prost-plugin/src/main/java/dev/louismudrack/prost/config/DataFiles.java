@@ -13,8 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
- * The admin-owned YAML files (spec §12): the shipped copy is written once, then the server copy is read with SnakeYAML -
- * the same parser the build's CatalogueSelfTest uses. An unreadable file falls back to the jar's copy, with a warning.
+ * The admin-owned YAML files: the shipped copy is written once, then the server copy is read with SnakeYAML (duplicate
+ * keys refused). An unreadable file falls back to the jar's copy, with a warning.
  */
 public final class DataFiles {
     private final ProstPlugin plugin;

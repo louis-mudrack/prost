@@ -3,7 +3,7 @@ package dev.louismudrack.prost.drink;
 import java.util.List;
 
 /**
- * What actually reaches a member (spec §9): jokers cover challenge penalties and roulette hits, never handed-out sips;
+ * What actually reaches a member: jokers cover challenge penalties and roulette hits, never handed-out sips;
  * a member's own limit counts every sip of the last rolling hour, the rest lapses.
  */
 public final class SipLedger {

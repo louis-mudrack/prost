@@ -174,7 +174,7 @@ public class ProstPlugin extends JavaPlugin {
         getServer().getOnlinePlayers().forEach(p -> prefs.load(p));
     }
 
-    /** spec §9: at the start only into a Prost that holds no stats yet */
+    /** at the start only into a Prost that holds no stats yet */
     Outcome migrateOnStart() { return migrate(false, () -> { }); }
 
     /** /prost admin migrate: also over Prost's own stats (AniDrinks' numbers replace them), loaded right away */

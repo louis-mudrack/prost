@@ -34,7 +34,7 @@ import java.util.Locale;
 import java.util.TreeSet;
 import java.util.UUID;
 
-/** /prost (spec §5). Every reply in the player's language; console only gets the admin part, in English. */
+/** /prost. Every reply in the player's language; console only gets the admin part, in English. */
 public final class ProstCommand implements BasicCommand {
     private static final String PLAY = "prost.play";
     private static final String ADMIN = "prost.admin";

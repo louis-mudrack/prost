@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The random events (spec §8): a chance per action category, at most maxHits per rolling window and a minimum gap
+ * The random events: a chance per action category, at most maxHits per rolling window and a minimum gap
  * between two hits per member, then a weighted spin of 1..weights.length sips.
  */
 public final class RouletteRules {

@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 
 import java.util.UUID;
 
-/** End-of-round numbers (spec §10.4): for a member who leaves, and for everyone when the round ends. */
+/** End-of-round numbers: for a member who leaves, and for everyone when the round ends. */
 final class Summary {
     private Summary() {}
 

@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.function.ToIntFunction;
 
-/** The round's titles (spec §10.4): MVP, Schluckspecht, Gönner - the highest value above 0, a tie goes to who joined first. */
+/** The round's titles: MVP, Schluckspecht, Gönner - the highest value above 0, a tie goes to who joined first. */
 final class SummaryRules {
     private SummaryRules() {}
 

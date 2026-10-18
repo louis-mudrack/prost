@@ -72,7 +72,7 @@ class GameRulesTest {
 
         eq("nobody took part: nothing happens", Map.of(), Resolution.resolve(Kind.EACH, false, 2, 0, List.of()).drinks());
 
-        // one penalty per challenge (owner, test game 2026-10-17): when anyone drinks, the winners get no reward on top
+        // one penalty per challenge: when anyone drinks, the winners get no reward on top
         eq("solo won: rewarded", List.of(A), solo.rewarded());
         eq("each with a miss: the winners get nothing on top", List.of(), each.rewarded());
         eq("each, everyone made it: everyone rewarded", List.of(A, C),

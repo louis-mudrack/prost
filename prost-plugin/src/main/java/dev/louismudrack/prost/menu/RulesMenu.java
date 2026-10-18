@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Pick a prepared rule or write your own (spec §4.5); with the list full, a second screen picks which rule goes.
+ * Pick a prepared rule or write your own; with the list full, a second screen picks which rule goes.
  * 28 rules per page in the interior, prev/next in the nav row.
  */
 public final class RulesMenu extends Menu {

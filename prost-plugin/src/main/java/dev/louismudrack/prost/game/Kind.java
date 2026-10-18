@@ -2,7 +2,7 @@ package dev.louismudrack.prost.game;
 
 import java.util.Locale;
 
-/** How a challenge is played (spec §4.2). */
+/** How a challenge is played. */
 public enum Kind {
     TEAM("team", 2), EACH("each", 2), RACE("race", 2), DUEL("duel", 2), SOLO("solo", 1);
 

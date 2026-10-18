@@ -1,6 +1,6 @@
 package dev.louismudrack.prost.hook;
 
-/** When a player counts as active (the same rule as AniCore's AFK detection, which survival used before). */
+/** When a player counts as active, and when idle long enough to be AFK. */
 public final class AfkRules {
     private static final float LOOK_EPSILON = 0.01f;
     private static final double MOVE_EPSILON_SQ = 1.0e-4;

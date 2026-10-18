@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 import static dev.louismudrack.prost.migration.OldInstall.KASHEYY;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Taking over plugins/AniDrinks on a running server: at the first start (spec §9) and with /prost admin migrate. */
+/** Taking over plugins/AniDrinks on a running server: at the first start and with /prost admin migrate. */
 class TakeOverTest {
     private ServerMock server;
 

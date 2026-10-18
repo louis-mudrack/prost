@@ -2,7 +2,7 @@ package dev.louismudrack.prost.catalogue;
 
 import java.util.Locale;
 
-/** What has to be true when a challenge is drawn (spec §4.4). */
+/** What has to be true when a challenge is drawn. */
 public enum Need {
     NETHER("nether"), END("end"), NIGHT("night"), DAY("day"), RAIN("rain"), THUNDER("thunder");
 

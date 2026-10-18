@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** vanilla statistics, snapshotted at the start: only what happens during the challenge counts (spec §5) */
+/** vanilla statistics, snapshotted at the start: only what happens during the challenge counts */
 final class StatTracker extends BaseTracker {
     private final List<Statistic> stats = new ArrayList<>();
     private final Set<Material> mats;

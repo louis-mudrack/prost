@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * reach a height, a distance from the own start, a dimension (through a portal) or a village. Positions on the sky
- * island and anything right after a /spawn or plugin teleport never count (spec §5).
+ * island and anything right after a /spawn or plugin teleport never count.
  */
 final class ReachTracker extends BaseTracker {
     private static final long TELEPORT_GRACE_MS = 10_000L;

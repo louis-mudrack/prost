@@ -9,7 +9,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
-/** One running game (spec §3): host, members in join order, pace, rules, what was played. */
+/** One running game: host, members in join order, pace, rules, what was played. */
 public final class Round {
     /** "pick the next one": the winner's choice for the next draw */
     public record Queued(String id, Kind kind, List<UUID> players) {}
