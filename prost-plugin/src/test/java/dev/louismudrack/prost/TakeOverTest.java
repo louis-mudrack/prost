@@ -1,5 +1,8 @@
 package dev.louismudrack.prost;
 
+import dev.louismudrack.prost.catalogue.Rule;
+import dev.louismudrack.prost.game.Member;
+import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.migration.AniDrinksMigration.Outcome;
 import dev.louismudrack.prost.migration.OldInstall;
 import dev.louismudrack.prost.storage.StatsRow;
@@ -13,6 +16,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -83,11 +87,56 @@ class TakeOverTest {
         ProstPlugin plugin = TestServer.start(server);
         assertFalse(new File(plugin.getDataFolder(), "rounds.yml").exists(), "Prost has not run a round yet");
         Path old = OldInstall.write(pluginsDir(plugin));
-        Files.writeString(old.resolve("rounds.yml"), "- code: L9D5\n  host: '" + KASHEYY + "'\n  pace: normal\n  created: 1792271070891\n"
-                + "  rules: [{de: Kein Wasser, en: No water}]\n  members:\n    '" + KASHEYY + "': {name: Kasheyy, limit: 20}\n");
+        OldInstall.runningRound(old);
         assertTrue(migrate().contains("AniDrinks data taken over"));
-        assertNotNull(plugin.rounds().byCode("L9D5"));
-        assertEquals(plugin.rounds().byCode("L9D5"), plugin.rounds().of(KASHEYY));
+        assertRoundRestored(plugin);
+    }
+
+    /** a copy left by a failed attempt is loaded by the next one, before a stop could save the empty list over it */
+    @Test
+    void aRetryAfterAFailedCommandStillLoadsTheRounds() throws Exception {
+        ProstPlugin plugin = TestServer.start(server);
+        Path old = OldInstall.write(pluginsDir(plugin));
+        OldInstall.runningRound(old);
+        OldInstall.breakRounds(old);
+        assertTrue(migrate().contains("failed"));
+        OldInstall.repairRounds(old);
+        assertTrue(migrate().contains("AniDrinks data taken over"));
+        assertRoundRestored(plugin);
+    }
+
+    /** a start that took nothing over wrote Prost's shipped files and, at its stop, an empty rounds.yml: none of it counts as Prost's own */
+    @Test
+    void aBlockedStartLeavesNothingInTheWayOfTheNext() throws Exception {
+        Path plugins = server.getPluginManager().getParentTemporaryDirectory().toPath();
+        Path old = OldInstall.write(plugins);
+        OldInstall.runningRound(old);
+        MockBukkit.createMockPlugin("AniDrinks");
+        ProstPlugin blocked = TestServer.start(server);
+        File data = blocked.getDataFolder();
+        assertTrue(Files.isRegularFile(old.resolve("stats.db")), "AniDrinks.jar is still there: nothing taken over");
+        assertTrue(new File(data, "game.yml").exists());
+        server.getPluginManager().disablePlugin(blocked);
+        assertEquals("[]", Files.readString(new File(data, "rounds.yml").toPath()).trim());
+
+        server.getPluginManager().clearPlugins();   // AniDrinks.jar removed, Prost starts again
+        ProstPlugin plugin = MockBukkit.load(ProstPlugin.class);
+        assertEquals(data, plugin.getDataFolder());
+        assertTrue(Files.isDirectory(plugins.resolve("AniDrinks.migrated")));
+        assertEquals(6, plugin.cfg().maxPlayers());
+        assertEquals("mine_iron: {}\n", Files.readString(new File(data, "challenges.yml").toPath()));
+        assertEquals("- {de: a, en: b}\n", Files.readString(new File(data, "rules.yml").toPath()));
+        assertRoundRestored(plugin);
+    }
+
+    private static void assertRoundRestored(ProstPlugin plugin) {
+        Round r = plugin.rounds().byCode("L9D5");
+        assertNotNull(r);
+        assertEquals(r, plugin.rounds().of(KASHEYY));
+        Member kasheyy = r.member(KASHEYY);
+        assertEquals(12, kasheyy.limit);
+        assertTrue(kasheyy.water);
+        assertEquals(List.of(new Rule(Map.of("de", "Nur links trinken", "en", "Drink left-handed"))), r.rules);
     }
 
     @Test

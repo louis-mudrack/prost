@@ -1,5 +1,6 @@
 package dev.louismudrack.prost.migration;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -29,11 +30,19 @@ public final class OldInstall {
                         + "rules_made INTEGER NOT NULL DEFAULT 0, rounds INTEGER NOT NULL DEFAULT 0, last_played INTEGER NOT NULL DEFAULT 0)",
                 "CREATE TABLE rounds (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, host TEXT NOT NULL, "
                         + "started INTEGER NOT NULL, ended INTEGER NOT NULL, members INTEGER NOT NULL, challenges INTEGER NOT NULL)",
-                "INSERT INTO stats VALUES ('" + KASHEYY + "', 'Kasheyy', 26, 0, 12, 6, 3, 6, 1, 1, 2, 1792283176874)",
-                "INSERT INTO stats VALUES ('" + ALEX + "', 'Alex', 27, 0, 10, 7, 5, 0, 0, 0, 2, 1792283176875)",
+                // a different value in every counter column, so a swapped pair shows
+                "INSERT INTO stats VALUES ('" + KASHEYY + "', 'Kasheyy', 26, 4, 12, 7, 3, 6, 1, 5, 2, 1792283176874)",
+                "INSERT INTO stats VALUES ('" + ALEX + "', 'Alex', 27, 9, 10, 8, 15, 13, 11, 14, 3, 1792283176875)",
                 "INSERT INTO rounds (code, host, started, ended, members, challenges) VALUES ('L9D5', '" + KASHEYY
                         + "', 1792271070891, 1792283176875, 2, 16)");
         return old;
+    }
+
+    /** AniDrinks' rounds.yml with a running round: Kasheyy on water with a limit of 12, one rule */
+    public static void runningRound(Path old) throws IOException {
+        Files.writeString(old.resolve("rounds.yml"), "- code: L9D5\n  host: '" + KASHEYY + "'\n  pace: normal\n  created: 1792271070891\n"
+                + "  rules: [{de: Nur links trinken, en: Drink left-handed}]\n"
+                + "  members:\n    '" + KASHEYY + "': {name: Kasheyy, limit: 12, water: true}\n");
     }
 
     /** the AniDrinks rounds table without its columns: reading it fails after the stats are in */

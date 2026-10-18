@@ -170,6 +170,21 @@ class SqlStatsStoreTest {
         unprefixed.close();
     }
 
+    /** a connection cut during the column check stays a lost connection (retried once), not "set a table-prefix" */
+    @Test
+    void aLostConnectionIsNotMistakenForAForeignTable() {
+        java.sql.SQLException lost = new java.sql.SQLException("connection reset", "08S01");
+        ClassLoader cl = getClass().getClassLoader();
+        java.sql.Statement st = (java.sql.Statement) java.lang.reflect.Proxy.newProxyInstance(cl, new Class<?>[]{java.sql.Statement.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("executeQuery")) throw lost;
+                    return null;   // close()
+                });
+        java.sql.Connection c = (java.sql.Connection) java.lang.reflect.Proxy.newProxyInstance(cl, new Class<?>[]{java.sql.Connection.class},
+                (proxy, method, args) -> st);
+        assertSame(lost, assertThrows(java.sql.SQLException.class, () -> SqlStatsStore.requireOwn(c, "prost_stats", "language, noticed")));
+    }
+
     @Test
     void countersAddedDuringAnOutageAreWrittenWhenTheDatabaseIsBack() throws Exception {
         java.io.File missing = dir.resolve("later").resolve("outage.db").toFile();

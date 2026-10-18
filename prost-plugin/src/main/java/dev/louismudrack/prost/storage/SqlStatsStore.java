@@ -165,10 +165,11 @@ public final class SqlStatsStore implements StatsStore {
     }
 
     /** CREATE TABLE IF NOT EXISTS keeps a table of that name: with an empty table-prefix AniDrinks' old one or another plugin's */
-    private static void requireOwn(Connection c, String table, String columns) throws SQLException {
+    static void requireOwn(Connection c, String table, String columns) throws SQLException {
         try (Statement st = c.createStatement()) {
             st.executeQuery("SELECT " + columns + " FROM " + table + " WHERE 1 = 0").close();
         } catch (SQLException e) {
+            if (e.getSQLState() != null && e.getSQLState().startsWith(CONNECTION_LOST)) throw e;
             throw new SQLException("table " + table + " is not Prost's (" + e.getMessage() + ") - another plugin or an AniDrinks database "
                     + "uses that name: set storage.table-prefix in config.yml (default prost_) and restart", e.getSQLState(), e);
         }

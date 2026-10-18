@@ -58,7 +58,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.logging.Level;
 
 /** Prost - the drinking game. Rounds, challenges and the roulette. Not final: MockBukkit loads it as a subclass. */
@@ -154,17 +153,18 @@ public class ProstPlugin extends JavaPlugin {
     }
 
     /** spec §9: at the start only into a Prost that holds no stats yet */
-    Outcome migrateOnStart() { return migrate(false, taken -> { }); }
+    Outcome migrateOnStart() { return migrate(false, () -> { }); }
 
     /** /prost admin migrate: also over Prost's own stats (AniDrinks' numbers replace them), loaded right away */
-    public Outcome migrate() { return migrate(true, taken -> loadTakenOver(taken)); }
+    public Outcome migrate() { return migrate(true, () -> loadTakenOver()); }
 
-    private Outcome migrate(boolean overProstStats, Consumer<AniDrinksMigration.Result> load) {
+    private Outcome migrate(boolean overProstStats, Runnable load) {
         if (getServer().getPluginManager().getPlugin(AniDrinksMigration.SOURCE) != null) {
             getLogger().severe("AniDrinks is installed next to Prost - nothing taken over; remove AniDrinks.jar and restart");
             return Outcome.BLOCKED;
         }
-        AniDrinksMigration migration = new AniDrinksMigration(getDataFolder().getParentFile(), getDataFolder(), stats, getLogger());
+        AniDrinksMigration migration = new AniDrinksMigration(getDataFolder().getParentFile(), getDataFolder(), name -> getResource(name),
+                stats, getLogger());
         if (!migration.found()) return Outcome.NOTHING;
         AniDrinksMigration.Result taken;
         try {
@@ -180,14 +180,17 @@ public class ProstPlugin extends JavaPlugin {
             return Outcome.FAILED;
         }
         if (taken == null) return Outcome.NOTHING;
-        load.accept(taken);
+        load.run();
         return Outcome.DONE;
     }
 
-    /** Prost writes rounds.yml whenever a round opens: a copied one means no round of Prost's own is running to collide with */
-    private void loadTakenOver(AniDrinksMigration.Result taken) {
+    /**
+     * Rounds save rounds.yml on every open, join, leave and end: with none in memory the file is either empty or a copy taken
+     * over now or by a failed attempt, which the next stop would otherwise overwrite.
+     */
+    private void loadTakenOver() {
         reloadData();
-        if (taken.files().contains(Rounds.FILE)) rounds.load();
+        if (rounds.all().isEmpty()) rounds.load();
     }
 
     private Hooks createHooks() {
