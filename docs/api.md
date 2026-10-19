@@ -6,7 +6,8 @@ API classes, so you compile against `prost-api` and run against Prost.
 
 ## Getting the API
 
-1. Compile against `prost-api` (the `prost-api-<version>.jar` of a release) with `compileOnly` in Gradle or the
+1. Compile against `prost-api` (the `prost-api-<version>.jar` of a
+   [GitHub release](https://github.com/louis-mudrack/prost/releases)) with `compileOnly` in Gradle or the
    `provided` scope in Maven. **Never shade or relocate it.** Prost's jar already contains these classes; a shaded copy
    is a different class, so the services manager finds no `ProstApi` even when Prost is installed.
 2. Add Prost as a soft dependency so it enables first:

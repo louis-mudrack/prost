@@ -21,10 +21,8 @@ cp "$JAR" "$DIR/plugins/Prost.jar"
 # a throwaway server must not count as an install on bstats.org
 echo "enabled: false" > "$DIR/plugins/bStats/config.yml"
 if $WITH_PAPI; then
-  PAPI_URL=$(curl -sf "https://api.modrinth.com/v2/project/placeholderapi/version?loaders=%5B%22paper%22%5D" \
-    | python3 -c 'import json,sys; print(next((v["files"][0]["url"] for v in json.load(sys.stdin) if v["version_number"] == sys.argv[1]), ""))' "$PAPI_VERSION")
-  [ -n "$PAPI_URL" ] || { echo "PlaceholderAPI $PAPI_VERSION is not on Modrinth (or the API did not answer)" >&2; exit 1; }
-  curl -sfL -o "$DIR/plugins/PlaceholderAPI.jar" "$PAPI_URL"
+  # Hangar's download endpoint for the version's Paper jar (the file the pinned sha256 was taken from)
+  curl -sfL -o "$DIR/plugins/PlaceholderAPI.jar" "https://hangar.papermc.io/api/v1/projects/PlaceholderAPI/versions/$PAPI_VERSION/PAPER/download"
   (cd "$DIR/plugins" && echo "$PAPI_SHA256  PlaceholderAPI.jar" | sha256sum -c --quiet -) \
     || { echo "PlaceholderAPI.jar does not match the pinned sha256" >&2; exit 1; }
 fi

@@ -3,7 +3,7 @@ version: "${version}"
 main: dev.louismudrack.prost.ProstPlugin
 api-version: "1.21"
 author: Kasheyy
-website: https://modrinth.com/plugin/prost-game
+website: https://hangar.papermc.io/Kasheyy/Prost
 softdepend: [Essentials, PlaceholderAPI]
 description: "The drinking game: rounds, challenges and a roulette - played in real life, no in-game advantage"
 libraries:

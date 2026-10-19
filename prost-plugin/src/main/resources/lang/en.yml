@@ -284,6 +284,6 @@ placeholder:
 notice:
   first_round: "<hl>Prost is a party game: <gray>any drink counts - water, soda, or alcohol if you are of legal age. Know your limits: set your sips per hour in the menu, or play with water."
 update:
-  available: "A new Prost version is out: <hl><version> <gray>- modrinth.com/plugin/prost-game"
+  available: "A new Prost version is out: <hl><version> <gray>- hangar.papermc.io/Kasheyy/Prost"
 # Extra names for subcommands in this language, e.g. invite: [add]. English names always work.
 commands: {}

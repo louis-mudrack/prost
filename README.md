@@ -38,7 +38,9 @@ someone joins a round they get a short notice saying so (`notices.first-round`).
 
 ## Install and a first round
 
-1. Put the Prost jar into `plugins/` and start the server. Prost writes its files to `plugins/Prost/`.
+1. Download `Prost-<version>.jar` from [Hangar](https://hangar.papermc.io/Kasheyy/Prost) or the
+   [GitHub releases](https://github.com/louis-mudrack/prost/releases), put it into `plugins/` and start the server.
+   Prost writes its files to `plugins/Prost/`.
 2. `/prost` opens the menu. `/prost start` opens a round (optionally `/prost start party`) and makes you the host.
 3. `/prost invite <player>` sends an invite with an accept button; others can also type `/prost join <code>`.
 4. The first challenge comes after the warm-up (2 minutes by default), then one every few minutes depending on the pace.

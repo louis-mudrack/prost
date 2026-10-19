@@ -21,7 +21,7 @@ import java.util.concurrent.CompletionException;
 public final class UpdateChecker implements Listener {
     /** newest first by date; without a token GitHub lists only published releases (no drafts) */
     static final String API = "https://api.github.com/repos/louis-mudrack/prost/releases?per_page=20";
-    private static final String PAGE = "https://modrinth.com/plugin/prost-game";
+    private static final String PAGE = "https://hangar.papermc.io/Kasheyy/Prost";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final String ADMIN = "prost.admin";
     private static final int HTTP_OK = 200;
