@@ -1,16 +1,14 @@
 package dev.louismudrack.prost.meta;
 
+import dev.louismudrack.prost.LogCapture;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,21 +28,13 @@ class ProstMetricsTest {
     /** the test classes keep bStats unrelocated, which bStats refuses with an exception: it must not stop Prost */
     @Test
     void aBstatsFailureCostsOneWarning() {
-        List<LogRecord> logged = new ArrayList<>();
-        Handler capture = new Handler() {
-            @Override public void publish(LogRecord r) { logged.add(r); }
-            @Override public void flush() { }
-            @Override public void close() { }
-        };
         ProstPlugin plugin = TestServer.start(TestServer.mock());
-        Logger.getLogger("").addHandler(capture);
-        try {
+        try (LogCapture log = LogCapture.root()) {
             assertDoesNotThrow(() -> ProstMetrics.start(plugin));
-            List<LogRecord> warnings = logged.stream().filter(r -> r.getLevel() == Level.WARNING).toList();
-            assertEquals(1, warnings.size(), logged.stream().map(LogRecord::getMessage).toList().toString());
+            List<LogRecord> warnings = log.records().stream().filter(r -> r.getLevel() == Level.WARNING).toList();
+            assertEquals(1, warnings.size(), log.messages().toString());
             assertTrue(warnings.get(0).getMessage().startsWith("bStats"), warnings.get(0).getMessage());
         } finally {
-            Logger.getLogger("").removeHandler(capture);
             MockBukkit.unmock();
         }
     }

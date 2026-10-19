@@ -1,5 +1,6 @@
 package dev.louismudrack.prost.config;
 
+import dev.louismudrack.prost.LogCapture;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import org.junit.jupiter.api.AfterEach;
@@ -17,12 +18,9 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,23 +33,18 @@ class BrokenConfigTest {
     private static final String LAST_GOOD_PASSWORD = "l4stg00d";
     private static final String LAST_GOOD_HOST = "db.example.invalid";
     private static final String LAST_GOOD = ".config.last-good.yml";
-    private final List<LogRecord> logged = new ArrayList<>();
-    private final Handler capture = new Handler() {
-        @Override public void publish(LogRecord r) { logged.add(r); }
-        @Override public void flush() { }
-        @Override public void close() { }
-    };
+    private LogCapture log;
     private ServerMock server;
 
     @BeforeEach
     void mock() {
         server = TestServer.mock();
-        Logger.getLogger("").addHandler(capture);
+        log = LogCapture.root();
     }
 
     @AfterEach
     void unmock() {
-        Logger.getLogger("").removeHandler(capture);
+        log.close();
         MockBukkit.unmock();
     }
 
@@ -97,18 +90,13 @@ class BrokenConfigTest {
         }
     }
 
-    private static String text(LogRecord r) {
-        String thrown = r.getThrown() == null ? "" : String.valueOf(r.getThrown());
-        return r.getMessage() + " " + thrown;
-    }
-
     private List<String> configWarnings() {
-        return logged.stream().map(LogRecord::getMessage).filter(m -> m.startsWith("config.yml")).toList();
+        return log.records().stream().map(LogRecord::getMessage).filter(m -> m.startsWith("config.yml")).toList();
     }
 
-    private List<LogRecord> configRecords() { return logged.stream().filter(r -> r.getMessage().contains("config.yml")).toList(); }
+    private List<LogRecord> configRecords() { return log.records().stream().filter(r -> r.getMessage().contains("config.yml")).toList(); }
 
-    private static String all(List<LogRecord> records) { return records.stream().map(BrokenConfigTest::text).toList().toString(); }
+    private static String all(List<LogRecord> records) { return records.stream().map(LogCapture::text).toList().toString(); }
 
     @ParameterizedTest
     @ValueSource(strings = {"%", "@", "`", "*", "!!", "!"})
@@ -116,8 +104,8 @@ class BrokenConfigTest {
         ProstPlugin plugin = TestServer.start(server, folder -> write(folder, "config.yml", brokenPassword(prefix)));
         assertTrue(plugin.isEnabled());
         server.dispatchCommand(server.getConsoleSender(), "prost reload");
-        assertFalse(configWarnings().isEmpty(), all(logged));
-        for (LogRecord r : logged) assertFalse(text(r).contains(SECRET), text(r));
+        assertFalse(configWarnings().isEmpty(), all(log.records()));
+        for (LogRecord r : log.records()) assertFalse(LogCapture.text(r).contains(SECRET), LogCapture.text(r));
     }
 
     @ParameterizedTest
@@ -134,7 +122,7 @@ class BrokenConfigTest {
         ProstPlugin plugin = TestServer.start(server);
         write(plugin.getDataFolder(), LAST_GOOD, mysql());
         write(plugin.getDataFolder(), "config.yml", brokenPassword("%"));
-        logged.clear();
+        log.clear();
 
         PluginConfig parsed = PluginConfig.parse(plugin.files().config(problem -> { }), warning -> { });
         assertEquals("mysql", parsed.storage().type());
@@ -195,8 +183,8 @@ class BrokenConfigTest {
         write(plugin.getDataFolder(), "config.yml", brokenPassword("@"));
         server.dispatchCommand(server.getConsoleSender(), "prost reload");
         assertFalse(configRecords().isEmpty());
-        for (LogRecord r : logged)
-            for (String value : List.of(SECRET, LAST_GOOD_PASSWORD, LAST_GOOD_HOST)) assertFalse(text(r).contains(value), text(r));
+        for (LogRecord r : log.records())
+            for (String value : List.of(SECRET, LAST_GOOD_PASSWORD, LAST_GOOD_HOST)) assertFalse(LogCapture.text(r).contains(value), LogCapture.text(r));
         assertTrue(plugin.isEnabled());
     }
 }

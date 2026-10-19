@@ -1,5 +1,6 @@
 package dev.louismudrack.prost.hook;
 
+import dev.louismudrack.prost.LogCapture;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import org.junit.jupiter.api.AfterEach;
@@ -9,38 +10,30 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /** A plugin named Essentials that is not EssentialsX (here: no EssentialsX classes at all) must not stop Prost. */
 class EssentialsAfkTest {
-    private final List<LogRecord> logged = new ArrayList<>();
-    private final Handler capture = new Handler() {
-        @Override public void publish(LogRecord r) { logged.add(r); }
-        @Override public void flush() { }
-        @Override public void close() { }
-    };
+    private LogCapture log;
     private ServerMock server;
 
     @BeforeEach
     void mock() {
         server = TestServer.mock();
-        Logger.getLogger("").addHandler(capture);
+        log = LogCapture.root();
     }
 
     @AfterEach
     void unmock() {
-        Logger.getLogger("").removeHandler(capture);
+        log.close();
         MockBukkit.unmock();
     }
 
-    private List<LogRecord> aboutEssentials() { return logged.stream().filter(r -> String.valueOf(r.getMessage()).contains("Essentials")).toList(); }
+    private List<LogRecord> aboutEssentials() { return log.records().stream().filter(r -> String.valueOf(r.getMessage()).contains("Essentials")).toList(); }
 
     @Test
     void aForeignEssentialsKeepsProstsOwnAfkDetection() {

@@ -1,5 +1,6 @@
 package dev.louismudrack.prost.meta;
 
+import dev.louismudrack.prost.LogCapture;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import org.junit.jupiter.api.AfterEach;
@@ -11,11 +12,8 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.http.HttpClient;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -23,33 +21,28 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** What the console says about GitHub's answer (the request itself needs the network, which the test build has not). */
 class UpdateCheckerTest {
-    private final List<LogRecord> logged = new ArrayList<>();
-    private final Handler capture = new Handler() {
-        @Override public void publish(LogRecord r) { logged.add(r); }
-        @Override public void flush() { }
-        @Override public void close() { }
-    };
+    private LogCapture log;
     private ProstPlugin plugin;
     private UpdateChecker checker;
 
     @BeforeEach
     void start() {
         plugin = TestServer.start(TestServer.mock());
-        plugin.getLogger().addHandler(capture);
+        log = LogCapture.on(plugin.getLogger());
         checker = new UpdateChecker(plugin);
     }
 
     @AfterEach
     void stop() {
-        plugin.getLogger().removeHandler(capture);
+        log.close();
         MockBukkit.unmock();
     }
 
     private static String release(String tag) { return "[{\"tag_name\":\"" + tag + "\",\"draft\":false,\"prerelease\":false}]"; }
 
     private void assertOneInfoLine(String expectedStart) {
-        assertEquals(1, logged.size(), logged.stream().map(LogRecord::getMessage).toList().toString());
-        LogRecord r = logged.get(0);
+        assertEquals(1, log.records().size(), log.messages().toString());
+        LogRecord r = log.records().get(0);
         assertEquals(Level.INFO, r.getLevel());
         assertTrue(r.getMessage().startsWith(expectedStart), r.getMessage());
         assertNull(r.getThrown(), "no stack trace");
@@ -69,7 +62,7 @@ class UpdateCheckerTest {
     @Test
     void theRunningVersionSaysNothing() {
         checker.answer(200, release("v0.3.1"), "0.3.1");
-        assertTrue(logged.isEmpty());
+        assertTrue(log.records().isEmpty());
     }
 
     @Test
@@ -82,7 +75,7 @@ class UpdateCheckerTest {
     void aBodyThatIsNotAReleaseListIsOneInfoLine() {
         checker.answer(200, "{\"message\":\"Not Found\"}", "0.3.1");
         assertOneInfoLine("update check failed: ");
-        assertFalse(logged.get(0).getMessage().contains("Not Found"), "the body is not repeated");
+        assertFalse(log.messages().get(0).contains("Not Found"), "the body is not repeated");
     }
 
     @Test
