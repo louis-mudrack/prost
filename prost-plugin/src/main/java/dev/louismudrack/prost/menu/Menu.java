@@ -67,7 +67,12 @@ public abstract class Menu implements InventoryHolder {
         if (deadline > 0 && clock == null) clock = Bukkit.getScheduler().runTaskTimer(plugin, () -> tickClock(), CLOCK_TICKS, CLOCK_TICKS);
     }
 
-    public final boolean isOpen() { return viewer.isOnline() && viewer.getOpenInventory().getTopInventory().getHolder(false) == this; }
+    /** a real client always has a top inventory; MockBukkit has none once everything is closed */
+    public final boolean isOpen() {
+        if (!viewer.isOnline()) return false;
+        Inventory top = viewer.getOpenInventory().getTopInventory();
+        return top != null && top.getHolder(false) == this;
+    }
 
     private void tickClock() {
         if (!isOpen()) {

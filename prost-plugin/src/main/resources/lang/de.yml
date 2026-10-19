@@ -193,6 +193,7 @@ rule:
 next:
   expired: "Zeit abgelaufen - eine zufällige Herausforderung kommt als Nächstes."
   noted: "Gemerkt - kommt als Nächstes."
+  who_expired: "Zeit abgelaufen - das Spiel wählt aus, wer spielt."
 roulette:
   title: "<primary>Roulette</primary>"
   label: "Roulette: <what>"

@@ -193,6 +193,7 @@ rule:
 next:
   expired: "Time's up - a random challenge comes next."
   noted: "Noted - it comes next."
+  who_expired: "Time's up - the game picks who plays."
 roulette:
   title: "<primary>Roulette</primary>"
   label: "Roulette: <what>"

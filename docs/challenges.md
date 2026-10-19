@@ -32,7 +32,8 @@ follow-up choice is left open, each with its own `reward-seconds` window:
 - **rule:** the rule picker opens after the reward choice. On time-out a random rule from `rules.yml` is made (none when
   `rules.yml` is empty). "Own rule" with nothing typed in time makes no rule. When the round already has
   `rules.max-active` rules, a second picker asks which active rule is replaced; it has no time limit.
-- **next:** a random one of the offered challenges is queued (with its players picked automatically).
+- **next:** a random one of the offered challenges is queued (with its players picked automatically). A Solo or Duel
+  card then asks who plays; when that runs out, the card stays queued and its players are picked automatically.
 
 ## The entry format
 

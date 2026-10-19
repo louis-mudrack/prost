@@ -360,32 +360,67 @@ public final class Rewards implements Listener {
         offer(p, new ChoiceMenu(plugin, p, "menu.choice.next", list).until(deadline()));
     }
 
-    /** Solo/Duel picked: the winner also names who plays (one for Solo, two picks for Duel) */
+    /** Solo/Duel picked: the winner also names who plays (one for Solo, two picks for Duel); time up = the draw picks */
     private void choosePlayers(Round r, Player chooser, DrawRules.Choice c) {
         int needed = c.kind() == Kind.SOLO ? 1 : c.kind() == Kind.DUEL ? 2 : 0;
         if (needed == 0) {
             r.queued = new Round.Queued(c.def().id(), c.kind(), List.of());
             return;
         }
-        pickPlayers(r, chooser, c, new ArrayList<>(), needed);
+        new WhoPlays(r, chooser, c, needed).ask(List.of());
     }
 
-    private void pickPlayers(Round r, Player chooser, DrawRules.Choice c, List<UUID> picked, int needed) {
-        List<ChoiceMenu.Option> list = new ArrayList<>();
-        for (UUID id : r.activeIds()) {
-            if (picked.contains(id)) continue;
-            Member m = r.member(id);
-            list.add(new ChoiceMenu.Option(Items.head(id, "<hl>" + Msg.esc(m.name), List.of()), () -> {
-                List<UUID> now = new ArrayList<>(picked);
-                now.add(id);
-                if (now.size() >= needed) {
-                    settled(chooser.getUniqueId());
-                    r.queued = new Round.Queued(c.def().id(), c.kind(), List.copyOf(now));
-                    Msg.tell(chooser, "next.noted");
-                } else pickPlayers(r, chooser, c, now, needed);
-            }));
+    /** the "who plays" pick of a Solo/Duel card: one clock for the whole pick, both Duel picks included */
+    private final class WhoPlays {
+        private final Round r;
+        private final Player chooser;
+        private final DrawRules.Choice c;
+        private final int needed;
+        private final long deadline = deadline();
+        private final BukkitTask timeout;
+        private boolean done;
+
+        WhoPlays(Round r, Player chooser, DrawRules.Choice c, int needed) {
+            this.r = r;
+            this.chooser = chooser;
+            this.c = c;
+            this.needed = needed;
+            timeout = Bukkit.getScheduler().runTaskLater(plugin, () -> expire(), rewardTicks());
         }
-        offer(chooser, new ChoiceMenu(plugin, chooser, "menu.choice.who", list));
+
+        void ask(List<UUID> picked) {
+            List<ChoiceMenu.Option> list = new ArrayList<>();
+            for (UUID id : r.activeIds()) {
+                if (picked.contains(id)) continue;
+                Member m = r.member(id);
+                list.add(new ChoiceMenu.Option(Items.head(id, "<hl>" + Msg.esc(m.name), List.of()), () -> pick(picked, id)));
+            }
+            offer(chooser, new ChoiceMenu(plugin, chooser, "menu.choice.who", list).until(deadline));
+        }
+
+        private void pick(List<UUID> picked, UUID id) {
+            if (done) return;
+            List<UUID> now = new ArrayList<>(picked);
+            now.add(id);
+            if (now.size() < needed) {
+                ask(now);
+                return;
+            }
+            done = true;
+            timeout.cancel();
+            settled(chooser.getUniqueId());
+            queue(List.copyOf(now));
+            Msg.tell(chooser, "next.noted");
+        }
+
+        private void expire() {
+            if (done) return;
+            done = true;
+            expired(chooser.getUniqueId(), "next.who_expired");
+            queue(List.of());   // nobody named: the draw picks, as for any Solo or Duel
+        }
+
+        private void queue(List<UUID> players) { r.queued = new Round.Queued(c.def().id(), c.kind(), players); }
     }
 
     /** onDisable: open hand-outs go out at random now (inline) */
