@@ -176,10 +176,14 @@ game:
   potato:
     item: "<err>Heiße Kartoffel"
     item_lore: ["<gray>Wirf sie neben einem anderen", "<gray>Spieler ab, um sie weiterzugeben.", "<gray>Wer sie am Ende hält, trinkt."]
-    you: "<err>Du hast die Kartoffel!"
+    # die eigene Zeile: der Halter oder wer sie hat; die Liste der Zuschauer: jeder Name, dann hat sie oder sicher
+    you: "<err>Du hast die Kartoffel! <gray>Wirf sie (Q) neben jemandem ab"
     holder: "<hl><name> <gray>hat die Kartoffel"
+    holds: "<err>hat sie"
+    safe: "<ok>sicher"
     got: "Du hast die <err>heiße Kartoffel<gray>! Wirf sie (Q) neben einem anderen Spieler ab: er hat <hl><seconds> s<gray>, um sie zu fangen."
     passed: "<hl><name> <gray>hat jetzt die heiße Kartoffel."
+    too_few: "Für die heiße Kartoffel sind weniger als zwei Spieler übrig - abgebrochen, niemand trinkt."
 reward:
   option:
     handout: "<sips> verteilen"

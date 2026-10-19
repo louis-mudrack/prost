@@ -9,6 +9,8 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.GameRules;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
 import org.bukkit.entity.Entity;
@@ -22,6 +24,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -36,6 +39,7 @@ import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
@@ -235,9 +239,6 @@ class HotPotatoTest {
         PlayerMock holder = holder();
         assertEquals("??", plugin.director().running(round).clock());
         tick();
-        assertTrue(barName(holder).contains("You hold the potato"), barName(holder));
-        for (PlayerMock p : players())
-            if (p != holder) assertTrue(barName(p).contains(holder.getName() + " holds the potato"), barName(p));
         List<String> told = TestServer.messages(holder);
         int stakes = indexOf(told, "Time: ?? · Whoever holds the potato at the end: 3 sips"), named = indexOf(told, holder.getName() + " holds the hot potato now.");
         assertTrue(stakes >= 0 && named > stakes, "the challenge first, then who holds it: " + told);
@@ -247,6 +248,18 @@ class HotPotatoTest {
     private static int indexOf(List<String> lines, String part) {
         for (int i = 0; i < lines.size(); i++) if (lines.get(i).contains(part)) return i;
         return -1;
+    }
+
+    @Test
+    void theBarsSayWhoHoldsItAndWhoIsSafe() {
+        plugin.random(new FirstPick());
+        ben.performCommand("prost pause");   // Ben watches
+        force();
+        tick();
+        assertTrue(barName(host).contains("You have the potato! Drop it (Q) near someone"), barName(host));
+        assertTrue(barName(anna).contains("Host has the potato"), barName(anna));
+        String watching = barName(ben);
+        assertTrue(watching.contains("Host holds it") && watching.contains("Anna safe"), watching);
     }
 
     @Test
@@ -353,17 +366,68 @@ class HotPotatoTest {
     }
 
     @Test
-    void nobodyWithRoomLeavesTheFirstPickHoldingItWithoutAnItem() {
+    void nobodyWithRoomLeavesTheFirstPickHoldingItUntilThereIsRoom() {
         plugin.random(new FirstPick());
         for (PlayerMock p : players()) fill(p);
         force();
         assertEquals(0, potatoes(), "no room anywhere: no item");
         tick();
-        assertTrue(barName(host).contains("You hold the potato"), barName(host));
+        assertTrue(barName(host).contains("You have the potato"), barName(host));
+        assertEquals(0, potatoes(), "still no room");
+        for (PlayerMock p : players()) assertUntouched(p);
+        anna.getInventory().setItem(7, null);
+        tick();
+        assertEquals(0, potatoes(), "room with somebody else does not move it: the host holds it");
+        ItemStack freed = host.getInventory().getItem(5);
+        host.getInventory().setItem(5, null);
+        tick();
+        assertEquals(host, holder(), "the first poll with room hands the host the item");
+        assertTrue(Potatoes.isPotato(host.getInventory().getItem(5)));
+        host.getInventory().setItem(5, freed);
+        assertUntouched(host);
         later(LONGEST_MS);
         tick();
         assertEquals(Map.of(id(host), 3), end().drinks());
-        for (PlayerMock p : players()) assertUntouched(p);
+    }
+
+    @Test
+    void anInactiveParticipantIsNeverHandedThePotato() {
+        plugin.random(new FirstPick());
+        force();
+        assertEquals(host, holder());
+        anna.performCommand("prost pause");   // inactive now, dropped by the run only on its next tick
+        host.setHealth(0);
+        assertEquals(ben, holder(), "the first pick among the others would be Anna, who is paused");
+        assertEquals(0, potatoesOf(anna));
+    }
+
+    @Test
+    void oneParticipantLeftCancelsItAndNobodyDrinks() {
+        force();
+        for (PlayerMock p : players()) TestServer.messages(p);
+        anna.performCommand("prost pause");
+        ben.performCommand("prost pause");
+        tick();
+        assertFalse(running());
+        assertEquals(1, ended.size());
+        assertFalse(ended.get(0).resolved(), "cancelled, not resolved");
+        assertTrue(ended.get(0).drinks().isEmpty(), "nobody drinks");
+        assertEquals(0, potatoes(), "every potato is gone");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("Fewer than two players are left for the hot potato - cancelled, nobody drinks.")));
+    }
+
+    @Test
+    void aComposterOrADecoratedPotCannotTakeIt() {
+        force();
+        PlayerMock h = holder();
+        ItemStack potato = h.getInventory().getItem(potatoSlot(h));
+        for (Material block : List.of(Material.COMPOSTER, Material.DECORATED_POT)) {
+            Block b = h.getWorld().getBlockAt(h.getLocation().getBlockX() + 2, h.getLocation().getBlockY(), h.getLocation().getBlockZ());
+            b.setType(block);
+            PlayerInteractEvent e = new PlayerInteractEvent(h, Action.RIGHT_CLICK_BLOCK, potato, b, BlockFace.UP, EquipmentSlot.HAND);
+            server.getPluginManager().callEvent(e);
+            assertEquals(Event.Result.DENY, e.useInteractedBlock(), block + " would take it");
+        }
     }
 
     @Test

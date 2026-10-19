@@ -176,10 +176,14 @@ game:
   potato:
     item: "<err>Hot potato"
     item_lore: ["<gray>Drop it next to another player", "<gray>to pass it on. Whoever holds it", "<gray>at the end drinks."]
-    you: "<err>You hold the potato!"
-    holder: "<hl><name> <gray>holds the potato"
+    # the own line: the holder, or who holds it; a watcher's list: each name, then holds or safe
+    you: "<err>You have the potato! <gray>Drop it (Q) near someone"
+    holder: "<hl><name> <gray>has the potato"
+    holds: "<err>holds it"
+    safe: "<ok>safe"
     got: "You have the <err>hot potato<gray>! Drop it (Q) next to another player: they have <hl><seconds> s <gray>to catch it."
     passed: "<hl><name> <gray>holds the hot potato now."
+    too_few: "Fewer than two players are left for the hot potato - cancelled, nobody drinks."
 reward:
   option:
     handout: "Hand out <sips>"

@@ -17,7 +17,6 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,14 +25,17 @@ import java.util.UUID;
 /**
  * Hot potato: a marked potato goes to a random participant, who passes it on by dropping it; whoever holds it when the
  * hidden clock runs out (between half the entry's seconds and all of them) drinks. The holder is the game, the item only
- * pictures it: a full inventory hands it to someone with room, and with no room anywhere the holder keeps it without an
- * item. A dropped potato waits potato.pass-seconds for another active participant, then jumps back to the thrower, who
- * holds it all the while. Potatoes keeps every marked potato out of containers, mouths, fire and death drops.
+ * pictures it: a full inventory hands it to an active participant with room, and with no room anywhere the holder keeps it
+ * without an item until a poll finds room. A dropped potato waits potato.pass-seconds for another active participant,
+ * then jumps back to the thrower, who holds it all the while. Fewer than two participants left cancel the game. Potatoes
+ * keeps every marked potato out of containers, mouths, fire and death drops.
  */
 final class PotatoTracker extends BaseTracker implements GameTracker {
     private static final long SECOND_MS = 1000L;
     /** vanilla lets nobody pick up a thrown item for 2 s, most of the pass window */
     private static final int PICKUP_DELAY_TICKS = 10;
+    /** one player left has nobody to pass it to */
+    private static final int MIN_PARTICIPANTS = 2;
 
     private final Potatoes potatoes;
     /** participants in the run's order: the winners keep it */
@@ -43,6 +45,8 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
     /** the holder's potato on the ground, waiting to be caught; null while it is held */
     private Item thrown;
     private long thrownAt;
+    /** the holder has no item (nobody had room): the first poll that finds room in their inventory hands it over */
+    private boolean itemless;
     /** the first holder is named on the first poll: the run announces the challenge after starting the tracker */
     private boolean firstHolderTold;
 
@@ -79,12 +83,17 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
         return Verdict.of(drinks, winners);
     }
 
+    /** a watcher's bar puts each participant's name before this, so only the own line names the holder */
     @Override
     public String status(UUID viewer, UUID who) {
         if (holder == null) return "";
-        if (viewer.equals(who) && who.equals(holder)) return Msg.str(viewer, "game.potato.you");
-        return Msg.str(viewer, "game.potato.holder", V.of("name", name(holder)));
+        boolean own = viewer.equals(who);
+        if (who.equals(holder)) return Msg.str(viewer, own ? "game.potato.you" : "game.potato.holds");
+        return own ? Msg.str(viewer, "game.potato.holder", V.of("name", name(holder))) : Msg.str(viewer, "game.potato.safe");
     }
+
+    @Override
+    public String cancelKey() { return order.size() < MIN_PARTICIPANTS ? "game.potato.too_few" : null; }
 
     @Override
     public void dropped(UUID id) {
@@ -92,7 +101,10 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
         if (id.equals(holder)) passOn(id);
     }
 
-    /** an uncaught potato (or one that fell out of the world) jumps back to the thrower */
+    /**
+     * An uncaught potato (or one that fell out of the world) jumps back to the thrower. The run drops the inactive before
+     * it polls, so the order holds only active participants here.
+     */
     @Override
     public void poll(List<Player> online) {
         if (!firstHolderTold) tellFirstHolder();
@@ -100,6 +112,8 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
             thrown.remove();
             thrown = null;
             handTo(holder, order, true);
+        } else if (itemless && order.contains(holder) && hasRoom(holder)) {
+            give(Bukkit.getPlayer(holder), true);
         }
     }
 
@@ -108,7 +122,7 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
         if (holder == null) return;
         Msg.round(ctx.round(), "game.potato.passed", V.of("name", name(holder)));
         Player p = Bukkit.getPlayer(holder);
-        if (p != null && Arrays.stream(p.getInventory().getContents()).anyMatch(item -> Potatoes.isPotato(item))) got(p);
+        if (p != null && !itemless) got(p);
     }
 
     @Override
@@ -162,13 +176,18 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
         return who instanceof Player && !id.equals(holder) && order.contains(id) && ctx.round().isActive(id) && ctx.plugin().now() < thrownAt + passMs();
     }
 
-    /** the holder died or left: a random other participant takes the potato over */
+    /**
+     * The holder died or left: a random other active participant takes the potato over. The run drops the inactive only
+     * on its next tick, so a paused or AFK participant may still be in the order here. Nobody active: the holder keeps it,
+     * without the item, until the run cancels for too few players.
+     */
     private void passOn(UUID from) {
         if (thrown != null) thrown.remove();
         thrown = null;
         Player p = Bukkit.getPlayer(from);
         if (p != null) potatoes.removeFrom(p);
-        List<UUID> others = order.stream().filter(id -> !id.equals(from)).toList();
+        itemless = true;
+        List<UUID> others = order.stream().filter(id -> !id.equals(from) && ctx.round().isActive(id)).toList();
         if (!others.isEmpty()) handTo(pick(others), others, true);
     }
 
@@ -179,9 +198,13 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
     private void handTo(UUID to, List<UUID> pool, boolean tell) {
         UUID taker = hasRoom(to) ? to : pick(pool.stream().filter(id -> hasRoom(id)).toList());
         becomes(taker != null ? taker : to, tell);
-        if (taker == null) return;
-        Player p = Bukkit.getPlayer(taker);
-        p.getInventory().setItem(freeSlot(p), potatoes.create(Msg.lang(taker)));
+        itemless = taker == null;
+        if (taker != null) give(Bukkit.getPlayer(taker), tell);
+    }
+
+    private void give(Player p, boolean tell) {
+        p.getInventory().setItem(freeSlot(p), potatoes.create(Msg.lang(p.getUniqueId())));
+        itemless = false;
         if (tell) got(p);
     }
 

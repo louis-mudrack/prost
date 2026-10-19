@@ -42,8 +42,9 @@ import org.bukkit.persistence.PersistentDataType;
 /**
  * The hot potato as an item: Prost's mark on a poisonous potato, and the rules every marked potato follows whether a game
  * runs or not. It is never stored (containers, ender chests, bundles, item frames, allays, armor stands, decorated pots,
- * hoppers), eaten, burnt, destroyed, despawned, carried through a portal or dropped on death; which player may catch a
- * thrown one is the game's call. A potato that outlived its game (a crash) goes when its player joins or its chunk loads.
+ * hoppers), composted, eaten, burnt, destroyed, despawned, carried through a portal or dropped on death; which player
+ * may catch a thrown one is the game's call. A potato that outlived its game (a crash) goes when its player joins or its
+ * chunk loads.
  */
 public final class Potatoes implements Listener {
     /** NamespacedKey(plugin, "potato") of the plugin named Prost, static so isPotato needs no instance */
@@ -121,7 +122,7 @@ public final class Potatoes implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onArmorStand(PlayerArmorStandManipulateEvent e) { if (isPotato(e.getPlayerItem())) e.setCancelled(true); }
 
-    /** a decorated pot (and a shelf, 1.21.9+) takes the held item on a right-click, without an inventory screen */
+    /** blocks that take the held item on a right-click, without an inventory screen */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPutIntoBlock(PlayerInteractEvent e) {
         Block block = e.getClickedBlock();
@@ -142,7 +143,13 @@ public final class Potatoes implements Listener {
     /** the plain bundle and the 16 dyed ones */
     private static boolean isBundle(ItemStack item) { return item != null && item.getType().name().endsWith("BUNDLE"); }
 
-    private static boolean takesHeldItem(Material block) { return block == Material.DECORATED_POT || block.name().endsWith("_SHELF"); }
+    /**
+     * A composter takes compostables only, which this potato is not up to 1.21.11; a newer version may change that.
+     * Shelves exist from 1.21.9.
+     */
+    private static boolean takesHeldItem(Material block) {
+        return block == Material.DECORATED_POT || block == Material.COMPOSTER || block.name().endsWith("_SHELF");
+    }
 
     // ---------------------------------------------------------------------------------------------- never used up
 
