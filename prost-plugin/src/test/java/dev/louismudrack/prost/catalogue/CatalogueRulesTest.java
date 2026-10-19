@@ -182,6 +182,16 @@ class CatalogueRulesTest {
     }
 
     @Test
+    void potatoOnlyAsReaction() {
+        eq("a hot potato as a reaction is valid", List.of(), CatalogueRules.validate(
+                def("potato", "", "", "", "", List.of(), List.of(Kind.REACTION), Set.of(), List.of(), 3, 120), FAKE_API));
+        eq("a hot potato for each player", List.of("potato cannot be played as each"), CatalogueRules.validate(
+                def("potato", "", "", "", "", List.of(), List.of(Kind.EACH), Set.of(), List.of(), 3, 120), FAKE_API));
+        eq("a hot potato with also-avoid", List.of("also-avoid does not work with tracker potato"), CatalogueRules.validate(
+                def("potato", "", "", "", "", List.of(), List.of(Kind.REACTION), Set.of(), List.of("jump"), 3, 120), FAKE_API));
+    }
+
+    @Test
     void rulesFile() {
         List<Rule> rules = RulesFile.parse(List.of(Map.of("de", "Niemand sagt \"ich\".", "en", "Nobody says \"I\"."),
                 Map.of("de", "nur deutsch"), Map.of("de", " "), "junk"));

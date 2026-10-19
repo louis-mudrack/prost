@@ -270,7 +270,11 @@ public final class ChallengeRun {
             case TEAM -> Msg.str(viewer, "challenge.stakes.team", sips, reward);
             case RACE -> Msg.str(viewer, "challenge.stakes.race", sips);
             case DUEL -> Msg.str(viewer, "challenge.stakes.duel", sips);
-            case REACTION -> freeze() ? Msg.str(viewer, "challenge.stakes.freeze", sips, reward) : Msg.str(viewer, "challenge.stakes.reaction", sips);
+            case REACTION -> {
+                if (freeze()) yield Msg.str(viewer, "challenge.stakes.freeze", sips, reward);
+                if ("potato".equals(def.tracker())) yield Msg.str(viewer, "challenge.stakes.potato", sips);
+                yield Msg.str(viewer, "challenge.stakes.reaction", sips);
+            }
         };
     }
 

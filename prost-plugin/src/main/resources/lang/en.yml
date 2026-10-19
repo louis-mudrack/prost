@@ -135,6 +135,7 @@ challenge:
     duel: "<gray>The loser drinks <err><sips>"
     reaction: "<gray>Not in time or the last one: <err><sips>"
     freeze: "<gray>Whoever moves: <err><sips> <dark_gray>· <gray>Nobody moves: <ok><reward>"
+    potato: "<gray>Whoever holds the potato at the end: <err><sips>"
   reward:
     handout: "hand out <sips>"
     rule: "a rule"
@@ -172,6 +173,13 @@ game:
     waiting: "<gray>waiting"
     done: "<ok>done"
     hint: "<hl>Now: <white><goal>"
+  potato:
+    item: "<err>Hot potato"
+    item_lore: ["<gray>Drop it next to another player", "<gray>to pass it on. Whoever holds it", "<gray>at the end drinks."]
+    you: "<err>You hold the potato!"
+    holder: "<hl><name> <gray>holds the potato"
+    got: "You have the <err>hot potato<gray>! Drop it (Q) next to another player: they have <hl><seconds> s <gray>to catch it."
+    passed: "<hl><name> <gray>holds the hot potato now."
 reward:
   option:
     handout: "Hand out <sips>"

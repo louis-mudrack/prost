@@ -19,7 +19,7 @@ final class CatalogueRules {
     }
 
     static final Set<String> TRACKERS = Set.of("mine", "stat", "collect", "gift", "inventory", "count", "distinct", "reach",
-            "avoid", "wear", "tower", "proximity", "reaction");
+            "avoid", "wear", "tower", "proximity", "reaction", "potato");
     static final Set<String> AVOID_MODES = Set.of("damage", "explosion-damage", "death", "jump", "sprint", "eat", "chat",
             "break", "kill", "water", "sleep");
     private static final Set<String> DISTINCT_SOURCES = Set.of("mine", "collect", "consume", "craft", "kill", "biome");
@@ -29,9 +29,9 @@ final class CatalogueRules {
     static final Set<String> REACTION_MODES = Set.of("crouch", "water", "chat", "look_up", "jump", "hold", "sit", "eat", "freeze");
     private static final Set<Kind> REACTION_KINDS = Set.of(Kind.REACTION, Kind.SOLO);
     /** the game trackers that can be played as kind reaction */
-    private static final Set<String> REACTION_TRACKERS = Set.of("reaction");
+    private static final Set<String> REACTION_TRACKERS = Set.of("reaction", "potato");
     /** trackers that decide the run themselves (GameTracker): also-avoid would wrap them and hide the game from the run */
-    private static final Set<String> GAME_TRACKERS = Set.of("reaction");
+    private static final Set<String> GAME_TRACKERS = Set.of("reaction", "potato");
     private static final int MIN_SIPS = 1, MAX_SIPS = 6, MIN_SECONDS = 10, MAX_SECONDS = 900;
 
     private CatalogueRules() {}
@@ -85,6 +85,7 @@ final class CatalogueRules {
                 for (Kind k : d.kinds()) if (!REACTION_KINDS.contains(k)) p.add("reaction cannot be played as " + k.key);
                 if ("hold".equals(d.mode())) materials(p, resolved, names, true);
             }
+            case "potato" -> { for (Kind k : d.kinds()) if (k != Kind.REACTION) p.add("potato cannot be played as " + k.key); }
             default -> { }
         }
         for (String name : resolved) {

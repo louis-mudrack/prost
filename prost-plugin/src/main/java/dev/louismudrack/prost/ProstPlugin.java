@@ -41,6 +41,7 @@ import dev.louismudrack.prost.roulette.Roulette;
 import dev.louismudrack.prost.storage.PlayerPrefs;
 import dev.louismudrack.prost.storage.SqlStatsStore;
 import dev.louismudrack.prost.storage.StatsStore;
+import dev.louismudrack.prost.tracker.Potatoes;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -87,6 +88,7 @@ public class ProstPlugin extends JavaPlugin {
     private Director director;
     private Roulette roulette;
     private Hooks hooks;
+    private Potatoes potatoes;
     private Lang lang = Lang.empty();
     private ProstCommand command;
     private BukkitTask snapshotTask;
@@ -116,6 +118,11 @@ public class ProstPlugin extends JavaPlugin {
         rewards = new Rewards(this);
         getServer().getPluginManager().registerEvents(rewards, this);
         getServer().getPluginManager().registerEvents(new MenuListener(), this);
+        potatoes = new Potatoes(this);
+        getServer().getPluginManager().registerEvents(potatoes, this);
+        // a crash leaves the potatoes of a running hot potato behind
+        potatoes.sweepWorlds();
+        getServer().getOnlinePlayers().forEach(p -> potatoes.removeFrom(p));
         director = new Director(this);
         getServer().getScheduler().runTaskTimer(this, () -> director.tick(), 10L, 10L);
         command = new ProstCommand(this);
@@ -306,6 +313,7 @@ public class ProstPlugin extends JavaPlugin {
     public Director director() { return director; }
     public Roulette roulette() { return roulette; }
     public Hooks hooks() { return hooks; }
+    public Potatoes potatoes() { return potatoes; }
     public Lang lang() { return lang; }
     public ProstCommand command() { return command; }
 

@@ -23,6 +23,7 @@ public final class Trackers {
             case "tower" -> new TowerTracker(ctx);
             case "proximity" -> new ProximityTracker(ctx);
             case "reaction" -> new ReactionTracker(ctx);
+            case "potato" -> new PotatoTracker(ctx);
             default -> throw new IllegalArgumentException("unknown tracker " + d.tracker());
         };
         if (d.alsoAvoid().isEmpty()) return goal;

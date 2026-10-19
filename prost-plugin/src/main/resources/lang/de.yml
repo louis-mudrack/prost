@@ -135,6 +135,7 @@ challenge:
     duel: "<gray>Der Verlierer trinkt <err><sips>"
     reaction: "<gray>Zu spät oder als Letzter: <err><sips>"
     freeze: "<gray>Wer sich bewegt: <err><sips> <dark_gray>· <gray>Bewegt sich keiner: <ok><reward>"
+    potato: "<gray>Wer am Ende die Kartoffel hält: <err><sips>"
   reward:
     handout: "<sips> verteilen"
     rule: "eine Regel"
@@ -172,6 +173,13 @@ game:
     waiting: "<gray>noch nicht"
     done: "<ok>geschafft"
     hint: "<hl>Jetzt: <white><goal>"
+  potato:
+    item: "<err>Heiße Kartoffel"
+    item_lore: ["<gray>Wirf sie neben einem anderen", "<gray>Spieler ab, um sie weiterzugeben.", "<gray>Wer sie am Ende hält, trinkt."]
+    you: "<err>Du hast die Kartoffel!"
+    holder: "<hl><name> <gray>hat die Kartoffel"
+    got: "Du hast die <err>heiße Kartoffel<gray>! Wirf sie (Q) neben einem anderen Spieler ab: er hat <hl><seconds> s<gray>, um sie zu fangen."
+    passed: "<hl><name> <gray>hat jetzt die heiße Kartoffel."
 reward:
   option:
     handout: "<sips> verteilen"
