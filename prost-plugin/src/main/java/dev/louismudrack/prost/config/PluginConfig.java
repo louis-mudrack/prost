@@ -50,22 +50,21 @@ public record PluginConfig(String defaultLanguage, boolean perPlayerLanguage, Th
     public static final PluginConfig DEFAULTS = parse(Map.of(), w -> {});
 
     public static PluginConfig parse(Map<?, ?> root, Consumer<String> warn) {
-        Map<?, ?> r = root == null ? Map.of() : root;
-        Map<?, ?> language = sub(r, "language"), theme = sub(r, "theme"), commands = sub(r, "commands"), dims = sub(r, "dimensions"),
-                afk = sub(r, "afk"), papi = sub(r, "placeholderapi"), notices = sub(r, "notices"), storage = sub(r, "storage"),
-                mysql = sub(storage, "mysql");
+        Section r = new Section(root == null ? Map.of() : root, "", warn);
+        Section language = r.sub("language"), theme = r.sub("theme"), commands = r.sub("commands"), dims = r.sub("dimensions"),
+                afk = r.sub("afk"), papi = r.sub("placeholderapi"), notices = r.sub("notices"), storage = r.sub("storage"),
+                mysql = storage.sub("mysql");
 
-        String lang = str(language, "default", "en").trim().toLowerCase(Locale.ROOT);
+        String lang = language.str("default", "en").trim().toLowerCase(Locale.ROOT);
         if (!LANGUAGE.matcher(lang).matches()) {
             warn.accept("language.default: '" + lang + "' is not a language code like en or de - using en");
             lang = "en";
         }
-        ThemeColors colors = new ThemeColors(str(theme, "primary", "#ffd94d:#ff8f3f"), str(theme, "highlight", "#ffd94d"),
-                str(theme, "ok", "#55e07a"), str(theme, "error", "#ff5555"), str(theme, "muted", "dark_gray"));
+        ThemeColors colors = new ThemeColors(theme.str("primary", "#ffd94d:#ff8f3f"), theme.str("highlight", "#ffd94d"),
+                theme.str("ok", "#55e07a"), theme.str("error", "#ff5555"), theme.str("muted", "dark_gray"));
 
         List<String> aliases = new ArrayList<>();
-        Object rawAliases = commands.containsKey("aliases") ? commands.get("aliases") : List.of("drinks");
-        if (rawAliases instanceof List<?> l) for (Object o : l) {
+        for (Object o : commands.list("aliases", List.of("drinks"))) {
             String a = String.valueOf(o).trim().toLowerCase(Locale.ROOT);
             if (!ALIAS.matcher(a).matches() || a.equals(MAIN_COMMAND)) {
                 warn.accept("commands.aliases: '" + o + "' skipped (letters, digits, _ and - only; not 'prost')");
@@ -75,51 +74,99 @@ public record PluginConfig(String defaultLanguage, boolean perPlayerLanguage, Th
         }
 
         Set<String> worlds = new LinkedHashSet<>();
-        if (r.get("worlds") instanceof List<?> l) for (Object o : l) worlds.add(String.valueOf(o));
+        for (Object o : r.list("worlds", List.of())) worlds.add(String.valueOf(o));
 
         List<AreaBox> areas = new ArrayList<>();
-        if (r.get("excluded-areas") instanceof List<?> l) for (Object o : l) {
+        for (Object o : r.list("excluded-areas", List.of())) {
             AreaBox b = AreaBox.parse(o);
             if (b == null) warn.accept("excluded-areas: " + o + " skipped (needs world, min: [x, y, z], max: [x, y, z])");
             else areas.add(b);
         }
 
-        String type = str(storage, "type", "sqlite").trim().toLowerCase(Locale.ROOT);
+        String type = storage.str("type", "sqlite").trim().toLowerCase(Locale.ROOT);
         if (!type.equals("sqlite") && !type.equals("mysql")) {
             warn.accept("storage.type: '" + type + "' is not sqlite or mysql - using sqlite");
             type = "sqlite";
         }
-        String prefix = str(storage, "table-prefix", "prost_");
+        String prefix = storage.str("table-prefix", "prost_");
         if (!TABLE_PREFIX.matcher(prefix).matches()) {
             warn.accept("storage.table-prefix: '" + prefix + "' skipped (letters, digits and _, up to 16) - using prost_");
             prefix = "prost_";
         }
-        int port = num(mysql, "port", DEFAULT_PORT);
+        int port = mysql.num("port", DEFAULT_PORT);
         if (port < 1 || port > MAX_PORT) {
             warn.accept("storage.mysql.port: " + port + " is not a port - using " + DEFAULT_PORT);
             port = DEFAULT_PORT;
         }
-        Storage st = new Storage(type, str(mysql, "host", "localhost"), port, str(mysql, "database", "prost"),
-                str(mysql, "user", "prost"), str(mysql, "password", ""), prefix, str(mysql, "parameters", "useSSL=false"));
+        Storage st = new Storage(type, mysql.str("host", "localhost"), port, mysql.str("database", "prost"),
+                mysql.str("user", "prost"), mysql.str("password", ""), prefix, mysql.str("parameters", "useSSL=false"));
 
-        return new PluginConfig(lang, bool(language, "per-player", true), colors, List.copyOf(aliases), Set.copyOf(worlds),
+        return new PluginConfig(lang, language.bool("per-player", true), colors, List.copyOf(aliases), Set.copyOf(worlds),
                 List.copyOf(areas), DimensionMode.of(dims.get("nether"), warn, "dimensions.nether"),
-                DimensionMode.of(dims.get("end"), warn, "dimensions.end"), Math.max(0, num(afk, "minutes", 5)),
-                bool(afk, "use-essentials", true), bool(papi, "parse-messages", true), bool(notices, "first-round", true), st,
-                bool(r, "metrics", true), bool(r, "update-checker", true));
+                DimensionMode.of(dims.get("end"), warn, "dimensions.end"), Math.max(0, afk.num("minutes", 5)),
+                afk.bool("use-essentials", true), papi.bool("parse-messages", true), notices.bool("first-round", true), st,
+                r.bool("metrics", true), r.bool("update-checker", true));
     }
 
     /** an empty world list = every world */
     public boolean gameWorld(String world) { return worlds.isEmpty() || worlds.contains(world); }
 
-    private static Map<?, ?> sub(Map<?, ?> m, String key) { return m.get(key) instanceof Map<?, ?> s ? s : Map.of(); }
+    /**
+     * One level of the file. A value of the wrong type warns once: a single value where a list belongs is a one-element
+     * list, a number or true/false in quotes is that number or boolean, anything else is the default.
+     */
+    private record Section(Map<?, ?> values, String path, Consumer<String> warn) {
+        private static final Pattern INTEGER = Pattern.compile("[+-]?\\d{1,9}");
 
-    private static String str(Map<?, ?> m, String key, String fallback) {
-        Object v = m.get(key);
-        return v == null ? fallback : String.valueOf(v);
+        Object get(String key) { return values.get(key); }
+
+        Section sub(String key) { return new Section(values.get(key) instanceof Map<?, ?> m ? m : Map.of(), name(key), warn); }
+
+        String str(String key, String fallback) {
+            Object v = values.get(key);
+            return v == null ? fallback : String.valueOf(v);
+        }
+
+        int num(String key, int fallback) {
+            Object v = values.get(key);
+            if (v == null) return fallback;
+            if (v instanceof Number n) return n.intValue();
+            if (v instanceof String s && INTEGER.matcher(s.trim()).matches()) {
+                int n = Integer.parseInt(s.trim());
+                warn.accept(name(key) + ": '" + v + "' is text, not a number - read as " + n + " (write it without quotes)");
+                return n;
+            }
+            warn.accept(name(key) + ": '" + v + "' is not a number - using " + fallback);
+            return fallback;
+        }
+
+        boolean bool(String key, boolean fallback) {
+            Object v = values.get(key);
+            if (v == null) return fallback;
+            if (v instanceof Boolean b) return b;
+            if (v instanceof String s && (s.trim().equalsIgnoreCase("true") || s.trim().equalsIgnoreCase("false"))) {
+                boolean b = Boolean.parseBoolean(s.trim());
+                warn.accept(name(key) + ": '" + v + "' is text, not true or false - read as " + b + " (write it without quotes)");
+                return b;
+            }
+            warn.accept(name(key) + ": '" + v + "' is not true or false - using " + fallback);
+            return fallback;
+        }
+
+        /** a key without a value is an empty list */
+        List<?> list(String key, List<?> fallback) {
+            if (!values.containsKey(key)) return fallback;
+            Object v = values.get(key);
+            if (v == null) return List.of();
+            if (v instanceof List<?> l) return l;
+            if (v instanceof Map) {
+                warn.accept(name(key) + ": a section where a list belongs - using " + fallback);
+                return fallback;
+            }
+            warn.accept(name(key) + ": '" + v + "' is one value, not a list - read as [" + v + "]");
+            return List.of(v);
+        }
+
+        private String name(String key) { return path.isEmpty() ? key : path + "." + key; }
     }
-
-    private static int num(Map<?, ?> m, String key, int fallback) { return m.get(key) instanceof Number n ? n.intValue() : fallback; }
-
-    private static boolean bool(Map<?, ?> m, String key, boolean fallback) { return m.get(key) instanceof Boolean b ? b : fallback; }
 }

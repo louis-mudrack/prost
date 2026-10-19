@@ -18,7 +18,9 @@ OFF, `end: on` is ON.
 
 ## config.yml
 
-Invalid values fall back to the default and log one warning on start and on reload.
+Invalid values fall back to the default and log one warning on start and on reload. A value of the wrong type warns
+too: a single value where a list belongs (`worlds: survival`) is read as a one-element list, and a number or
+`true`/`false` in quotes (`port: "3306"`) as that number or boolean; anything else gets the default.
 
 ### language
 

@@ -87,4 +87,51 @@ class PluginConfigTest {
         assertTrue(c.gameWorld("survival"));
         assertFalse(c.gameWorld("lobby"));
     }
+
+    @Test
+    void aSingleValueWhereAListBelongsIsAOneElementList() {
+        PluginConfig c = parse("worlds: survival\ncommands: {aliases: Trinkspiel}");
+        assertTrue(c.gameWorld("survival"));
+        assertFalse(c.gameWorld("lobby"));
+        assertEquals(List.of("trinkspiel"), c.commandAliases());
+        assertEquals(2, warnings.size(), warnings.toString());
+        assertTrue(warnings.stream().anyMatch(w -> w.startsWith("worlds:")), warnings.toString());
+        assertTrue(warnings.stream().anyMatch(w -> w.startsWith("commands.aliases:")), warnings.toString());
+    }
+
+    @Test
+    void aNumberInQuotesIsUsed() {
+        PluginConfig c = parse("storage: {mysql: {port: \"3307\"}}\nafk: {minutes: '7'}");
+        assertEquals(3307, c.storage().port());
+        assertEquals(7, c.afkMinutes());
+        assertEquals(2, warnings.size(), warnings.toString());
+    }
+
+    @Test
+    void trueOrFalseInQuotesIsUsed() {
+        PluginConfig c = parse("metrics: 'false'\nupdate-checker: \"FALSE\"");
+        assertFalse(c.metrics());
+        assertFalse(c.updateChecker());
+        assertEquals(2, warnings.size(), warnings.toString());
+    }
+
+    @Test
+    void anyOtherTypeIsTheDefaultWithOneWarningEach() {
+        PluginConfig c = parse("worlds: {a: b}\ncommands: {aliases: {x: y}}\nexcluded-areas: {world: w}\n"
+                + "storage: {mysql: {port: 'abc'}}\nafk: {minutes: [1]}\nmetrics: maybe");
+        assertTrue(c.gameWorld("any world"));
+        assertEquals(List.of("drinks"), c.commandAliases());
+        assertTrue(c.excludedAreas().isEmpty());
+        assertEquals(3306, c.storage().port());
+        assertEquals(5, c.afkMinutes());
+        assertTrue(c.metrics());
+        assertEquals(6, warnings.size(), warnings.toString());
+    }
+
+    @Test
+    void anEmptyAliasListMeansNoAlias() {
+        assertEquals(List.of(), parse("commands: {aliases: }").commandAliases());
+        assertEquals(List.of(), parse("commands: {aliases: []}").commandAliases());
+        assertTrue(warnings.isEmpty(), warnings.toString());
+    }
 }
