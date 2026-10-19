@@ -1,3 +1,5 @@
+![Prost](docs/assets/prost-banner.png)
+
 # Prost
 
 The drinking game for Minecraft servers: rounds with friends, challenges with fixed sips, real-life rewards and a roulette.
