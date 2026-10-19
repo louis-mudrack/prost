@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Executor;
@@ -222,8 +223,13 @@ public class ProstPlugin extends JavaPlugin {
         Plugin essentials = getServer().getPluginManager().getPlugin("Essentials");
         AfkProvider defaultAfk = detector;
         if (pluginConfig.useEssentials() && essentials != null && essentials.isEnabled()) {
-            defaultAfk = new EssentialsAfk(essentials, detector, getLogger());
-            getLogger().info("AFK: EssentialsX decides");
+            Optional<AfkProvider> essentialsAfk = EssentialsAfk.of(essentials, detector, getLogger());
+            if (essentialsAfk.isPresent()) {
+                defaultAfk = essentialsAfk.get();
+                getLogger().info("AFK: EssentialsX decides");
+            } else {
+                getLogger().warning("the plugin named Essentials is not EssentialsX - Prost's own AFK detection decides");
+            }
         }
         return new Hooks(getLogger(), defaultAfk,
                 new DimensionDefaults(() -> pluginConfig, env -> getServer().getWorlds().stream().anyMatch(w -> w.getEnvironment() == env),

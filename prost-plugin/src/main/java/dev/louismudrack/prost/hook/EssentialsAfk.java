@@ -6,6 +6,7 @@ import dev.louismudrack.prost.api.AfkProvider;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,10 +17,19 @@ public final class EssentialsAfk implements AfkProvider {
     private final Logger log;
     private volatile boolean warned;
 
-    public EssentialsAfk(Plugin essentials, AfkProvider fallback, Logger log) {
-        this.essentials = (IEssentials) essentials;
+    private EssentialsAfk(IEssentials essentials, AfkProvider fallback, Logger log) {
+        this.essentials = essentials;
         this.fallback = fallback;
         this.log = log;
+    }
+
+    /** empty when the plugin named Essentials is not EssentialsX: the caller keeps its own detection and says so */
+    public static Optional<AfkProvider> of(Plugin essentials, AfkProvider fallback, Logger log) {
+        try {
+            return essentials instanceof IEssentials ess ? Optional.of(new EssentialsAfk(ess, fallback, log)) : Optional.empty();
+        } catch (NoClassDefFoundError e) {   // a plugin by that name without EssentialsX's classes
+            return Optional.empty();
+        }
     }
 
     @Override
