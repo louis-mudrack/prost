@@ -231,6 +231,34 @@ class BrokenConfigTest {
         assertEquals(mysql(), read(plugin.getDataFolder().toPath().resolve(LAST_GOOD)), "the copy stays");
     }
 
+    @Test
+    void aBrokenCopyMeansTheShippedDefaults() {
+        ProstPlugin plugin = TestServer.start(server, folder -> {
+            write(folder, LAST_GOOD, "storage: {type: mysql\n");
+            write(folder, "config.yml", brokenPassword("%"));
+        });
+        assertEquals(PluginConfig.DEFAULTS.storage().type(), plugin.pluginConfig().storage().type());
+        List<LogRecord> records = configRecords();
+        assertEquals(1, records.size(), all(records));
+        assertEquals(Level.SEVERE, records.get(0).getLevel());
+        String line = records.get(0).getMessage();
+        assertTrue(line.contains(LAST_GOOD + " is unreadable") && line.endsWith("using the shipped defaults until it is fixed"), line);
+    }
+
+    /** a copy from an older Prost lacks the newer keys: those get their defaults, the rest comes from the copy */
+    @Test
+    void anOlderCopyGetsDefaultsForWhatItLacks() {
+        ProstPlugin plugin = TestServer.start(server, folder -> {
+            write(folder, LAST_GOOD, "afk: {minutes: 7}\nnotices: {first-round: false}\n");
+            write(folder, "config.yml", brokenPassword("%"));
+        });
+        assertEquals(7, plugin.pluginConfig().afkMinutes());
+        assertFalse(plugin.pluginConfig().firstRoundNotice());
+        assertEquals(PluginConfig.DEFAULTS.commandAliases(), plugin.pluginConfig().commandAliases());
+        assertEquals(PluginConfig.DEFAULTS.storage().type(), plugin.pluginConfig().storage().type());
+        assertTrue(plugin.pluginConfig().metrics());
+    }
+
     /** a directory where the copy belongs makes every move fail: one warning, and no temp file stays behind */
     @Test
     void aCopyThatCannotBeSavedLeavesNoTempFile() throws IOException {
