@@ -27,6 +27,16 @@ class GameRulesTest {
         eq("a typed rule survives a restart", "Diggi", again.rules.get(1).text("en"));
     }
 
+    /** the language codes are lower case everywhere else; an edited rounds.yml may say DE or En */
+    @Test
+    void ruleLanguagesReadInAnyCase() {
+        Map<String, Object> edited = Map.of("code", "L9D5", "host", A.toString(),
+                "rules", List.of(Map.of("DE", "Niemand darf \"ich\" sagen.", "En", "Nobody may say \"I\".")));
+        Round r = RoundCodec.decode(edited, 20);
+        eq("German text", "Niemand darf \"ich\" sagen.", r.rules.get(0).text("de"));
+        eq("English text", "Nobody may say \"I\".", r.rules.get(0).text("en"));
+    }
+
     @Test
     void resolution() {
         Resolution.Outcome solo = Resolution.resolve(Kind.SOLO, false, 3, 0, List.of(pr(A, 16, true, 10)));

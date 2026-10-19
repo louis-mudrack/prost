@@ -5,6 +5,7 @@ import dev.louismudrack.prost.drink.SipLedger;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -58,7 +59,7 @@ final class RoundCodec {
         if (m.get("rules") instanceof List<?> rules)
             for (Object o : rules) if (o instanceof Map<?, ?> rm) {
                 Map<String, String> texts = new LinkedHashMap<>();
-                rm.forEach((k, v) -> { if (v != null) texts.put(String.valueOf(k), String.valueOf(v)); });
+                rm.forEach((k, v) -> { if (v != null) texts.put(String.valueOf(k).toLowerCase(Locale.ROOT), String.valueOf(v)); });
                 if (!texts.isEmpty()) r.rules.add(new Rule(texts));
             }
         if (m.get("members") instanceof Map<?, ?> members) {
