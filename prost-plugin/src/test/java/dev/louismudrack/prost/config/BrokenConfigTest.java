@@ -231,6 +231,20 @@ class BrokenConfigTest {
         assertEquals(mysql(), read(plugin.getDataFolder().toPath().resolve(LAST_GOOD)), "the copy stays");
     }
 
+    /** a directory where the copy belongs makes every move fail: one warning, and no temp file stays behind */
+    @Test
+    void aCopyThatCannotBeSavedLeavesNoTempFile() throws IOException {
+        ProstPlugin plugin = TestServer.start(server);
+        Path folder = plugin.getDataFolder().toPath(), copy = folder.resolve(LAST_GOOD);
+        Files.delete(copy);
+        Files.createDirectories(copy.resolve("in-the-way"));
+        log.clear();
+        server.dispatchCommand(server.getConsoleSender(), "prost reload");
+        assertFalse(Files.exists(folder.resolve(LAST_GOOD + ".tmp")));
+        List<String> warnings = log.records().stream().filter(r -> r.getLevel() == Level.WARNING).map(LogRecord::getMessage).toList();
+        assertEquals(1, warnings.stream().filter(m -> m.startsWith(LAST_GOOD + " not saved")).count(), warnings.toString());
+    }
+
     /** a first start with an empty file: nothing to fall back to, so the shipped defaults fill it as before */
     @Test
     void anEmptyConfigWithoutACopyGetsTheDefaults() {

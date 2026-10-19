@@ -12,6 +12,7 @@ import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -126,10 +127,24 @@ public final class DataFiles {
         Path copy = lastGoodCopy(), tmp = copy.resolveSibling(LAST_GOOD_CONFIG + ".tmp");
         try {
             Files.write(tmp, content);
-            Files.move(tmp, copy, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            try {
+                Files.move(tmp, copy, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {   // some file systems cannot: a plain replace is still better than none
+                Files.move(tmp, copy, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             plugin.getLogger().warning(LAST_GOOD_CONFIG + " not saved (" + YamlErrors.describe(e) + ") - a broken " + CONFIG
-                    + " would fall back to an older copy or the shipped defaults");
+                    + " would fall back to an older copy or the shipped defaults" + removed(tmp));
+        }
+    }
+
+    /** "" once the temp file is gone, else what is left behind */
+    private static String removed(Path tmp) {
+        try {
+            Files.deleteIfExists(tmp);
+            return "";
+        } catch (IOException e) {
+            return "; " + tmp.getFileName() + " is left behind (" + YamlErrors.describe(e) + ")";
         }
     }
 
