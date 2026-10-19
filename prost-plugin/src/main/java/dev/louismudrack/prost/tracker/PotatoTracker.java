@@ -1,6 +1,5 @@
 package dev.louismudrack.prost.tracker;
 
-import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.ui.Sounds;
@@ -237,9 +236,4 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
     }
 
     private long passMs() { return ctx.plugin().cfg().games().potatoPassSeconds() * SECOND_MS; }
-
-    private String name(UUID id) {
-        Member m = ctx.round().member(id);
-        return m == null ? "?" : m.name;
-    }
 }

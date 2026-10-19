@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** The build contest in a round of four, on a clock the test moves by hand; clicks act one tick later, as on a server. */
 class VoteGameTest {
     private static final String STATUE = "vote_statue", PORTRAIT = "vote_portrait";
-    private static final String MARKED = "Your build is marked", MODEL = "Your model: ";
+    private static final String MARKED = "Your build is marked", MODEL = "Your model: ", BUILD_BY = "Build by ";
     /** more steps than a tour of four builds can take */
     private static final int TOUR_STEPS = 10;
 
@@ -199,13 +199,31 @@ class VoteGameTest {
         assertTrue(told(told, "Dein Bau ist markiert"), told.toString());
     }
 
-    @Test
-    void aSpotInAnExcludedAreaIsRefused() throws Exception {
+    /** config.yml excluded-areas: a box around (100, 64, 100) in world */
+    private void excludeAround100() throws Exception {
         File file = new File(plugin.getDataFolder(), "config.yml");
         YamlConfiguration c = YamlConfiguration.loadConfiguration(file);
         c.set("excluded-areas", List.of(Map.of("world", "world", "min", List.of(90, 0, 90), "max", List.of(110, 200, 110))));
         c.save(file);
         plugin.reloadData();
+    }
+
+    /** the ding of a build's turn (Sounds.ding) */
+    private static long dings(PlayerMock p) { return p.getHeardSounds().stream().filter(s -> s.getSound().contains("note_block.pling")).count(); }
+
+    /** "Build by Anna: ..." -> Anna */
+    private static List<String> shownBuilders(List<String> lines) {
+        List<String> out = new ArrayList<>();
+        for (String line : lines) {
+            int at = line.indexOf(BUILD_BY);
+            if (at >= 0) out.add(line.substring(at + BUILD_BY.length(), line.indexOf(':', at)));
+        }
+        return out;
+    }
+
+    @Test
+    void aSpotInAnExcludedAreaIsRefused() throws Exception {
+        excludeAround100();
         anna.teleport(at(100, 64, 100));
         ChallengeRun run = force(STATUE);
         TestServer.messages(anna);
@@ -327,6 +345,73 @@ class VoteGameTest {
         assertFalse(end().drinks().containsKey(id(ben)), "out without drinking");
         assertEquals(Map.of(id(anna), run.def.sips(), id(cleo), run.def.sips(), id(host), 1), end().drinks(),
                 "Anna and Cleo have no vote, the host's vote for Ben is gone");
+    }
+
+    /** the member is gone from the round before the run drops them: the contest still knows their name */
+    @Test
+    void aBuilderWhoLeavesOrIsKickedKeepsTheirName() {
+        ChallengeRun run = force(STATUE);
+        toVote(run);
+        vote(host, ben);
+        vote(anna, cleo);
+        TestServer.messages(host);
+        TestServer.messages(anna);
+        ben.performCommand("prost leave");
+        host.performCommand("prost kick Cleo");
+        tick();
+        List<String> toHost = TestServer.messages(host), toAnna = TestServer.messages(anna);
+        assertTrue(told(toHost, "Ben is out - your vote is gone"), toHost.toString());
+        assertTrue(told(toAnna, "Cleo is out - your vote is gone"), toAnna.toString());
+        assertFalse(told(toHost, "? is out") || told(toAnna, "? is out"));
+        assertEquals(Set.of("Anna"), new HashSet<>(heads(host)));
+    }
+
+    /** a build without a spot is only named in chat: no title, no ding, no viewing time */
+    @Test
+    void aBuildWithoutASpotIsOnlyNamedInChat() throws Exception {
+        excludeAround100();
+        anna.teleport(at(100, 64, 100));
+        ChallengeRun run = force(STATUE);
+        long before = dings(host);
+        List<String> tour = toVote(run);
+        assertTrue(told(tour, "Build by Anna: can't be visited"), tour.toString());
+        assertEquals(3, dings(host) - before, "one ding for each of the three builds that can be visited");
+        long viewMs = plugin.cfg().games().voteViewSeconds() * 1000L;
+        assertEquals(run.def.seconds() * 1000L + 3 * viewMs, now.get() - 1_000_000L, "the vote opens after three viewing times, not four");
+    }
+
+    @Test
+    void aSpotInAWorldThatWasUnloadedCountsAsMissing() {
+        Location home = ben.getLocation();
+        server.addSimpleWorld("other");
+        ChallengeRun run = force(STATUE);
+        ben.teleport(new Location(server.getWorld("other"), 5, 64, 5));
+        ben.performCommand("prost here");
+        ben.teleport(home);
+        assertTrue(server.unloadWorld("other", false), "the world unloads");
+        tick();
+        assertTrue(barName(ben).contains("/prost here marks the spot"), "no spot any more: " + barName(ben));
+        List<String> tour = toVote(run);
+        assertTrue(told(tour, "Build by Ben: can't be visited"), tour.toString());
+        assertTrue(heads(host).contains("Ben"), "still votable");
+    }
+
+    @Test
+    void theTourMovesOnWhenTheBuilderOnShowDropsOut() {
+        ChallengeRun run = force(STATUE);
+        for (PlayerMock p : everyone) TestServer.messages(p);
+        later(run.def.seconds() * 1000L);
+        tick();
+        List<String> first = shownBuilders(TestServer.messages(host));
+        assertEquals(1, first.size(), "one build on show");
+        PlayerMock leaving = (PlayerMock) server.getPlayerExact(first.get(0));
+        PlayerMock reader = everyone.stream().filter(p -> p != leaving).findFirst().orElseThrow();
+        TestServer.messages(reader);
+        leaving.performCommand("prost leave");
+        tick();
+        List<String> next = shownBuilders(TestServer.messages(reader));
+        assertEquals(1, next.size(), "the next build at once, no time passed: " + next);
+        assertNotEquals(leaving.getName(), next.get(0));
     }
 
     @Test

@@ -260,7 +260,6 @@ game:
     # the tour: title, subtitle and chat line of each build
     show_title: "Build by <name>"
     show_place: "<white><world> <x> <y> <z>"
-    show_nowhere: "<gray>can't be visited"
     show_at: "<hl>Build by <name><gray>: <white><world> <x> <y> <z>"
     show_missing: "<hl>Build by <name><gray>: can't be visited (no spot), it still gets votes"
     title: "Vote for your favourite build"

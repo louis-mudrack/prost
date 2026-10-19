@@ -2,7 +2,6 @@ package dev.louismudrack.prost.tracker;
 
 import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.config.GameConfig;
-import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.menu.GameMenu;
@@ -89,8 +88,15 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         return true;
     }
 
-    /** the builds that have a spot, for the tour */
-    Map<UUID, Location> spots() { return Collections.unmodifiableMap(spots); }
+    /** the builds that have a spot, for the tour; a spot whose world was unloaded since is none */
+    Map<UUID, Location> spots() {
+        Map<UUID, Location> out = new LinkedHashMap<>();
+        for (UUID id : spots.keySet()) {
+            Location spot = spotOf(id);
+            if (spot != null) out.put(id, spot);
+        }
+        return out;
+    }
 
     @Override
     public long deadline() {
@@ -117,7 +123,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         boolean own = viewer.equals(who);
         return switch (phase) {
             case BUILD -> {
-                Location spot = spots.get(who);
+                Location spot = spotOf(who);
                 if (!own) yield Msg.str(viewer, spot == null ? "game.vote.building" : "game.vote.has_spot");
                 yield spot == null ? Msg.str(viewer, "game.vote.build") : Msg.str(viewer, "game.vote.built", place(who, spot));
             }
@@ -146,9 +152,10 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         return Msg.str(viewer, "game.vote.result", V.mm("votes", j.toString()));
     }
 
-    /** out of the contest: not votable, the own vote gone, and a vote for them is no vote any more */
+    /** out of the contest: not votable, the own vote gone, a vote for them is no vote any more, their build no longer on show */
     @Override
     public void dropped(UUID id) {
+        boolean onShow = phase == Phase.SHOW && id.equals(tour.get(shown));
         order.remove(id);
         spots.remove(id);
         votes.remove(id);
@@ -161,6 +168,8 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
             if (p != null) Msg.tell(p, "game.vote.vote_gone", V.of("name", name(id)));
         }
         for (GameMenu menu : menus.values()) menu.redraw();
+        // too few left: the run cancels on this tick, announcing the next build first would be noise
+        if (onShow && cancelKey() == null) showNext();
     }
 
     @Override
@@ -221,7 +230,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         while (++shown < tour.size()) {
             UUID builder = tour.get(shown);
             if (!order.contains(builder)) continue;
-            Location spot = spots.get(builder);
+            Location spot = spotOf(builder);
             present(builder, spot);
             if (spot != null) {
                 viewEndsAt = ctx.plugin().now() + games().voteViewSeconds() * SECOND_MS;
@@ -231,19 +240,18 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         startVote();
     }
 
-    /** a build's turn: every round member hears whose it is and where it stands */
+    /** a build's turn: every round member hears whose it is and where it stands; one without a spot is only named in chat */
     private void present(UUID builder, Location spot) {
         for (UUID id : ctx.round().members.keySet()) {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
-            String title = "<primary>" + Msg.str(id, "game.vote.show_title", V.of("name", name(builder))) + "</primary>";
             if (spot == null) {
-                Hud.title(p, title, Msg.str(id, "game.vote.show_nowhere"));
                 Msg.tell(p, "game.vote.show_missing", V.of("name", name(builder)));
-            } else {
-                Hud.title(p, title, Msg.str(id, "game.vote.show_place", place(builder, spot)));
-                Msg.tell(p, "game.vote.show_at", place(builder, spot));
+                continue;
             }
+            String title = "<primary>" + Msg.str(id, "game.vote.show_title", V.of("name", name(builder))) + "</primary>";
+            Hud.title(p, title, Msg.str(id, "game.vote.show_place", place(builder, spot)));
+            Msg.tell(p, "game.vote.show_at", place(builder, spot));
             Sounds.ding(p);
         }
     }
@@ -296,15 +304,16 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
 
     private boolean excluded(Location at) { return ctx.plugin().hooks().excluded(at); }
 
+    /** the builder's spot; a world unloaded since the mark makes it none (Location#getWorld would throw) */
+    private Location spotOf(UUID builder) {
+        Location spot = spots.get(builder);
+        return spot != null && spot.isWorldLoaded() ? spot : null;
+    }
+
     /** the builder's name and the spot's world and block, each escaped */
     private V[] place(UUID builder, Location at) {
         return new V[]{V.of("name", name(builder)), V.of("world", at.getWorld().getName()), V.of("x", at.getBlockX()),
                 V.of("y", at.getBlockY()), V.of("z", at.getBlockZ())};
-    }
-
-    private String name(UUID id) {
-        Member m = ctx.round().member(id);
-        return m == null ? "?" : m.name;
     }
 
     private GameConfig.Games games() { return ctx.plugin().cfg().games(); }

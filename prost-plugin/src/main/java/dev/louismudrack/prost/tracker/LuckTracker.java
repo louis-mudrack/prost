@@ -2,7 +2,6 @@ package dev.louismudrack.prost.tracker;
 
 import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.game.Kind;
-import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.menu.GameMenu;
@@ -393,11 +392,6 @@ final class LuckTracker extends BaseTracker implements GameTracker {
         StringJoiner j = new StringJoiner(" <dark_gray>· ");
         picks.forEach((id, pick) -> j.add("<white>" + Msg.esc(name(id)) + " <hl>" + value.apply(pick)));
         return j.toString();
-    }
-
-    private String name(UUID id) {
-        Member m = id == null ? null : ctx.round().member(id);
-        return m == null ? "?" : m.name;
     }
 
     // ---------------------------------------------------------------------------------------------- state

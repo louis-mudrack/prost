@@ -9,6 +9,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -16,11 +17,13 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Shared plumbing: participants, a progress map, listener registration. */
+/** Shared plumbing: participants and their names, a progress map, listener registration. */
 abstract class BaseTracker implements Tracker, Listener {
     protected final TrackContext ctx;
     protected final Set<UUID> players = new HashSet<>();
     protected final Map<UUID, Integer> progress = new ConcurrentHashMap<>();
+    /** kept from the start: a member who leaves or is kicked is gone from the round before the run drops them */
+    private final Map<UUID, String> names = new HashMap<>();
 
     BaseTracker(TrackContext ctx) { this.ctx = ctx; }
 
@@ -29,6 +32,7 @@ abstract class BaseTracker implements Tracker, Listener {
         for (Player p : ps) {
             players.add(p.getUniqueId());
             progress.put(p.getUniqueId(), 0);
+            names.put(p.getUniqueId(), p.getName());
         }
         begin(ps);
         Bukkit.getPluginManager().registerEvents(this, ctx.plugin());
@@ -44,6 +48,9 @@ abstract class BaseTracker implements Tracker, Listener {
     public void stop() { HandlerList.unregisterAll(this); }
 
     protected boolean tracks(Player p) { return players.contains(p.getUniqueId()); }
+
+    /** a participant's name as it was at the start; "?" for anybody else */
+    protected String name(UUID id) { return id == null ? "?" : names.getOrDefault(id, "?"); }
 
     protected void add(UUID id, int n) { progress.merge(id, n, Integer::sum); }
 

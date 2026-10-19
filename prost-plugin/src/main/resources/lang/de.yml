@@ -260,7 +260,6 @@ game:
     # die Tour: Titel, Untertitel und Chatzeile jedes Baus
     show_title: "Bau von <name>"
     show_place: "<white><world> <x> <y> <z>"
-    show_nowhere: "<gray>kann nicht besucht werden"
     show_at: "<hl>Bau von <name><gray>: <white><world> <x> <y> <z>"
     show_missing: "<hl>Bau von <name><gray>: kann nicht besucht werden (keine Stelle), bekommt trotzdem Stimmen"
     title: "Stimm für deinen Lieblingsbau"
