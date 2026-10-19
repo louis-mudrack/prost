@@ -16,23 +16,27 @@ PROJECT=Prost
 CHANNEL=Release
 MINIMUM_PAPER=1.21.4
 USER_AGENT="Kasheyy/Prost-release/$VERSION (https://hangar.papermc.io/Kasheyy/Prost)"
+# a hanging connection must not hold the release job: 15 s to connect, 5 minutes per request
+TIMEOUTS=(--connect-timeout 15 --max-time 300)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 # set -e would end the script without a word when curl fails
-curl -sSf -A "$USER_AGENT" -o "$TMP/platforms.json" "$API/platforms/PAPER/versions" \
+curl -sSf "${TIMEOUTS[@]}" -A "$USER_AGENT" -o "$TMP/platforms.json" "$API/platforms/PAPER/versions" \
   || { echo "Hangar did not list its Paper versions" >&2; exit 1; }
 python3 - "$VERSION" "$CHANNEL" "$MINIMUM_PAPER" "$TMP/platforms.json" "$CHANGELOG" > "$TMP/version.json" <<'PY'
 import json, sys
 version, channel, minimum, platforms, changelog = sys.argv[1:6]
 
 def numbers(v):
-    return tuple(int(part) for part in v.split("."))
+    """None for a version that is not plain numbers (a snapshot or a pre-release name): it is skipped"""
+    parts = v.split(".")
+    return tuple(int(part) for part in parts) if all(part.isdigit() for part in parts) else None
 
 listed = []
 for group in json.load(open(platforms, encoding="utf-8")):
     listed += group["subVersions"] or [group["version"]]
-paper = sorted({v for v in listed if numbers(v) >= numbers(minimum)}, key=numbers)
+paper = sorted({v for v in listed if numbers(v) is not None and numbers(v) >= numbers(minimum)}, key=numbers)
 if not paper:
     sys.exit("Hangar lists no Paper version from " + minimum + " on")
 description = open(changelog, encoding="utf-8").read().strip() if changelog else ""
@@ -46,7 +50,7 @@ fi
 [ -n "${HANGAR_API_TOKEN:-}" ] || { echo "HANGAR_API_TOKEN is not set (a Hangar API key with the create_version permission)" >&2; exit 2; }
 
 # curl reads the key and the JWT from its config on stdin, so neither shows up in the process list
-status=$(curl -sS -o "$TMP/session.json" -w '%{http_code}' -K - <<EOF
+status=$(curl -sS "${TIMEOUTS[@]}" -o "$TMP/session.json" -w '%{http_code}' -K - <<EOF
 url = "$API/authenticate?apiKey=$HANGAR_API_TOKEN"
 request = "POST"
 user-agent = "$USER_AGENT"
@@ -55,7 +59,7 @@ EOF
 [ "$status" = 200 ] || { echo "Hangar refused the API key (HTTP $status)" >&2; exit 1; }
 JWT=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["token"])' "$TMP/session.json")
 
-status=$(curl -sS -o "$TMP/answer.json" -w '%{http_code}' -K - <<EOF
+status=$(curl -sS "${TIMEOUTS[@]}" -o "$TMP/answer.json" -w '%{http_code}' -K - <<EOF
 url = "$API/projects/$PROJECT/upload"
 user-agent = "$USER_AGENT"
 header = "Authorization: HangarAuth $JWT"
