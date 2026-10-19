@@ -101,7 +101,7 @@ public class ProstPlugin extends JavaPlugin {
         // a broken or empty config.yml is reported once, by reloadData() below
         if (files.configMayGrow()) YamlMerge.ensure(this, DataFiles.CONFIG);
         // silent here: reloadData() below parses the file again and logs its warnings once
-        pluginConfig = PluginConfig.parse(files.config(problem -> { }), warning -> { });
+        pluginConfig = PluginConfig.parse(files.config(problem -> { }).settings(), warning -> { });
         openStorage();
         migrateOnStart();   // before game.yml, the catalogue and rounds.yml are read, so AniDrinks' copies are what loads
         hooks = createHooks();
@@ -260,7 +260,9 @@ public class ProstPlugin extends JavaPlugin {
     }
 
     public void reloadData() {
-        pluginConfig = PluginConfig.parse(files.config(getLogger()::severe), getLogger()::warning);
+        DataFiles.ConfigRead config = files.config(getLogger()::severe);
+        // a broken config.yml keeps the settings in use (at start: what the first read just put in for it)
+        if (config.fromFile()) pluginConfig = PluginConfig.parse(config.settings(), getLogger()::warning);
         cfg = GameConfig.parse(files.map("game.yml"));
         challenges = Catalogue.load(files.load("challenges.yml"), getLogger());
         preparedRules = RulesFile.parse(files.load("rules.yml"));

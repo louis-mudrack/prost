@@ -124,11 +124,10 @@ class BrokenConfigTest {
         write(plugin.getDataFolder(), "config.yml", brokenPassword("%"));
         log.clear();
 
-        PluginConfig parsed = PluginConfig.parse(plugin.files().config(problem -> { }), warning -> { });
+        PluginConfig parsed = PluginConfig.parse(plugin.files().config(problem -> { }).settings(), warning -> { });
         assertEquals("mysql", parsed.storage().type());
         assertEquals(LAST_GOOD_HOST, parsed.storage().host());
         server.dispatchCommand(server.getConsoleSender(), "prost reload");
-        assertEquals("mysql", plugin.pluginConfig().storage().type(), "/prost reload keeps the last good settings");
 
         List<LogRecord> records = configRecords();
         assertEquals(1, records.size(), all(records));
@@ -136,6 +135,19 @@ class BrokenConfigTest {
         String line = records.get(0).getMessage();
         assertTrue(line.matches("config\\.yml is unreadable \\(ScannerException at line \\d+, column \\d+\\).*"), line);
         assertTrue(line.contains(LAST_GOOD), line);
+    }
+
+    /** the copy is what the running settings came from - unless it was edited or lost: the running settings win */
+    @Test
+    void reloadingABrokenConfigKeepsTheRunningSettings() {
+        ProstPlugin plugin = TestServer.start(server, folder -> write(folder, "config.yml", afkMinutes(7)));
+        PluginConfig running = plugin.pluginConfig();
+        write(plugin.getDataFolder(), LAST_GOOD, mysql());
+        write(plugin.getDataFolder(), "config.yml", brokenPassword("%"));
+        server.dispatchCommand(server.getConsoleSender(), "prost reload");
+        assertSame(running, plugin.pluginConfig());
+        assertEquals(7, plugin.pluginConfig().afkMinutes());
+        assertEquals("sqlite", plugin.pluginConfig().storage().type());
     }
 
     @Test
@@ -214,7 +226,7 @@ class BrokenConfigTest {
         ProstPlugin plugin = TestServer.start(server);
         write(plugin.getDataFolder(), LAST_GOOD, mysql());
         write(plugin.getDataFolder(), "config.yml", "");
-        PluginConfig parsed = PluginConfig.parse(plugin.files().config(problem -> { }), warning -> { });
+        PluginConfig parsed = PluginConfig.parse(plugin.files().config(problem -> { }).settings(), warning -> { });
         assertEquals("mysql", parsed.storage().type());
         assertEquals(mysql(), read(plugin.getDataFolder().toPath().resolve(LAST_GOOD)), "the copy stays");
     }

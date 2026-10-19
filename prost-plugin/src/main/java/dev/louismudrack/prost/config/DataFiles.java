@@ -30,6 +30,9 @@ public final class DataFiles {
 
     private final ProstPlugin plugin;
 
+    /** config.yml as read; fromFile false: its own settings could not be used and settings is what stands in for them */
+    public record ConfigRead(Map<?, ?> settings, boolean fromFile) {}
+
     public DataFiles(ProstPlugin plugin) { this.plugin = plugin; }
 
     public Object load(String name) {
@@ -62,7 +65,7 @@ public final class DataFiles {
      * defaults apply only without a copy. A broken file is reported to problem in one line: its error's kind and position.
      * An empty file (a crash or a full disk while saving) counts as broken while there is a copy.
      */
-    public Map<?, ?> config(Consumer<String> problem) {
+    public ConfigRead config(Consumer<String> problem) {
         File f = new File(plugin.getDataFolder(), CONFIG);
         if (!f.exists()) plugin.saveResource(CONFIG, false);
         byte[] content;
@@ -73,10 +76,10 @@ public final class DataFiles {
         } catch (IOException | RuntimeException e) {
             return lastGood(CONFIG + " is unreadable (" + YamlErrors.describe(e) + ")", problem);
         }
-        if (empty(parsed)) return Files.exists(lastGoodCopy()) ? lastGood(CONFIG + " is empty", problem) : Map.of();
+        if (empty(parsed)) return Files.exists(lastGoodCopy()) ? lastGood(CONFIG + " is empty", problem) : new ConfigRead(Map.of(), true);
         if (!(parsed instanceof Map<?, ?> settings)) return lastGood(CONFIG + " is unreadable (" + NOT_A_MAP + ")", problem);
         keepAsLastGood(content);
-        return settings;
+        return new ConfigRead(settings, true);
     }
 
     /**
@@ -96,7 +99,7 @@ public final class DataFiles {
 
     private static boolean empty(Object parsed) { return parsed == null || parsed instanceof Map<?, ?> m && m.isEmpty(); }
 
-    private Map<?, ?> lastGood(String what, Consumer<String> problem) {
+    private ConfigRead lastGood(String what, Consumer<String> problem) {
         String trouble = what;
         Path copy = lastGoodCopy();
         if (Files.exists(copy)) {
@@ -104,7 +107,7 @@ public final class DataFiles {
             try {
                 if (parse(Files.readAllBytes(copy)) instanceof Map<?, ?> settings) {
                     problem.accept(trouble + " - the last good settings from " + LAST_GOOD_CONFIG + " are in use until it is fixed");
-                    return settings;
+                    return new ConfigRead(settings, false);
                 }
                 copyError = NOT_A_MAP;
             } catch (IOException | RuntimeException e) {
@@ -113,7 +116,7 @@ public final class DataFiles {
             trouble += ", and " + LAST_GOOD_CONFIG + " is unreadable (" + copyError + ")";
         }
         problem.accept(trouble + " - using the shipped defaults until it is fixed");
-        return shipped(CONFIG) instanceof Map<?, ?> settings ? settings : Map.of();
+        return new ConfigRead(shipped(CONFIG) instanceof Map<?, ?> settings ? settings : Map.of(), false);
     }
 
     private Path lastGoodCopy() { return dataFile(LAST_GOOD_CONFIG); }
