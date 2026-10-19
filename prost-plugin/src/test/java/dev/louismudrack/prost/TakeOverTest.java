@@ -124,7 +124,8 @@ class TakeOverTest {
         assertEquals(data, plugin.getDataFolder());
         assertTrue(Files.isDirectory(plugins.resolve("AniDrinks.migrated")));
         assertEquals(6, plugin.cfg().maxPlayers());
-        assertEquals("mine_iron: {}\n", Files.readString(new File(data, "challenges.yml").toPath()));
+        assertTrue(Files.readString(new File(data, "challenges.yml").toPath()).startsWith("mine_iron: {}\n\n# added by Prost "),
+                "AniDrinks' catalogue, then the entries Prost added since");
         assertEquals("- {de: a, en: b}\n", Files.readString(new File(data, "rules.yml").toPath()));
         assertRoundRestored(plugin);
     }

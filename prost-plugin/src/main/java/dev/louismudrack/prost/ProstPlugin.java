@@ -1,6 +1,7 @@
 package dev.louismudrack.prost;
 
 import dev.louismudrack.prost.catalogue.Catalogue;
+import dev.louismudrack.prost.catalogue.CatalogueMerge;
 import dev.louismudrack.prost.catalogue.ChallengeDef;
 import dev.louismudrack.prost.catalogue.Rule;
 import dev.louismudrack.prost.catalogue.RulesFile;
@@ -282,6 +283,7 @@ public class ProstPlugin extends JavaPlugin {
         // a broken config.yml keeps the settings in use (at start: what the first read just put in for it)
         if (config.fromFile()) pluginConfig = PluginConfig.parse(config.settings(), getLogger()::warning);
         cfg = GameConfig.parse(files.map("game.yml"));
+        CatalogueMerge.ensure(this);
         challenges = Catalogue.load(files.load("challenges.yml"), getLogger());
         preparedRules = RulesFile.parse(files.load("rules.yml"));
         lang = LangFiles.load(this, pluginConfig.defaultLanguage());

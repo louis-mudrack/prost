@@ -71,8 +71,8 @@ prost_errors() {
        END {exit !bad}' <<<"$LOG"
 }
 check "server started" '[[ $LOG == *"Done ("* ]]'
-# 103 challenges and 30 rules are the shipped challenges.yml and rules.yml: update them when the catalogue changes
-check "Prost enabled with the full catalogue" '[[ $LOG == *"Prost enabled: 103 challenges, 30 rules, 2 languages"* ]]'
+# 129 challenges and 30 rules are the shipped challenges.yml and rules.yml: update them when the catalogue changes
+check "Prost enabled with the full catalogue" '[[ $LOG == *"Prost enabled: 129 challenges, 30 rules, 2 languages"* ]]'
 check "AniDrinks taken over" '[[ $LOG == *"AniDrinks data taken over: 2 players"* ]]'
 check "no error or stack trace from Prost" '! prost_errors'
 check "files written" 'test -f "$DIR/plugins/Prost/lang/de.yml" -a -f "$DIR/plugins/Prost/config.yml" -a -d "$DIR/plugins/AniDrinks.migrated"'

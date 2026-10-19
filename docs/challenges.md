@@ -1,8 +1,9 @@
 # Challenges and rules
 
 `challenges.yml` is the challenge catalogue and `rules.yml` the list of prepared rules. Prost writes both once (129
-challenges, 30 rules); after that they are yours: edit, delete and add as you like. Neither file is touched by updates.
-`/prost reload` reads them again.
+challenges, 30 rules); after that they are yours: edit, delete and add as you like. An update never changes what is in
+them; a version that adds challenges appends them to the end of `challenges.yml` once (see
+[New challenges on an update](#new-challenges-on-an-update)). `/prost reload` reads them again.
 
 A broken entry is skipped with a warning in the console and costs only that entry. If the whole file is not valid
 YAML, the shipped copy is used until you fix it.
@@ -25,7 +26,13 @@ challenges have been drawn once.
 | `vote` | 3 | A build contest (`vote` tracker): everyone builds, the builds are shown one after the other, then everyone votes in a menu for another player's build. The fewest votes drink (a tie: all of them), and whoever did not vote drinks 1 sip more. Fewer than 3 players left while building, or fewer than 2 afterwards: cancelled, nobody drinks. Only with the `vote` tracker. |
 
 **One penalty per challenge:** when anybody drinks, the winners get no reward on top. Rewards are only given when
-nobody drinks, so in a Race, a Duel or a Reaction there is normally no reward (a Reaction rewards only a freeze nobody broke) (somebody always loses; only when the others left mid-challenge and one participant remains, the lone winner is rewarded). A luck game rewards only when its roll leaves nobody drinking (a solo wheel of 4-10, a chest's joker or hand-out, a die of 5-6, every high/low guess right). A build contest never rewards: the fewest votes always drink. This is not configurable.
+nobody drinks. This is not configurable. What it means for the kinds where somebody usually drinks:
+
+- Race, Duel and Reaction: somebody always loses, so there is normally no reward. A freeze nobody broke rewards
+  everybody, and when the others left mid-challenge and one participant remains, that lone winner is rewarded.
+- Luck: a reward only comes from a roll that leaves nobody drinking: a solo wheel of 4-10, a chest's joker or hand-out,
+  a die of 5-6, or every high/low guess right.
+- Vote: never a reward, the fewest votes always drink.
 
 A luck game whose roll decides the reward (a chest, the die) gives exactly that reward, without a menu.
 
@@ -68,7 +75,7 @@ creeper_clean:
 |---|---|---|
 | `name` | yes | The short title, per language: `{en: "...", de: "..."}`. Keys are language codes. Plain text; markup is shown literally. |
 | `text` | yes | What the players have to do, per language. `{amount}` is replaced by `amount`. Plain text. |
-| `tracker` | yes | How progress is counted, one of the 13 below. |
+| `tracker` | yes | How progress is counted, one of the 16 below. |
 | `targets` | per tracker | The blocks, items or mobs that count, as Bukkit names (`IRON_ORE`, `ZOMBIE`), or `#tags` (below). Names are checked against the running server; an unknown name skips the entry. |
 | `stat` | `stat` tracker | One or more vanilla statistics, comma separated: `"WALK_ONE_CM, SPRINT_ONE_CM"` adds them up. |
 | `source` | `distinct` tracker | What is counted: `mine`, `collect`, `consume`, `craft`, `kill` or `biome`. |
@@ -84,6 +91,7 @@ creeper_clean:
 | `also-avoid` | no | Actions that break the challenge even if the goal is reached (for example kill a creeper without explosion damage). Same names as the `avoid` modes. |
 | `min-players` | no, default 1 | Do not draw it with fewer active players than this. |
 | `weight` | no, default 1 | Relative likelihood against the other challenges of the same kind. Must be 1 or more. |
+| `since` | no | The Prost version that added a shipped entry. Only an update reads it (below); it changes nothing in the game. |
 
 `amount`, `give`, `weight` and `min-players` must be 1 or more. Text lookup per language: the player's language, then
 `language.default`, then English, then the first entry. At least one language is needed for `name` and `text`.
@@ -167,6 +175,23 @@ A target starting with `#` stands for a fixed list; an unknown tag skips the ent
 | `#ores_overworld` | coal, copper, iron, gold, redstone, lapis, diamond and emerald ore, stone and deepslate |
 | `#zombies` | zombie, husk, drowned, zombie villager |
 | `#skeletons` | skeleton, stray, bogged |
+
+### New challenges on an update
+
+When a new Prost version ships challenges, its first start appends them to the end of your `challenges.yml`, under a
+comment `# added by Prost <version>`, each as the one line it is in the shipped file. Everything above stays exactly as
+it was: your values, your comments and blank lines, the entries you deleted, the line endings and the encoding. A new
+challenge whose id your file already has (in any upper or lower case) is not added, so your own entry of that name stays.
+
+`.catalogue-version` next to the file records the version whose challenges it has received, so a new challenge you
+delete afterwards is not added again. A `challenges.yml` without it counts as one from Prost 0.3.1. Deleting
+`.catalogue-version` makes the next start add every challenge since 0.3.1 that your file lacks. An older Prost
+version leaves both files alone.
+
+Nothing is added to a file that is not valid YAML or whose top level is not a map of entries (the console says so); the
+challenges follow on the first start or `/prost reload` after you fix it. The same holds for a file whose end would
+change the meaning of the appended lines (a closing `...`, or a last text written with `|+`); the console says so too.
+If the file cannot be written, the console says so and the next start tries again.
 
 ## rules.yml
 

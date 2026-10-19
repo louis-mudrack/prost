@@ -16,9 +16,6 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockbukkit.mockbukkit.simulate.entity.PlayerSimulation;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,14 +43,7 @@ class PickNextTest {
 
     /** Prost with a one-card catalogue, and the host's round */
     private void start(String kind) {
-        plugin = TestServer.start(server, folder -> {
-            try {
-                Files.createDirectories(folder.toPath());
-                Files.writeString(folder.toPath().resolve("challenges.yml"), catalogue(kind));
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        });
+        plugin = TestServer.start(server, folder -> TestServer.catalogue(folder, catalogue(kind)));
         host = server.addPlayer("Host");
         host.performCommand("prost start");
         round = plugin.rounds().of(host.getUniqueId());

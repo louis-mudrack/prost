@@ -8,14 +8,18 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.command.MessageTarget;
 import org.mockbukkit.mockbukkit.inventory.ChestInventoryMock;
 import org.mockbukkit.mockbukkit.inventory.InventoryMock;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -47,6 +51,29 @@ public final class TestServer {
         // a real server registers commands (LifecycleEvents.COMMANDS) once startup is done; MockBukkit on the first dispatch
         server.dispatchCommand(server.getConsoleSender(), "");
         return plugin;
+    }
+
+    /** Prost's version as the build wrote it into plugin.yml */
+    public static String version() {
+        try (InputStream in = TestServer.class.getResourceAsStream("/plugin.yml")) {
+            return String.valueOf(new Yaml().<Map<?, ?>>load(in).get("version"));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * For beforeEnable: challenges.yml as the admin of an up-to-date install wrote it. Its marker says this version's new
+     * entries were added before, so CatalogueMerge leaves the file as it is.
+     */
+    public static void catalogue(File dataFolder, String challenges) {
+        try {
+            Path folder = Files.createDirectories(dataFolder.toPath());
+            Files.writeString(folder.resolve("challenges.yml"), challenges, StandardCharsets.UTF_8);
+            Files.writeString(folder.resolve(".catalogue-version"), version(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /** everything the player (or the console) was sent since the last call, as plain text */

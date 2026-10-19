@@ -149,6 +149,28 @@ class AniDrinksMigrationTest {
         assertEquals("- code: ABCD\n", Files.readString(prost.resolve("rounds.yml")), "a round of Prost's own is never replaced");
     }
 
+    /** AniDrinks' catalogue has none of the entries Prost added since: CatalogueMerge appends them once the marker is gone */
+    @Test
+    void aCatalogueTakenOverDropsTheMarker() throws Exception {
+        OldInstall.write(plugins);
+        Files.write(prost.resolve("challenges.yml"), shippedBytes("challenges.yml"));
+        Files.writeString(prost.resolve(".catalogue-version"), "0.4.0\n");
+        run();
+        assertEquals("mine_iron: {}\n", Files.readString(prost.resolve("challenges.yml")));
+        assertFalse(Files.exists(prost.resolve(".catalogue-version")));
+    }
+
+    @Test
+    void prostsOwnCatalogueKeepsItsMarker() throws Exception {
+        OldInstall.write(plugins);
+        String own = new String(shippedBytes("challenges.yml"), StandardCharsets.UTF_8) + "# mine\n";
+        Files.writeString(prost.resolve("challenges.yml"), own);
+        Files.writeString(prost.resolve(".catalogue-version"), "0.4.0\n");
+        assertFalse(run().files().contains("challenges.yml"));
+        assertEquals(own, Files.readString(prost.resolve("challenges.yml")));
+        assertEquals("0.4.0\n", Files.readString(prost.resolve(".catalogue-version")));
+    }
+
     @Test
     void aFailureMidwayRenamesNothing() throws Exception {
         Path old = OldInstall.write(plugins);

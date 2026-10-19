@@ -20,9 +20,11 @@ someone joins a round they get a short notice saying so (`notices.first-round`).
 
 ## Features
 
-- 103 challenges in 5 kinds (Team, Each, Race, Duel, Solo), all editable in `challenges.yml`
-- 12 goal trackers: mining, statistics, collecting, gifts, inventory, counting, distinct things, reaching places, avoiding
-  things, wearing items, building towers and meeting up
+- 129 challenges in 8 kinds (Team, Each, Race, Duel, Solo, Reaction, Luck, Vote), all editable in `challenges.yml`; an
+  update appends the challenges it adds and leaves your edits alone
+- 16 trackers: mining, statistics, collecting, gifts, inventory, counting, distinct things, reaching places, avoiding
+  things, wearing items, building towers, meeting up, quick reactions, a hot potato, luck games in menus and build
+  contests the round votes on
 - Rewards for winners: hand out sips, make a rule, jokers, pick the next challenge; a prepared rule list in `rules.yml`
 - The action roulette: small random chances on everyday actions, capped per player
 - Per-player languages (English and German shipped, any other by dropping in a file)
@@ -50,7 +52,8 @@ someone joins a round they get a short notice saying so (`notices.first-round`).
 ## Commands
 
 `/prost` (alias `/drinks`, more in `commands.aliases`). Subcommand names are English; every language file can add
-its own names (the shipped German file has e.g. `einladen`, `ablehnen`, `verlassen`, `weiter`, `tempo`, `ende`, `sprache`).
+its own names (the shipped German file has e.g. `einladen`, `ablehnen`, `verlassen`, `weiter`, `tempo`, `ende`, `sprache`,
+`hier`).
 Both always work. "Host" means the player who opened the round.
 
 | command | what it does | who |
@@ -70,7 +73,7 @@ Both always work. "Host" means the player who opened the round.
 | `/prost end` | end the round | host |
 | `/prost stats [player]` | all-time stats and the top lists | `prost.play` |
 | `/prost language [code\|auto]` | show or choose your language | `prost.play` |
-| `/prost here` | mark your build in a build contest where you stand | `prost.play`, while building |
+| `/prost here` | mark your build in a build contest where you stand (also a chat button on the card) | `prost.play`, while building |
 | `/prost admin reload` | read all files again (also `/prost reload`) | `prost.admin`, console |
 | `/prost admin list` | list running rounds (also what `/prost admin` does without an argument) | `prost.admin`, console |
 | `/prost admin end <code>` | end a round | `prost.admin`, console |
@@ -78,8 +81,9 @@ Both always work. "Host" means the player who opened the round.
 | `/prost admin debug [on\|off]` | roulette trace in the console | `prost.admin`, console |
 | `/prost admin migrate` | take over an AniDrinks installation | `prost.admin`, console |
 
-The chat buttons run `/prost reward`, `/prost handout` and `/prost joker` (reopen a reward menu, the sips you may hand out,
-use a joker); they are not meant to be typed but work. All other commands are for players only; the console can use `reload` and `admin`.
+The chat buttons run `/prost reward`, `/prost handout`, `/prost joker` and `/prost play` (reopen a reward menu, the sips you
+may hand out, use a joker, open the menu of a luck game or a build contest's vote again after closing it); they are not
+meant to be typed but work. All other commands are for players only; the console can use `reload` and `admin`.
 
 ## Permissions
 
@@ -95,9 +99,11 @@ Everything lives in `plugins/Prost/`. Details of every setting: [docs/configurat
 | file | owner | content |
 |---|---|---|
 | `config.yml` | you, new keys are appended | language, theme, command aliases, worlds, excluded areas, dimensions, AFK, PlaceholderAPI, notices, storage, metrics, update checker |
-| `game.yml` | you, new keys are appended | max players, pace, kind weights, reward time, jokers, limits, roulette, rules |
-| `challenges.yml`, `rules.yml` | you, written once | the challenge and rule catalogues ([docs/challenges.md](docs/challenges.md)) |
+| `game.yml` | you, new keys are appended | max players, pace, kind weights, reward time, jokers, limits, roulette, rules, the timings of reactions, the hot potato, luck games and build contests |
+| `challenges.yml` | you, new challenges are appended | the challenge catalogue ([docs/challenges.md](docs/challenges.md)) |
+| `rules.yml` | you, written once | the prepared rules ([docs/challenges.md](docs/challenges.md#rulesyml)) |
 | `lang/*.yml` | you, new keys are appended | every text ([docs/translations.md](docs/translations.md)) |
+| `.catalogue-version` | the plugin | the Prost version whose new challenges `challenges.yml` has received |
 | `rounds.yml` | the plugin | running rounds, restored after a restart |
 | `returns.yml` | the plugin | where the players of a build contest tour go back to, applied after a quit or a crash |
 | `stats.db` | the plugin | SQLite stats when `storage.type: sqlite` |

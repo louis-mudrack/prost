@@ -10,9 +10,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import static dev.louismudrack.prost.Checks.*;
 
@@ -21,6 +23,57 @@ import static dev.louismudrack.prost.Checks.*;
  * reflection WITHOUT initialising the enum classes (Material/EntityType must not need a running server here).
  */
 class ShippedCatalogueTest {
+    private static final Path CATALOGUE = Path.of("src/main/resources/challenges.yml");
+    /** spec §8: the entries Prost 0.4.0 added */
+    private static final Set<String> ADDED_IN_040 = Set.of("react_crouch", "react_water", "react_chat", "react_look_up", "react_jump",
+            "react_dirt", "react_sit", "react_eat", "react_freeze", "hot_potato", "wheel", "coin_flip", "three_chests", "dice",
+            "high_low", "mystery_box", "vote_ugly_house", "vote_statue", "vote_pixel_art", "vote_armor_stand", "vote_garden",
+            "vote_portrait", "vote_outfit", "vote_sign", "vote_mini_house", "vote_bridge");
+
+    private static Yaml yaml() {
+        LoaderOptions options = new LoaderOptions();
+        options.setAllowDuplicateKeys(false);
+        return new Yaml(options);
+    }
+
+    private static Map<?, ?> catalogue() throws Exception {
+        try (Reader r = Files.newBufferedReader(CATALOGUE)) { return yaml().load(r); }
+    }
+
+    /** CatalogueMerge appends shipped entries to an admin's file as lines of text: each line must be a whole entry */
+    @Test
+    void everyEntryIsOneLine() throws Exception {
+        Map<?, ?> root = catalogue();
+        List<String> entries = Files.readAllLines(CATALOGUE).stream().filter(l -> !l.isBlank() && !l.startsWith("#")).toList();
+        eq("one line per entry", root.size(), entries.size());
+        for (String line : entries) {
+            Map<?, ?> alone = yaml().load(line);
+            eq(line + ": one entry", 1, alone.size());
+            Object id = alone.keySet().iterator().next();
+            eq(id + ": the line alone reads as in the file", root.get(id), alone.get(id));
+        }
+    }
+
+    @Test
+    void theEntriesOf040SayWhenTheyCame() throws Exception {
+        Map<String, Object> since = new LinkedHashMap<>();
+        catalogue().forEach((id, entry) -> since.put(String.valueOf(id), ((Map<?, ?>) entry).get("since")));
+        Set<String> added = new TreeSet<>(), older = new TreeSet<>();
+        since.forEach((id, version) -> (version == null ? older : added).add(id));
+        eq("the 26 new entries", new TreeSet<>(ADDED_IN_040), added);
+        eq("the 103 older entries carry no since", 103, older.size());
+        for (String id : added) eq(id + ": since", "0.4.0", since.get(id));
+    }
+
+    @Test
+    void sinceIsNoPartOfTheChallenge() {
+        Map<String, Object> entry = new LinkedHashMap<>(Map.of("name", Map.of("en", "Hop"), "text", Map.of("en", "Jump"),
+                "tracker", "reaction", "mode", "jump", "seconds", 15, "sips", 1, "kinds", List.of("reaction"), "rewards", List.of("handout")));
+        ChallengeDef without = CatalogueParser.entry("hop", entry);
+        entry.put("since", "0.4.0");
+        eq("since changes nothing", without, CatalogueParser.entry("hop", entry));
+    }
+
     @Test
     void shippedCatalogue() throws Exception {
         LoaderOptions options = new LoaderOptions();

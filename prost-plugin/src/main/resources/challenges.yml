@@ -1,5 +1,5 @@
 # Prost challenge catalogue. Written once by the plugin, then yours: /prost reload reads it again. A broken entry is skipped
-# with a warning.
+# with a warning. An update appends the challenges it adds at the end, once; one you delete stays deleted.
 # sips = fixed penalty shown at the start (1-6); give = what a winner hands out (default sips); kinds: team each race duel solo
 # reaction luck vote (reaction: only with tracker reaction or potato; luck: only with tracker luck; vote: only with tracker
 # vote); rewards: handout rule joker next; needs: nether end night day rain thunder. Team without rule/joker/next = a joker

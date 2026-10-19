@@ -2,8 +2,9 @@
 
 Prost has two settings files in `plugins/Prost/`: `config.yml` (general settings) and `game.yml` (the game's tunables).
 Both are yours to edit. When a new Prost version adds a key, it is appended to your file with its comment on the next
-start; your values are never changed. Catalogues are covered in [challenges.md](challenges.md), texts in
-[translations.md](translations.md).
+start; your values are never changed. New challenges reach `challenges.yml` the same way: appended once at its end,
+nothing above them changed ([challenges.md](challenges.md#new-challenges-on-an-update)). Catalogues are covered in
+[challenges.md](challenges.md), texts in [translations.md](translations.md).
 
 `/prost reload` (or `/prost admin reload`) reads the files again. (`/prost admin` without an argument runs `/prost admin list`.) Keys marked **(restart)** are read once at start and
 need a server restart. A file that is not valid YAML is ignored with a warning naming the line (the shipped copy is used

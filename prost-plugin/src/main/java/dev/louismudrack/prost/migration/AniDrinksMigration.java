@@ -1,5 +1,6 @@
 package dev.louismudrack.prost.migration;
 
+import dev.louismudrack.prost.catalogue.CatalogueMerge;
 import dev.louismudrack.prost.game.Rounds;
 import dev.louismudrack.prost.storage.StatsRow;
 import dev.louismudrack.prost.storage.StatsStore;
@@ -114,12 +115,23 @@ public final class AniDrinksMigration {
         Path src = new File(source, f.from()).toPath(), dst = new File(prostDir, f.to()).toPath();
         if (!Files.isRegularFile(src)) return Fate.ABSENT;
         if (!Files.exists(dst)) {
+            beforeWriting(f);
             Files.copy(src, dst);
             return Fate.COPIED;
         }
         if (!untouchedDefault(f.to(), dst)) return Fate.KEPT;
+        beforeWriting(f);
         Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
         return Fate.REPLACED;
+    }
+
+    /**
+     * AniDrinks' catalogue has none of the entries Prost added since: without the marker CatalogueMerge appends them. Deleted
+     * first: a copy that fails after it leaves Prost's untouched shipped file, which has every entry anyway, while the other
+     * order could leave AniDrinks' file behind a marker that says it has them.
+     */
+    private void beforeWriting(Copy f) throws IOException {
+        if (f.to().equals(CatalogueMerge.FILE)) Files.deleteIfExists(new File(prostDir, CatalogueMerge.MARKER).toPath());
     }
 
     /**

@@ -180,8 +180,11 @@ public final class DataFiles {
 
     private Path dataFile(String name) { return new File(plugin.getDataFolder(), name).toPath(); }
 
-    /** strict UTF-8, like the readers of the other files: a wrong encoding is an error, not replacement characters */
-    private static Object parse(byte[] content) throws CharacterCodingException {
+    /**
+     * A data file's content as the readers here parse it: strict UTF-8 (a wrong encoding is an error, not replacement
+     * characters), no duplicate keys. SnakeYAML's YAMLException is a RuntimeException.
+     */
+    public static Object parse(byte[] content) throws CharacterCodingException {
         return yaml().load(StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(content)).toString());
     }
 

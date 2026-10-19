@@ -32,7 +32,10 @@ tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
     options.compilerArgs.add("-Xlint:deprecation")
 }
-tasks.processResources { filesMatching("plugin.yml") { expand("version" to project.version) } }
+tasks.processResources {
+    inputs.property("version", project.version)   // expand() alone leaves plugin.yml at the old version after a bump
+    filesMatching("plugin.yml") { expand("version" to project.version) }
+}
 tasks.jar { archiveClassifier.set("plain") }
 tasks.shadowJar {
     archiveBaseName.set("Prost")
