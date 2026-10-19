@@ -16,6 +16,7 @@ kind:
   race: "Race"
   duel: "Duel"
   solo: "Solo"
+  reaction: "Reaction"
 pace:
   chill: "chill"
   normal: "normal"
@@ -132,6 +133,8 @@ challenge:
     team: "<gray>Miss it: everyone drinks <err><sips> <dark_gray>· <gray>Make it, the top player picks: <ok><reward>"
     race: "<gray>The slowest drinks <err><sips>"
     duel: "<gray>The loser drinks <err><sips>"
+    reaction: "<gray>Not in time or the last one: <err><sips>"
+    freeze: "<gray>Whoever moves: <err><sips> <dark_gray>· <gray>Nobody moves: <ok><reward>"
   reward:
     handout: "hand out <sips>"
     rule: "a rule"
@@ -163,6 +166,12 @@ result:
   line: "<primary><name></primary> <dark_gray>» <result>"
   won: "<ok>Made it!"
   lost: "<err>Lost"
+# the games' status in the boss bar and the action bar
+game:
+  reaction:
+    waiting: "<gray>waiting"
+    done: "<ok>done"
+    hint: "<hl>Now: <white><goal>"
 reward:
   option:
     handout: "Hand out <sips>"

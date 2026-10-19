@@ -1,7 +1,9 @@
 # Prost challenge catalogue. Written once by the plugin, then yours: /prost reload reads it again. A broken entry is skipped
 # with a warning.
-# sips = fixed penalty shown at the start (1-6); give = what a winner hands out (default sips); kinds: team each race duel solo;
-# rewards: handout rule joker next; needs: nether end night day rain thunder. Team without rule/joker/next = a joker each.
+# sips = fixed penalty shown at the start (1-6); give = what a winner hands out (default sips); kinds: team each race duel solo
+# reaction (reaction: only with tracker reaction); rewards: handout rule joker next; needs: nether end night day rain thunder.
+# Team without rule/joker/next = a joker each. Tracker reaction, mode: crouch water chat look_up jump hold sit eat freeze
+# (chat: value = the word, hold: targets). since = the Prost version that added the entry.
 
 # --- Mining ---
 mine_iron: {name: {de: "Eisenfieber", en: "Iron fever"}, text: {de: "Baue {amount} Eisenerz ab", en: "Mine {amount} iron ore"}, tracker: mine, targets: [IRON_ORE, DEEPSLATE_IRON_ORE], amount: 16, seconds: 360, sips: 3, kinds: [each, race, duel, solo, team], rewards: [handout]}
@@ -123,3 +125,14 @@ share_food: {name: {de: "Teilen macht Freude", en: "Sharing is caring"}, text: {
 trade_villager: {name: {de: "Händler", en: "Merchant"}, text: {de: "Handle {amount}-mal mit Dorfbewohnern", en: "Trade with villagers {amount} times"}, tracker: stat, stat: TRADED_WITH_VILLAGER, amount: 3, seconds: 600, sips: 3, kinds: [each, race, solo], rewards: [handout]}
 talk_villager: {name: {de: "Smalltalk", en: "Small talk"}, text: {de: "Sprich {amount}-mal mit Dorfbewohnern", en: "Talk to villagers {amount} times"}, tracker: stat, stat: TALKED_TO_VILLAGER, amount: 5, seconds: 360, sips: 1, kinds: [each, solo], rewards: [handout]}
 hug: {name: {de: "Kuscheln", en: "Hug it out"}, text: {de: "Schleiche {amount}-mal direkt neben einem anderen Spieler", en: "Crouch {amount} times right next to another player"}, tracker: proximity, mode: hug, value: 2, amount: 10, seconds: 180, sips: 1, kinds: [each], rewards: [handout], min-players: 2}
+
+# --- Reaction ---
+react_crouch: {name: {de: "In Deckung!", en: "Take cover!"}, text: {de: "Schleiche - schnell!", en: "Crouch - quick!"}, tracker: reaction, mode: crouch, seconds: 15, sips: 1, kinds: [reaction], rewards: [handout], since: "0.4.0"}
+react_water: {name: {de: "Abkühlung", en: "Cool down"}, text: {de: "Spring ins Wasser", en: "Get into water"}, tracker: reaction, mode: water, seconds: 60, sips: 2, kinds: [reaction, solo], rewards: [handout], since: "0.4.0"}
+react_chat: {name: {de: "Prost!", en: "Cheers!"}, text: {de: "Schreib \"Prost\" in den Chat", en: "Write \"Prost\" in chat"}, tracker: reaction, mode: chat, value: "Prost", seconds: 30, sips: 1, kinds: [reaction], rewards: [handout], since: "0.4.0"}
+react_look_up: {name: {de: "Sternengucker", en: "Stargazer"}, text: {de: "Schau senkrecht nach oben", en: "Look straight up"}, tracker: reaction, mode: look_up, seconds: 15, sips: 1, kinds: [reaction], rewards: [handout], since: "0.4.0"}
+react_jump: {name: {de: "Hopp!", en: "Hop!"}, text: {de: "Spring!", en: "Jump!"}, tracker: reaction, mode: jump, seconds: 15, sips: 1, kinds: [reaction], rewards: [handout], since: "0.4.0"}
+react_dirt: {name: {de: "Dreckspatz", en: "Dirty hands"}, text: {de: "Halte Erde in der Hand", en: "Hold dirt in your hand"}, tracker: reaction, mode: hold, targets: [DIRT], seconds: 60, sips: 2, kinds: [reaction, solo], rewards: [handout], since: "0.4.0"}
+react_sit: {name: {de: "Platz nehmen", en: "Take a seat"}, text: {de: "Setz dich in ein Boot, eine Lore oder auf ein Reittier", en: "Sit in a boat, a minecart or on a mount"}, tracker: reaction, mode: sit, seconds: 60, sips: 2, kinds: [reaction, solo], rewards: [handout], since: "0.4.0"}
+react_eat: {name: {de: "Snackpause", en: "Snack break"}, text: {de: "Iss etwas", en: "Eat something"}, tracker: reaction, mode: eat, seconds: 30, sips: 1, kinds: [reaction, solo], rewards: [handout], since: "0.4.0"}
+react_freeze: {name: {de: "Eingefroren", en: "Freeze!"}, text: {de: "Beweg dich nicht von der Stelle", en: "Don't move from the spot"}, tracker: reaction, mode: freeze, seconds: 10, sips: 1, kinds: [reaction, solo], rewards: [handout], since: "0.4.0"}

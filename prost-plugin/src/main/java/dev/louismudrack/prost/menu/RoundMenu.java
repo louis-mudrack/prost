@@ -50,7 +50,7 @@ public final class RoundMenu extends Menu {
         List<String> now = run == null
                 ? List.of(text("menu.round.next_in", V.of("time", Fmt.clock(Math.max(0, round.nextDrawAt - System.currentTimeMillis())))))
                 : List.of(text("menu.round.run_text", V.of("text", run.def.text(lang))),
-                        text("menu.round.run_info", V.mm("kind", text("kind." + run.kind.key)), V.of("time", Fmt.clock(run.remainingMs())),
+                        text("menu.round.run_info", V.mm("kind", text("kind." + run.kind.key)), V.of("time", run.clock()),
                                 V.mm("sips", Msg.sips(viewer.getUniqueId(), run.def.sips()))));
         set(28, Items.item(Material.MAP, run == null ? text("menu.round.no_challenge") : text("menu.round.challenge_name", V.of("name", run.def.name(lang))), now), null);
         List<String> rules = new ArrayList<>();

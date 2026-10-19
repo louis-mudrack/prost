@@ -124,7 +124,7 @@ zero or more; a negative or non-numeric value is replaced by the default. Unlike
 | `max-players` | `8` | Players per round. |
 | `warmup-seconds` | `120` | Time from opening a round (or restoring it after a restart) to the first challenge. |
 | `pace` | `chill: [720, 1080]`, `normal: [480, 720]`, `party: [240, 420]` | Seconds between two challenges: a random time between the two numbers. Both must be above 0 and the first no larger than the second, otherwise that pace uses its default. |
-| `kind-weights` | `team: 20, each: 25, race: 15, duel: 10, solo: 15` | How likely each challenge kind is among the kinds that fit the number of active players. All zero: every kind is equally likely. |
+| `kind-weights` | `team: 20, each: 25, race: 15, duel: 10, solo: 15, reaction: 7` | How likely each challenge kind is among the kinds that fit the number of active players. All zero: every kind is equally likely. |
 | `reward-seconds` | `60` | How long winners have to choose a reward or hand out sips; after that the first listed reward is taken, and sips not yet assigned go to random members. Also added to the pause before the next challenge. |
 | `joker.max` | `2` | Jokers a member can hold; a third one lapses. |
 | `joker.offer-seconds` | `10` | How long the "use a joker" button stays after a penalty. |
@@ -140,6 +140,12 @@ zero or more; a negative or non-numeric value is replaced by the default. Unlike
 | `rules.reminder-minutes` | `10` | How often the active rules are repeated in chat. |
 | `rules.custom-max-length` | `60` | Maximum characters of a rule a winner types. |
 | `offline-grace-minutes` | `10` | A member who stays offline this long is removed from the round. |
+| `reaction.freeze-grace-seconds` | `2` | Freeze reactions: the seconds to stop moving; after them, moving (not just looking around) breaks it. |
+| `potato.pass-seconds` | `3` | Hot potato: how long a dropped potato waits for another player to pick it up before it jumps back to the thrower. |
+| `luck.reveal-seconds` | `2` | Luck games: how long the result is revealed before the challenge ends. |
+| `vote.view-seconds` | `15` | Build contests: seconds at each build on the tour. |
+| `vote.vote-seconds` | `20` | Build contests: seconds to vote. |
+| `vote.teleport` | `true` | Build contests: the tour teleports every player to each build and back. `false`: the builds' coordinates are announced instead, nobody is moved. Anything but `true` or `false` uses the default. |
 
 Roulette chances, per action (default): `block: 0.003` (breaking or placing a block), `craft: 0.01`, `kill: 0.02`,
 `eat: 0.02`, `fish: 0.02`, `breed: 0.02`, `trade: 0.02`, `enchant: 0.02`, `advancement: 0.10`, `death: 0.10`,

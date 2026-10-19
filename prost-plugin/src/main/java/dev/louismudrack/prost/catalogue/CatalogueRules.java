@@ -19,13 +19,19 @@ final class CatalogueRules {
     }
 
     static final Set<String> TRACKERS = Set.of("mine", "stat", "collect", "gift", "inventory", "count", "distinct", "reach",
-            "avoid", "wear", "tower", "proximity");
+            "avoid", "wear", "tower", "proximity", "reaction");
     static final Set<String> AVOID_MODES = Set.of("damage", "explosion-damage", "death", "jump", "sprint", "eat", "chat",
             "break", "kill", "water", "sleep");
     private static final Set<String> DISTINCT_SOURCES = Set.of("mine", "collect", "consume", "craft", "kill", "biome");
     private static final Set<String> REACH_MODES = Set.of("below", "above", "distance", "dimension", "structure");
     private static final Set<String> PROXIMITY_MODES = Set.of("all", "block", "hug");
     private static final Set<Kind> AVOID_KINDS = Set.of(Kind.TEAM, Kind.EACH, Kind.SOLO);
+    static final Set<String> REACTION_MODES = Set.of("crouch", "water", "chat", "look_up", "jump", "hold", "sit", "eat", "freeze");
+    private static final Set<Kind> REACTION_KINDS = Set.of(Kind.REACTION, Kind.SOLO);
+    /** the game trackers that can be played as kind reaction */
+    private static final Set<String> REACTION_TRACKERS = Set.of("reaction");
+    /** trackers that decide the run themselves (GameTracker): also-avoid would wrap them and hide the game from the run */
+    private static final Set<String> GAME_TRACKERS = Set.of("reaction");
     private static final int MIN_SIPS = 1, MAX_SIPS = 6, MIN_SECONDS = 10, MAX_SECONDS = 900;
 
     private CatalogueRules() {}
@@ -40,6 +46,8 @@ final class CatalogueRules {
         if (d.kinds().isEmpty()) p.add("no kinds");
         if (d.rewards().isEmpty()) p.add("no rewards");
         for (String a : d.alsoAvoid()) if (!AVOID_MODES.contains(a)) p.add("unknown also-avoid '" + a + "'");
+        if (!d.alsoAvoid().isEmpty() && GAME_TRACKERS.contains(d.tracker())) p.add("also-avoid does not work with tracker " + d.tracker());
+        if (d.kinds().contains(Kind.REACTION) && !REACTION_TRACKERS.contains(d.tracker())) p.add("kind reaction does not work with tracker " + d.tracker());
         List<String> resolved = Tags.resolveAll(d.targets());
         if (resolved == null) {
             p.add("unknown tag in " + d.targets());
@@ -71,6 +79,11 @@ final class CatalogueRules {
             case "proximity" -> {
                 if (!PROXIMITY_MODES.contains(d.mode())) p.add("proximity mode must be all, block or hug");
                 if (!isNumber(d.value())) p.add("proximity needs a numeric value");
+            }
+            case "reaction" -> {
+                if (!REACTION_MODES.contains(d.mode())) p.add("unknown reaction mode '" + d.mode() + "'");
+                for (Kind k : d.kinds()) if (!REACTION_KINDS.contains(k)) p.add("reaction cannot be played as " + k.key);
+                if ("hold".equals(d.mode())) materials(p, resolved, names, true);
             }
             default -> { }
         }

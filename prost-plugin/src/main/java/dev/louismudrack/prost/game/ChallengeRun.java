@@ -11,9 +11,11 @@ import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.reward.Reward;
 import dev.louismudrack.prost.reward.RewardRules;
 import dev.louismudrack.prost.storage.StatsField;
+import dev.louismudrack.prost.tracker.GameTracker;
 import dev.louismudrack.prost.tracker.TrackContext;
 import dev.louismudrack.prost.tracker.Tracker;
 import dev.louismudrack.prost.tracker.Trackers;
+import dev.louismudrack.prost.tracker.Verdict;
 import dev.louismudrack.prost.ui.Fmt;
 import dev.louismudrack.prost.ui.Hud;
 import dev.louismudrack.prost.ui.Sounds;
@@ -34,12 +36,14 @@ import java.util.UUID;
 /**
  * One running challenge: announces it with its fixed sips, shows a boss bar to the whole round, polls the
  * tracker every 10 ticks, ends early when decided, then resolves: drinks through Sips, rewards through Rewards (only
- * when nobody drinks).
+ * when nobody drinks). A game tracker (GameTracker) decides the end and the verdict itself; the run keeps the HUD,
+ * the drinks, the rewards and the stats.
  * A participant who stops being active drops out without drinking; a Duel opponent dropping out = walkover.
  */
 public final class ChallengeRun {
     /** a watcher's boss bar lists at most this many players, then "+N" */
     private static final int WATCH_MAX = 3;
+    private static final String HIDDEN_CLOCK = "??";
 
     private final ProstPlugin plugin;
     final Round round;
@@ -47,7 +51,11 @@ public final class ChallengeRun {
     public final Kind kind;
     private final List<UUID> participants;
     private final Tracker tracker;
-    private final long startedAt, endsAt;
+    /** null for the progress trackers */
+    private final GameTracker game;
+    private final long startedAt;
+    /** a game may move it */
+    private long endsAt;
     private final Map<UUID, Long> doneAt = new HashMap<>();
     private final Map<UUID, BossBar> bars = new HashMap<>();
     private boolean over;
@@ -58,8 +66,9 @@ public final class ChallengeRun {
         this.def = def;
         this.kind = kind;
         this.participants = new ArrayList<>(participants);
-        this.tracker = Trackers.create(new TrackContext(plugin, round, def));
-        this.startedAt = System.currentTimeMillis();
+        this.tracker = Trackers.create(new TrackContext(plugin, round, def, kind));
+        this.game = tracker instanceof GameTracker g ? g : null;
+        this.startedAt = plugin.now();
         this.endsAt = startedAt + def.seconds() * 1000L;
     }
 
@@ -69,10 +78,19 @@ public final class ChallengeRun {
 
     public List<UUID> participants() { return List.copyOf(participants); }
 
-    public long remainingMs() { return Math.max(0, endsAt - System.currentTimeMillis()); }
+    public long remainingMs() { return Math.max(0, endsAt - plugin.now()); }
+
+    /** the time left as the players see it: "??" while the game hides it */
+    public String clock() { return hiddenClock() ? HIDDEN_CLOCK : Fmt.clock(remainingMs()); }
+
+    /** null for the progress trackers */
+    public GameTracker game() { return game; }
+
+    private boolean hiddenClock() { return game != null && game.hiddenClock(); }
 
     void start() {
         tracker.start(online());
+        if (game != null) endsAt = game.deadline();
         announce();
         Bukkit.getPluginManager().callEvent(new ChallengeStartEvent(Views.round(round, this), Views.challenge(this)));
         update(startedAt);
@@ -87,16 +105,32 @@ public final class ChallengeRun {
         for (UUID id : new ArrayList<>(participants)) if (!round.isActive(id)) drop(id);
         if (over) return;
         tracker.poll(online());
-        long now = System.currentTimeMillis();
+        long now = plugin.now();
+        if (game != null) {
+            tickGame(now);
+            return;
+        }
         for (UUID id : participants) if (!doneAt.containsKey(id) && done(id)) doneAt.put(id, now);
         update(now);
         if (now >= endsAt || decided()) finish();
+    }
+
+    private void tickGame(long now) {
+        String cancelKey = game.cancelKey();
+        if (cancelKey != null) {
+            cancel(cancelKey);
+            return;
+        }
+        endsAt = game.deadline();
+        update(now);
+        if (now >= endsAt || game.decided()) finish();
     }
 
     /** paused, AFK, away, wrong mode or left: out without drinking; still in the round = watches on */
     void drop(UUID id) {
         if (over || !participants.remove(id)) return;
         doneAt.remove(id);
+        if (game != null) game.dropped(id);
         if (participants.isEmpty()) cancel(null);
         else if (kind == Kind.DUEL && participants.size() == 1) finish();
     }
@@ -142,6 +176,7 @@ public final class ChallengeRun {
             case EACH -> def.avoidType() ? participants.stream().allMatch(id -> tracker.broken(id)) : allSettled;
             case TEAM -> def.avoidType() ? anyBroken : teamSum() >= teamTarget();
             case RACE, DUEL -> !doneAt.isEmpty();
+            case REACTION -> throw new IllegalStateException("decided by its game");
         };
     }
 
@@ -149,13 +184,16 @@ public final class ChallengeRun {
         if (over) return;
         over = true;
         tracker.poll(online());
-        long now = System.currentTimeMillis();
-        for (UUID id : participants) if (!doneAt.containsKey(id) && done(id)) doneAt.put(id, now);
         int target = teamTarget(), sum = teamSum();
         Resolution.Outcome o;
         if (kind == Kind.DUEL && participants.size() == 1) {
             o = new Resolution.Outcome(Map.of(), List.copyOf(participants), null, true);
+        } else if (game != null) {
+            Verdict v = game.verdict();
+            o = new Resolution.Outcome(v.drinks(), v.winners(), null, !v.winners().isEmpty());
         } else {
+            long now = plugin.now();
+            for (UUID id : participants) if (!doneAt.containsKey(id) && done(id)) doneAt.put(id, now);
             List<Resolution.Progress> ps = new ArrayList<>();
             for (UUID id : participants) ps.add(new Resolution.Progress(id, tracker.progress(id), done(id), tracker.broken(id), doneAt.getOrDefault(id, 0L)));
             Collections.shuffle(ps);
@@ -167,10 +205,10 @@ public final class ChallengeRun {
         for (UUID id : participants) {
             Member m = round.member(id);
             if (m == null) continue;
-            boolean won = o.winners().contains(id);
+            boolean won = o.winners().contains(id), lost = lost(o, id);
             if (won) m.tally.won++;
-            else m.tally.lost++;
-            plugin.stats().add(id, m.name, won ? StatsField.WON : StatsField.LOST, 1);
+            if (lost) m.tally.lost++;
+            if (won || lost) plugin.stats().add(id, m.name, won ? StatsField.WON : StatsField.LOST, 1);
         }
         o.drinks().forEach((id, n) -> plugin.sips().drink(round, id, n, SipLedger.Source.CHALLENGE, viewer -> Msg.esc(def.name(Msg.lang(viewer)))));
         if (kind == Kind.TEAM) {
@@ -197,7 +235,7 @@ public final class ChallengeRun {
             String who = kind == Kind.SOLO || kind == Kind.DUEL ? " " + Msg.str(id, "challenge.who", V.mm("names", names(participants, kind == Kind.DUEL ? versus(id) : ", "))) : "";
             Msg.send(p, "<primary>" + headline + "</primary>" + who);
             Msg.send(p, "<white>" + goal);
-            Msg.tell(p, "challenge.time", V.of("time", Fmt.clock(def.seconds() * 1000L)), V.mm("stakes", stakes(id)));
+            Msg.tell(p, "challenge.time", V.of("time", hiddenClock() ? HIDDEN_CLOCK : Fmt.clock(def.seconds() * 1000L)), V.mm("stakes", stakes(id)));
             Sounds.ding(p);
         }
     }
@@ -226,8 +264,12 @@ public final class ChallengeRun {
             case TEAM -> Msg.str(viewer, "challenge.stakes.team", sips, reward);
             case RACE -> Msg.str(viewer, "challenge.stakes.race", sips);
             case DUEL -> Msg.str(viewer, "challenge.stakes.duel", sips);
+            case REACTION -> freeze() ? Msg.str(viewer, "challenge.stakes.freeze", sips, reward) : Msg.str(viewer, "challenge.stakes.reaction", sips);
         };
     }
+
+    /** "don't move" is won by everybody who holds still, not lost by the last one */
+    private boolean freeze() { return "reaction".equals(def.tracker()) && "freeze".equals(def.mode()); }
 
     private String rewardText(UUID viewer) {
         List<Reward> rewards = kind == Kind.TEAM ? RewardRules.teamOptions(def.rewards()) : def.rewards();
@@ -243,22 +285,28 @@ public final class ChallengeRun {
     }
 
     private void announceResult(Resolution.Outcome o, int sum, int target) {
-        boolean noReward = !o.winners().isEmpty() && o.rewarded().isEmpty();
         for (UUID id : round.members.keySet()) {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
             String lang = Msg.lang(id);
-            String line;
-            if (kind == Kind.TEAM) line = o.success() ? Msg.str(id, "result.team_ok") : Msg.str(id, "result.team_missed", V.of("sum", sum), V.of("target", target));
-            else if (o.winners().isEmpty()) line = Msg.str(id, "result.nobody");
-            else line = Msg.str(id, "result.made_it", V.mm("winners", names(o.winners(), ", "))) + (noReward ? " " + Msg.str(id, "result.no_reward") : "");
-            Msg.tell(p, "result.line", V.of("name", def.name(lang)), V.mm("result", line));
-            if (!participants.contains(id)) continue;
+            String custom = game == null ? null : game.result(id);
+            Msg.tell(p, "result.line", V.of("name", def.name(lang)), V.mm("result", custom != null ? custom : resultLine(id, o, sum, target)));
             boolean won = o.winners().contains(id);
+            if (!participants.contains(id) || !won && !lost(o, id)) continue;
             Hud.title(p, Msg.str(id, won ? "result.won" : "result.lost"), "<gray>" + Msg.esc(def.name(lang)));
             if (won) Sounds.win(p);
         }
     }
+
+    private String resultLine(UUID viewer, Resolution.Outcome o, int sum, int target) {
+        if (kind == Kind.TEAM) return o.success() ? Msg.str(viewer, "result.team_ok") : Msg.str(viewer, "result.team_missed", V.of("sum", sum), V.of("target", target));
+        if (o.winners().isEmpty()) return Msg.str(viewer, "result.nobody");
+        boolean noReward = o.rewarded().isEmpty();
+        return Msg.str(viewer, "result.made_it", V.mm("winners", names(o.winners(), ", "))) + (noReward ? " " + Msg.str(viewer, "result.no_reward") : "");
+    }
+
+    /** a progress challenge has no draw; in a game who neither won nor drinks counts as neither */
+    private boolean lost(Resolution.Outcome o, UUID id) { return game == null ? !o.winners().contains(id) : o.drinks().containsKey(id); }
 
     /** MiniMessage: each name escaped, the separator as it is (a translator may style challenge.versus) */
     private String names(List<UUID> ids, String separator) {
@@ -277,7 +325,9 @@ public final class ChallengeRun {
 
     /** every member gets a bar - participants their own progress, the others (watching) the players' progress */
     private void update(long now) {
-        float left = Math.max(0f, Math.min(1f, (endsAt - now) / (float) (endsAt - startedAt)));
+        // a hidden clock keeps the bar full: a shrinking bar would tell the time
+        float left = hiddenClock() ? 1f : Math.max(0f, Math.min(1f, (endsAt - now) / (float) (endsAt - startedAt)));
+        String clock = hiddenClock() ? HIDDEN_CLOCK : Fmt.clock(endsAt - now);
         for (UUID id : new ArrayList<>(bars.keySet())) if (!round.members.containsKey(id)) hideBar(id);
         for (UUID id : round.members.keySet()) {
             Player p = Bukkit.getPlayer(id);
@@ -286,10 +336,10 @@ public final class ChallengeRun {
             p.showBossBar(bar);   // no-op while shown; shows it again after a reconnect
             boolean playing = participants.contains(id);
             String status = playing ? "<white>" + progressText(id, id) : watchText(id);
-            bar.name(Msg.mm("<hl>" + Msg.esc(def.name(Msg.lang(id))) + " <dark_gray>· " + status + " <dark_gray>· <gray>" + Fmt.clock(endsAt - now)
+            bar.name(Msg.mm("<hl>" + Msg.esc(def.name(Msg.lang(id))) + " <dark_gray>· " + status + " <dark_gray>· <gray>" + clock
                     + (playing ? "" : " " + Msg.str(id, "challenge.bar_watching"))));
             bar.progress(left);
-            if (playing) Hud.actionBar(p, hint(id) + " <dark_gray>- <white>" + Fmt.clock(endsAt - now));
+            if (playing) Hud.actionBar(p, hint(id) + " <dark_gray>- <white>" + clock);
         }
     }
 
@@ -310,6 +360,7 @@ public final class ChallengeRun {
 
     /** the action bar's live hint: "Noch 3 - 0:42" */
     private String hint(UUID id) {
+        if (game != null) return game.status(id, id);
         if (def.avoidType()) return Msg.str(id, tracker.broken(id) ? "challenge.hint.broken" : "challenge.hint.hold");
         if (tracker.broken(id)) return Msg.str(id, "challenge.hint.out");
         int missing = kind == Kind.TEAM ? teamTarget() - teamSum() : def.amount() - tracker.progress(id);
@@ -319,6 +370,7 @@ public final class ChallengeRun {
 
     /** how far {@code who} is, worded for {@code viewer} */
     private String progressText(UUID viewer, UUID who) {
+        if (game != null) return game.status(viewer, who);
         if (def.avoidType()) return Msg.str(viewer, tracker.broken(who) ? "challenge.progress.broken" : "challenge.progress.holding");
         if (tracker.broken(who)) return Msg.str(viewer, "challenge.progress.out");
         if (kind == Kind.TEAM) return teamSum() + "/" + teamTarget();

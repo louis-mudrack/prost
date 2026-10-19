@@ -16,6 +16,7 @@ kind:
   race: "Rennen"
   duel: "Duell"
   solo: "Solo"
+  reaction: "Reaktion"
 pace:
   chill: "chill"
   normal: "normal"
@@ -132,6 +133,8 @@ challenge:
     team: "<gray>Verfehlt: alle <err><sips> <dark_gray>· <gray>Geschafft, der Beste wählt: <ok><reward>"
     race: "<gray>Der Langsamste trinkt <err><sips>"
     duel: "<gray>Der Verlierer trinkt <err><sips>"
+    reaction: "<gray>Zu spät oder als Letzter: <err><sips>"
+    freeze: "<gray>Wer sich bewegt: <err><sips> <dark_gray>· <gray>Bewegt sich keiner: <ok><reward>"
   reward:
     handout: "<sips> verteilen"
     rule: "eine Regel"
@@ -163,6 +166,12 @@ result:
   line: "<primary><name></primary> <dark_gray>» <result>"
   won: "<ok>Geschafft!"
   lost: "<err>Verloren"
+# Spielstand in der Bossleiste und in der Aktionsleiste
+game:
+  reaction:
+    waiting: "<gray>noch nicht"
+    done: "<ok>geschafft"
+    hint: "<hl>Jetzt: <white><goal>"
 reward:
   option:
     handout: "<sips> verteilen"

@@ -11,7 +11,11 @@ import java.util.Map;
 /** game.yml: the game's tunables. Missing or invalid values fall back to the defaults, so a half-edited file still works. */
 public record GameConfig(int maxPlayers, int warmupSeconds, Map<Pace, int[]> pace, Map<Kind, Integer> kindWeights, int rewardSeconds,
                     int jokerMax, int jokerOfferSeconds, int limitDefault, int limitMin, int limitMax, RouletteRules.Settings roulette,
-                    int rulesMaxActive, int rulesReminderMinutes, int customRuleMaxLength, int offlineGraceMinutes) {
+                    int rulesMaxActive, int rulesReminderMinutes, int customRuleMaxLength, int offlineGraceMinutes, Games games) {
+
+    /** the tunables of the game trackers (reaction, potato, luck, vote) */
+    public record Games(int freezeGraceSeconds, int potatoPassSeconds, int luckRevealSeconds, int voteViewSeconds, int voteVoteSeconds,
+                        boolean voteTeleport) {}
 
     private static final long MINUTE_MS = 60_000L;
 
@@ -30,6 +34,7 @@ public record GameConfig(int maxPlayers, int warmupSeconds, Map<Pace, int[]> pac
         kw.put(Kind.RACE, num(kws.get("race"), 15));
         kw.put(Kind.DUEL, num(kws.get("duel"), 10));
         kw.put(Kind.SOLO, num(kws.get("solo"), 15));
+        kw.put(Kind.REACTION, num(kws.get("reaction"), 7));
         Map<?, ?> limit = sub(root, "limit");
         int min = num(limit.get("min"), 5), max = num(limit.get("max"), 40);
         if (min < 1 || min > max) { min = 5; max = 40; }
@@ -47,7 +52,14 @@ public record GameConfig(int maxPlayers, int warmupSeconds, Map<Pace, int[]> pac
         return new GameConfig(num(root.get("max-players"), 8), num(root.get("warmup-seconds"), 120), pace, kw,
                 num(root.get("reward-seconds"), 60), num(joker.get("max"), 2), num(joker.get("offer-seconds"), 10), def, min, max,
                 roulette, num(rules.get("max-active"), 5), num(rules.get("reminder-minutes"), 10), num(rules.get("custom-max-length"), 60),
-                num(root.get("offline-grace-minutes"), 10));
+                num(root.get("offline-grace-minutes"), 10), games(root));
+    }
+
+    private static Games games(Map<?, ?> root) {
+        Map<?, ?> vote = sub(root, "vote");
+        return new Games(num(sub(root, "reaction").get("freeze-grace-seconds"), 2), num(sub(root, "potato").get("pass-seconds"), 3),
+                num(sub(root, "luck").get("reveal-seconds"), 2), num(vote.get("view-seconds"), 15), num(vote.get("vote-seconds"), 20),
+                bool(vote.get("teleport"), true));
     }
 
     public int clampLimit(int wanted) { return Math.max(limitMin, Math.min(limitMax, wanted)); }
@@ -57,6 +69,8 @@ public record GameConfig(int maxPlayers, int warmupSeconds, Map<Pace, int[]> pac
     private static int num(Object v, int fallback) {
         return v instanceof Number n && n.intValue() >= 0 ? n.intValue() : fallback;
     }
+
+    private static boolean bool(Object v, boolean fallback) { return v instanceof Boolean b ? b : fallback; }
 
     private static int[] window(Object v, int min, int max) {
         if (v instanceof List<?> l && l.size() == 2 && l.get(0) instanceof Number a && l.get(1) instanceof Number b

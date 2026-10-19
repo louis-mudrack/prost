@@ -1,9 +1,9 @@
-# Prost game tunables: pace, kinds, rewards, jokers, limits, roulette, rules. New keys are added on start; your values
-# stay. /prost reload reads the file again. Missing or invalid values use these defaults.
+# Prost game tunables: pace, kinds, rewards, jokers, limits, roulette, rules, games. New keys are added on start; your
+# values stay. /prost reload reads the file again. Missing or invalid values use these defaults.
 max-players: 8
 warmup-seconds: 120
 pace: {chill: [720, 1080], normal: [480, 720], party: [240, 420]}   # seconds between two challenges
-kind-weights: {team: 20, each: 25, race: 15, duel: 10, solo: 15}
+kind-weights: {team: 20, each: 25, race: 15, duel: 10, solo: 15, reaction: 7}
 reward-seconds: 60          # how long winners have to choose / hand out
 joker: {max: 2, offer-seconds: 10}
 limit: {default: 20, min: 5, max: 40}   # sips per rolling hour, set by each member
@@ -16,3 +16,11 @@ roulette:
   weights: [40, 30, 20, 10] # 1, 2, 3, 4 sips
 rules: {max-active: 5, reminder-minutes: 10, custom-max-length: 60}
 offline-grace-minutes: 10
+# freeze (a reaction challenge): moving after this many seconds breaks it
+reaction: {freeze-grace-seconds: 2}
+# hot potato: seconds a dropped potato waits for another player before it jumps back to the thrower
+potato: {pass-seconds: 3}
+# luck games: seconds the result is revealed before the challenge ends
+luck: {reveal-seconds: 2}
+# build contests: seconds per build on the tour, seconds to vote; teleport: false announces the coordinates instead
+vote: {view-seconds: 15, vote-seconds: 20, teleport: true}

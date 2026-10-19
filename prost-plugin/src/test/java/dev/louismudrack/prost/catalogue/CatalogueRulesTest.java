@@ -148,6 +148,39 @@ class CatalogueRulesTest {
                 def("reach", "", "", "dimension", "the_end", List.of(), each, Set.of(), List.of(), 3, 360), FAKE_API).isEmpty());
     }
 
+    private static final List<Kind> REACTION_OR_SOLO = List.of(Kind.REACTION, Kind.SOLO);
+
+    @Test
+    void reactionNeedsAKnownModeAndReactionOrSoloKinds() {
+        eq("a crouch reaction is valid", List.of(), CatalogueRules.validate(
+                def("reaction", "", "", "crouch", "", List.of(), REACTION_OR_SOLO, Set.of(), List.of(), 1, 15), FAKE_API));
+        eq("a dance is no reaction mode", List.of("unknown reaction mode 'dance'"), CatalogueRules.validate(
+                def("reaction", "", "", "dance", "", List.of(), REACTION_OR_SOLO, Set.of(), List.of(), 1, 15), FAKE_API));
+        eq("a reaction as a race is reported", List.of("reaction cannot be played as race"), CatalogueRules.validate(
+                def("reaction", "", "", "crouch", "", List.of(), List.of(Kind.RACE), Set.of(), List.of(), 1, 15), FAKE_API));
+        eq("the reaction modes", Set.of("crouch", "water", "chat", "look_up", "jump", "hold", "sit", "eat", "freeze"),
+                CatalogueRules.REACTION_MODES);
+    }
+
+    @Test
+    void reactionHoldNeedsMaterials() {
+        eq("hold without targets", List.of("targets missing"), CatalogueRules.validate(
+                def("reaction", "", "", "hold", "", List.of(), REACTION_OR_SOLO, Set.of(), List.of(), 2, 60), FAKE_API));
+        eq("hold dirt is valid", List.of(), CatalogueRules.validate(
+                def("reaction", "", "", "hold", "", List.of("DIRT"), REACTION_OR_SOLO, Set.of(), List.of(), 2, 60), FAKE_API));
+        eq("hold a misspelled material", List.of("unknown material NOT_DIRT"), CatalogueRules.validate(
+                def("reaction", "", "", "hold", "", List.of("NOT_DIRT"), REACTION_OR_SOLO, Set.of(), List.of(), 2, 60), FAKE_API));
+    }
+
+    @Test
+    void theReactionKindNeedsAGameTracker() {
+        eq("mine as a reaction", List.of("kind reaction does not work with tracker mine"), CatalogueRules.validate(
+                def("mine", "", "", "", "", List.of("IRON_ORE"), List.of(Kind.REACTION), Set.of(), List.of(), 3, 360), FAKE_API));
+        // also-avoid wraps a progress tracker; around a game it would hide the game from the run
+        eq("a reaction with also-avoid", List.of("also-avoid does not work with tracker reaction"), CatalogueRules.validate(
+                def("reaction", "", "", "crouch", "", List.of(), REACTION_OR_SOLO, Set.of(), List.of("jump"), 1, 15), FAKE_API));
+    }
+
     @Test
     void rulesFile() {
         List<Rule> rules = RulesFile.parse(List.of(Map.of("de", "Niemand sagt \"ich\".", "en", "Nobody says \"I\"."),

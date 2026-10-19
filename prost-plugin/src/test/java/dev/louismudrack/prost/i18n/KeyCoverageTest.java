@@ -29,7 +29,7 @@ class KeyCoverageTest {
     private static final Pattern BUILT = Pattern.compile(CALLS + "\"([a-z0-9_.]+\\.)\"\\s*\\+");
     /** keys built at runtime: prefix -> every ending that exists */
     static final Map<String, List<String>> EXPANSIONS = Map.of(
-            "kind.", List.of("team", "each", "race", "duel", "solo"),
+            "kind.", List.of("team", "each", "race", "duel", "solo", "reaction"),
             "pace.", List.of("chill", "normal", "party"),
             "roulette.what.", List.of("break", "place", "craft", "kill", "boss", "eat", "fish", "breed", "trade", "enchant", "advancement", "death", "sleep"),
             "reward.option.", List.of("handout", "rule", "joker", "next"));

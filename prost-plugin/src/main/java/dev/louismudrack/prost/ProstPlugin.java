@@ -59,10 +59,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
+import java.util.function.LongSupplier;
 import java.util.logging.Level;
 
 /** Prost - the drinking game. Rounds, challenges and the roulette. Not final: MockBukkit loads it as a subclass. */
@@ -88,6 +90,8 @@ public class ProstPlugin extends JavaPlugin {
     private Lang lang = Lang.empty();
     private ProstCommand command;
     private BukkitTask snapshotTask;
+    private LongSupplier clock = System::currentTimeMillis;
+    private Random random = new Random();
 
     @Override
     public void onEnable() {
@@ -304,4 +308,14 @@ public class ProstPlugin extends JavaPlugin {
     public Hooks hooks() { return hooks; }
     public Lang lang() { return lang; }
     public ProstCommand command() { return command; }
+
+    /** epoch ms: challenge runs and games read the time only here, so tests can move it */
+    public long now() { return clock.getAsLong(); }
+
+    public void clock(LongSupplier clock) { this.clock = clock; }
+
+    /** every chance a game draws (holders, rolls, prizes, orders): tests seed it */
+    public Random random() { return random; }
+
+    public void random(Random random) { this.random = random; }
 }

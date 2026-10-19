@@ -1,6 +1,6 @@
 # Challenges and rules
 
-`challenges.yml` is the challenge catalogue and `rules.yml` the list of prepared rules. Prost writes both once (103
+`challenges.yml` is the challenge catalogue and `rules.yml` the list of prepared rules. Prost writes both once (112
 challenges, 30 rules); after that they are yours: edit, delete and add as you like. Neither file is touched by updates.
 `/prost reload` reads them again.
 
@@ -20,9 +20,10 @@ challenges have been drawn once.
 | `team` | 2 | The goal is `amount` per head: the team succeeds when the sum of everybody's progress reaches `amount` times the number of players. Otherwise everyone drinks. For `avoid` challenges the team fails when anybody breaks the rule. |
 | `race` | 2 | The first to reach the goal wins; the players with the least progress drink. |
 | `duel` | 2 | Two members (the ones with the fewest duels). The first to reach the goal wins, otherwise the one with more progress; the loser drinks, a tie means both drink. |
+| `reaction` | 2 | Everyone does the action as fast as they can. Whoever has not done it when the time runs out drinks; when everybody has, the last one drinks (an exact tie: all of them). It ends as soon as everybody has done it. `freeze`: whoever moves drinks; when nobody moves, everybody wins. Only with the `reaction` tracker. |
 
 **One penalty per challenge:** when anybody drinks, the winners get no reward on top. Rewards are only given when
-nobody drinks, so in a Race or a Duel there is normally no reward (somebody always loses; only when the others left mid-challenge and one participant remains, the lone winner is rewarded). This is not configurable.
+nobody drinks, so in a Race, a Duel or a Reaction there is normally no reward (a Reaction rewards only a freeze nobody broke) (somebody always loses; only when the others left mid-challenge and one participant remains, the lone winner is rewarded). This is not configurable.
 
 When a reward is due, each winner (for a Team: the player with the most progress) gets its menu. A winner who does not
 choose in time (`reward-seconds`) gets the first option listed in `rewards`. An entry with one reward gives it without asking. What happens when a
@@ -63,7 +64,7 @@ creeper_clean:
 |---|---|---|
 | `name` | yes | The short title, per language: `{en: "...", de: "..."}`. Keys are language codes. Plain text; markup is shown literally. |
 | `text` | yes | What the players have to do, per language. `{amount}` is replaced by `amount`. Plain text. |
-| `tracker` | yes | How progress is counted, one of the 12 below. |
+| `tracker` | yes | How progress is counted, one of the 13 below. |
 | `targets` | per tracker | The blocks, items or mobs that count, as Bukkit names (`IRON_ORE`, `ZOMBIE`), or `#tags` (below). Names are checked against the running server; an unknown name skips the entry. |
 | `stat` | `stat` tracker | One or more vanilla statistics, comma separated: `"WALK_ONE_CM, SPRINT_ONE_CM"` adds them up. |
 | `source` | `distinct` tracker | What is counted: `mine`, `collect`, `consume`, `craft`, `kill` or `biome`. |
@@ -73,7 +74,7 @@ creeper_clean:
 | `seconds` | yes | Time limit, 10 to 900. |
 | `sips` | yes | The fixed penalty, 1 to 6. Shown at the start. |
 | `give` | no, default `sips` | Sips a winner may hand out with the `handout` reward. |
-| `kinds` | yes | Which kinds this challenge may be played as: `team`, `each`, `race`, `duel`, `solo`. |
+| `kinds` | yes | Which kinds this challenge may be played as: `team`, `each`, `race`, `duel`, `solo`, `reaction`. |
 | `rewards` | yes | What winners can choose from, see below. |
 | `needs` | no | Conditions for drawing it, see below. |
 | `also-avoid` | no | Actions that break the challenge even if the goal is reached (for example kill a creeper without explosion damage). Same names as the `avoid` modes. |
@@ -126,6 +127,7 @@ dimension too; otherwise it is skipped with a warning. "Enter the Nether" is not
 | `avoid` | Not doing something until time is up. `mode` is one or more actions, comma separated. Only for `team`, `each` and `solo`. | `mode` |
 | `wear` | Seconds spent with the target on the head, added up. | `mode: head`, `targets`, `amount` (seconds) |
 | `tower` | Height of the highest block the player placed, counted above where they stood at the start. | `amount` (blocks) |
+| `reaction` | The moment a player does the action of `mode`: `crouch` (starts sneaking), `water` (is in water), `chat` (writes `value` in chat, default `Prost`: upper or lower case, spaces around it and colours do not matter, the text is never read as markup), `look_up` (looks straight up), `jump`, `hold` (a `targets` item in the main hand), `sit` (in a boat or minecart, on a mount, or seated by a sit plugin), `eat` (finishes eating food), `freeze` (moving after `reaction.freeze-grace-seconds` in `game.yml` breaks it; looking around is fine). Only for `reaction` and `solo` (Solo: done in time wins, else drinks; freeze: not moved wins). No `also-avoid`. | `mode`, `value` (chat), `targets` (hold) |
 | `proximity` | `mode: all`: all participants within `value` blocks of each other at once (stays reached). `block`: all on the same block (`value` numeric, e.g. 1). `hug`: crouch while another participant is within `value` blocks, `amount` times. Only meaningful for a Team (or `hug` for Each) with `min-players: 2`. | `mode`, `value`, `amount` |
 
 `reach` positions inside an `excluded-areas` box, and anything right after a teleport by a command or plugin, never count.

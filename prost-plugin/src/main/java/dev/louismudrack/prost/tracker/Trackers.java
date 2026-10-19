@@ -22,6 +22,7 @@ public final class Trackers {
             case "wear" -> new WearTracker(ctx);
             case "tower" -> new TowerTracker(ctx);
             case "proximity" -> new ProximityTracker(ctx);
+            case "reaction" -> new ReactionTracker(ctx);
             default -> throw new IllegalArgumentException("unknown tracker " + d.tracker());
         };
         if (d.alsoAvoid().isEmpty()) return goal;

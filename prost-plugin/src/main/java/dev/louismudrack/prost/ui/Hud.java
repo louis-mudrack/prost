@@ -20,7 +20,7 @@ public final class Hud {
         return switch (k) {
             case TEAM -> BossBar.Color.GREEN;
             case EACH -> BossBar.Color.BLUE;
-            case RACE, DUEL -> BossBar.Color.RED;
+            case RACE, DUEL, REACTION -> BossBar.Color.RED;
             case SOLO -> BossBar.Color.YELLOW;
         };
     }

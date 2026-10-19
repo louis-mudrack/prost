@@ -6,7 +6,6 @@ import dev.louismudrack.prost.game.ChallengeRun;
 import dev.louismudrack.prost.game.Member;
 import dev.louismudrack.prost.game.Round;
 import dev.louismudrack.prost.i18n.Msg;
-import dev.louismudrack.prost.ui.Fmt;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.entity.Player;
 
@@ -57,7 +56,7 @@ public final class PlaceholderSnapshots {
         ChallengeRun run = plugin.director().running(r);
         return new Snapshot(true, r.code, r.members.size(),
                 run == null ? "" : run.def.name(Msg.lang(id)),
-                run == null ? "" : Fmt.clock(run.remainingMs()),
+                run == null ? "" : run.clock(),
                 m.tally.drunk, m.jokers, String.valueOf(SipLedger.room(m.history, now, m.limit)), tag);
     }
 
