@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.UUID;
+import java.util.function.Function;
 
 /**
  * One running challenge: announces it with its fixed sips, shows a boss bar to the whole round, polls the
@@ -61,12 +62,17 @@ public final class ChallengeRun {
     private boolean over;
 
     ChallengeRun(ProstPlugin plugin, Round round, ChallengeDef def, Kind kind, List<UUID> participants) {
+        this(plugin, round, def, kind, participants, Trackers::create);
+    }
+
+    /** trackers: the entry's tracker; tests hand in a scripted one */
+    ChallengeRun(ProstPlugin plugin, Round round, ChallengeDef def, Kind kind, List<UUID> participants, Function<TrackContext, Tracker> trackers) {
         this.plugin = plugin;
         this.round = round;
         this.def = def;
         this.kind = kind;
         this.participants = new ArrayList<>(participants);
-        this.tracker = Trackers.create(new TrackContext(plugin, round, def, kind));
+        this.tracker = trackers.apply(new TrackContext(plugin, round, def, kind));
         this.game = tracker instanceof GameTracker g ? g : null;
         this.startedAt = plugin.now();
         this.endsAt = startedAt + def.seconds() * 1000L;

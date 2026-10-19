@@ -1,0 +1,232 @@
+package dev.louismudrack.prost.game;
+
+import dev.louismudrack.prost.ProstPlugin;
+import dev.louismudrack.prost.TestServer;
+import dev.louismudrack.prost.api.event.ChallengeEndEvent;
+import dev.louismudrack.prost.catalogue.ChallengeDef;
+import dev.louismudrack.prost.reward.Reward;
+import dev.louismudrack.prost.tracker.GameTracker;
+import dev.louismudrack.prost.tracker.Verdict;
+import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/** The run's side of a game tracker: deadline, cancel, drop, verdict, stats and a hidden clock, with a scripted game. */
+class GameRunTest {
+    private static final long MINUTE_MS = 60_000L;
+
+    /** a game whose every answer the test sets */
+    static final class ScriptedGame implements GameTracker {
+        long deadline;
+        boolean decided, hidden, stopped;
+        String cancelKey, result;
+        Verdict verdict = Verdict.of(Map.of(), List.of());
+        final List<UUID> dropped = new ArrayList<>();
+        int verdicts;
+
+        @Override public void start(List<Player> players) { }
+        @Override public int progress(UUID id) { return 0; }
+        @Override public void stop() { stopped = true; }
+        @Override public long deadline() { return deadline; }
+        @Override public boolean decided() { return decided; }
+        @Override public Verdict verdict() { verdicts++; return verdict; }
+        @Override public String status(UUID viewer, UUID who) { return "<white>playing"; }
+        @Override public String result(UUID viewer) { return result; }
+        @Override public boolean hiddenClock() { return hidden; }
+        @Override public void dropped(UUID id) { dropped.add(id); }
+        @Override public String cancelKey() { return cancelKey; }
+    }
+
+    private final AtomicLong now = new AtomicLong(1_000_000L);
+    private final List<ChallengeEndEvent> ended = new ArrayList<>();
+    private final ScriptedGame game = new ScriptedGame();
+    private ServerMock server;
+    private ProstPlugin plugin;
+    private PlayerMock host, anna, ben;
+    private Round round;
+
+    public class Recorder implements Listener {
+        @EventHandler public void on(ChallengeEndEvent e) { ended.add(e); }
+    }
+
+    @BeforeEach
+    void start() {
+        server = TestServer.mock();
+        plugin = TestServer.start(server);
+        plugin.clock(() -> now.get());
+        server.getPluginManager().registerEvents(new Recorder(), plugin);
+        host = server.addPlayer("Host");
+        anna = server.addPlayer("Anna");
+        ben = server.addPlayer("Ben");
+        host.performCommand("prost start");
+        round = plugin.rounds().of(host.getUniqueId());
+        anna.performCommand("prost join " + round.code);
+        ben.performCommand("prost join " + round.code);
+        game.deadline = now.get() + MINUTE_MS;
+    }
+
+    @AfterEach
+    void stop() { MockBukkit.unmock(); }
+
+    private static ChallengeDef def() {
+        return new ChallengeDef("scripted", Map.of("en", "Scripted"), Map.of("en", "Play along"), "scripted", "", "", "", "", List.of(),
+                1, 60, 2, 2, List.of(Kind.REACTION, Kind.DUEL), List.of(Reward.HANDOUT), Set.of(), List.of(), 1, 1);
+    }
+
+    private ChallengeRun run(Kind kind, PlayerMock... players) {
+        List<UUID> ids = new ArrayList<>();
+        for (PlayerMock p : players) ids.add(p.getUniqueId());
+        ChallengeRun run = new ChallengeRun(plugin, round, def(), kind, ids, ctx -> game);
+        run.start();
+        return run;
+    }
+
+    private Tally tally(PlayerMock p) { return round.member(p.getUniqueId()).tally; }
+
+    private static String barName(PlayerMock p) {
+        List<BossBar> bars = new ArrayList<>(p.getBossBars());
+        assertEquals(1, bars.size(), p.getName() + "'s bars");
+        return PlainTextComponentSerializer.plainText().serialize(bars.get(0).name());
+    }
+
+    private static UUID id(PlayerMock p) { return p.getUniqueId(); }
+
+    @Test
+    void theRunEndsAtTheGamesDeadlineAlsoWhenItMoves() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        assertEquals(game.deadline, run.endsAt(), "the game's deadline from the start");
+        game.deadline += MINUTE_MS;
+        now.addAndGet(MINUTE_MS);
+        run.tick();
+        assertEquals(game.deadline, run.endsAt(), "moved by the game");
+        assertTrue(ended.isEmpty(), "the old deadline has passed, the new one has not");
+        now.set(game.deadline);
+        run.tick();
+        assertEquals(1, ended.size());
+        assertTrue(ended.get(0).resolved());
+        assertEquals(1, game.verdicts, "the verdict is asked once");
+    }
+
+    @Test
+    void decidedEndsTheRunBeforeTheDeadline() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        game.decided = true;
+        run.tick();
+        assertEquals(1, ended.size());
+        assertTrue(game.stopped);
+    }
+
+    @Test
+    void aCancelKeyCancelsTheRunAndNobodyDrinks() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        game.verdict = Verdict.of(Map.of(id(host), 2), List.of(id(anna), id(ben)));
+        game.cancelKey = "challenge.gate_closed";
+        TestServer.messages(host);
+        run.tick();
+        assertEquals(1, ended.size());
+        assertFalse(ended.get(0).resolved(), "cancelled, not resolved");
+        assertTrue(ended.get(0).drinks().isEmpty());
+        assertTrue(ended.get(0).winners().isEmpty());
+        assertEquals(0, game.verdicts, "a cancelled game is not judged");
+        assertTrue(game.stopped);
+        assertEquals(0, tally(host).drunk);
+        assertEquals(0, tally(anna).won);
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("cancelled, nobody drinks")), "the key is told");
+        assertTrue(host.getBossBars().isEmpty(), "the bars are gone");
+    }
+
+    @Test
+    void aDropMidGameReachesTheGame() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        round.member(id(anna)).selfPaused = true;
+        run.tick();
+        assertEquals(List.of(id(anna)), game.dropped);
+        assertEquals(List.of(id(host), id(ben)), run.participants());
+        assertTrue(ended.isEmpty(), "the others play on");
+    }
+
+    @Test
+    void aDuelGameWalkoverSkipsTheVerdict() {
+        ChallengeRun run = run(Kind.DUEL, host, anna);
+        game.verdict = Verdict.of(Map.of(id(host), 2), List.of(id(anna)));
+        round.member(id(anna)).selfPaused = true;
+        run.tick();
+        assertEquals(List.of(id(anna)), game.dropped);
+        assertEquals(0, game.verdicts);
+        assertEquals(List.of(id(host)), ended.get(0).winners());
+        assertTrue(ended.get(0).drinks().isEmpty());
+    }
+
+    @Test
+    void whoNeitherWonNorDrinksCountsAsNeither() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        game.verdict = Verdict.of(Map.of(id(anna), 2), List.of(id(host)));   // Ben neither won nor drinks
+        TestServer.messages(host);
+        run.finish();
+        assertEquals(Map.of(id(anna), 2), ended.get(0).drinks());
+        assertEquals(List.of(id(host)), ended.get(0).winners());
+        assertEquals(1, tally(host).won);
+        assertEquals(0, tally(host).lost);
+        assertEquals(0, tally(anna).won);
+        assertEquals(1, tally(anna).lost);
+        assertEquals(0, tally(ben).won, "neither");
+        assertEquals(0, tally(ben).lost, "neither");
+        List<String> told = TestServer.messages(host);
+        assertTrue(told.stream().anyMatch(m -> m.contains("Made it: Host (no reward, someone drinks)")), told.toString());
+    }
+
+    @Test
+    void aGameResultReplacesTheDefaultLine() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        game.verdict = Verdict.of(Map.of(id(anna), 2), List.of(id(host)));
+        game.result = "<hl>Anna rolled a 1";
+        TestServer.messages(host);
+        run.finish();
+        List<String> told = TestServer.messages(host);
+        assertTrue(told.stream().anyMatch(m -> m.contains("Anna rolled a 1")), told.toString());
+        assertTrue(told.stream().noneMatch(m -> m.contains("Made it:")), told.toString());
+    }
+
+    @Test
+    void aHiddenClockShowsQuestionMarksNotTheTime() {
+        game.hidden = true;
+        game.deadline = now.get() + 90_000L;
+        TestServer.messages(host);
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        assertEquals("??", run.clock());
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("Time: ??")), "the start message hides it too");
+        now.addAndGet(30_000L);
+        run.tick();
+        String bar = barName(host);
+        assertTrue(bar.endsWith("??"), bar);
+        assertFalse(bar.contains("1:00") || bar.contains("1:30"), bar);
+        assertEquals(1f, new ArrayList<>(host.getBossBars()).get(0).progress(), "a full bar does not tell the time either");
+        assertEquals("??", run.clock());
+    }
+
+    @Test
+    void aShownClockCountsDown() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        now.addAndGet(15_000L);
+        run.tick();
+        assertEquals("0:45", run.clock());
+        assertTrue(barName(host).endsWith("0:45"), barName(host));
+    }
+}

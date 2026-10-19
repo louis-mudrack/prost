@@ -135,6 +135,34 @@ class ReactionGameTest {
     }
 
     @Test
+    void whoDropsOutMidReactionIsNotWaitedForNorJudged() {
+        force("react_crouch", "reaction");
+        sneak(host, true);
+        ben.performCommand("prost pause");
+        tick();
+        assertTrue(running(), "Anna has not crouched yet");
+        later(100);
+        sneak(anna, true);
+        tick();
+        assertFalse(running(), "everybody still playing is done");
+        assertEquals(Map.of(id(anna), 1), end().drinks());
+        assertEquals(List.of(id(host)), end().winners());
+    }
+
+    @Test
+    void theOneLeftWhoIsDoneIsNobodysLast() {
+        force("react_crouch", "reaction");
+        anna.performCommand("prost pause");
+        ben.performCommand("prost pause");
+        tick();
+        sneak(host, true);
+        tick();
+        assertFalse(running());
+        assertTrue(end().drinks().isEmpty());
+        assertEquals(List.of(id(host)), end().winners());
+    }
+
+    @Test
     void theChatWordCountsAsPlainTextOnly() throws Exception {
         force("react_chat", "reaction");
         for (PlayerMock p : List.of(host, anna, ben)) TestServer.messages(p);
