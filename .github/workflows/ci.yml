@@ -16,8 +16,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      # v6 puts its caching under proprietary terms of use: staying on v5 until the owner decides
-      - uses: gradle/actions/setup-gradle@v5
+      # basic = the MIT cache on actions/cache, no Gradle terms of use
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
       - name: Build and unit tests
         run: ./gradlew build
       - name: MariaDB tests
