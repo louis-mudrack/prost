@@ -84,7 +84,7 @@ public final class ProstExpansion extends PlaceholderExpansion implements Listen
             case "challenge" -> s.challenge();
             case "challenge_time" -> s.challengeTime();
             case "sips_session" -> String.valueOf(s.sipsSession());
-            case "sips_total" -> String.valueOf(total(id));
+            case "sips_total" -> String.valueOf(total(player));
             case "jokers" -> String.valueOf(s.jokers());
             case "limit_left" -> s.limitLeft();
             case "tag" -> s.tag();
@@ -100,11 +100,14 @@ public final class ProstExpansion extends PlaceholderExpansion implements Listen
 
     int cachedTotals() { return totals.size() + totalsAt.size(); }
 
-    private int total(UUID id) {
+    /** online players only: the quit clears their entries, so a player who is gone (or leaves before the read answers) gets none */
+    private int total(OfflinePlayer player) {
+        if (!player.isOnline()) return 0;
+        UUID id = player.getUniqueId();
         long now = System.currentTimeMillis();
         if (now - totalsAt.getOrDefault(id, 0L) >= TOTAL_CACHE_MS) {
             totalsAt.put(id, now);
-            plugin.stats().row(id, row -> totals.put(id, row == null ? 0 : row.drunk()));
+            plugin.stats().row(id, row -> { if (player.isOnline()) totals.put(id, row == null ? 0 : row.drunk()); });
         }
         return totals.getOrDefault(id, 0);
     }

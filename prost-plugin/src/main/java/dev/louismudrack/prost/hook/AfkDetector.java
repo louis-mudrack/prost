@@ -45,15 +45,23 @@ public final class AfkDetector implements AfkProvider, Listener {
                 to.getPitch() - from.getPitch(), ((org.bukkit.entity.Entity) p).isOnGround(), p.isInsideVehicle())) active(p);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onChat(AsyncChatEvent e) { active(e.getPlayer()); }
+    /**
+     * chat arrives on its own thread, possibly after the quit: only an entry that is still there moves on (no entry
+     * reads as active anyway)
+     */
+    private void stillActive(Player p) { lastActive.replace(p.getUniqueId(), clock.getAsLong()); }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onCommand(PlayerCommandPreprocessEvent e) { active(e.getPlayer()); }
+    public void onChat(AsyncChatEvent e) { stillActive(e.getPlayer()); }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onCommand(PlayerCommandPreprocessEvent e) { stillActive(e.getPlayer()); }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) { active(e.getPlayer()); }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) { lastActive.remove(e.getPlayer().getUniqueId()); }
+
+    int tracked() { return lastActive.size(); }
 }

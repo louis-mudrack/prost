@@ -3,6 +3,7 @@ package dev.louismudrack.prost.hook;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import dev.louismudrack.prost.game.Round;
+import dev.louismudrack.prost.storage.StatsField;
 import net.kyori.adventure.text.Component;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.junit.jupiter.api.AfterEach;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
+
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -78,6 +81,40 @@ class ProstExpansionTest {
         expansion.onRequest(p, "sips_total");
         assertTrue(expansion.cachedTotals() > 0);
         expansion.onQuit(new PlayerQuitEvent(p, Component.empty(), PlayerQuitEvent.QuitReason.DISCONNECTED));
+        assertEquals(0, expansion.cachedTotals());
+    }
+
+    /** the store's worker is first in, first out: when this read is done, every read queued before it is too */
+    private void storeReadsDone(PlayerMock p) throws Exception {
+        plugin.stats().fetch(p.getUniqueId()).get(5, TimeUnit.SECONDS);
+        server.getScheduler().performOneTick();   // their callbacks run on the main thread
+    }
+
+    @Test
+    void theTotalOfAnOnlinePlayerArrives() throws Exception {
+        PlayerMock p = server.addPlayer("Host");
+        plugin.stats().add(p.getUniqueId(), "Host", StatsField.DRUNK, 4);
+        assertEquals("0", expansion.onRequest(p, "sips_total"), "the first request starts the read");
+        storeReadsDone(p);
+        assertEquals("4", expansion.onRequest(p, "sips_total"));
+    }
+
+    @Test
+    void aTotalArrivingAfterTheQuitIsNotKept() throws Exception {
+        PlayerMock p = server.addPlayer("Host");
+        expansion.onRequest(p, "sips_total");
+        p.disconnect();
+        expansion.onQuit(new PlayerQuitEvent(p, Component.empty(), PlayerQuitEvent.QuitReason.DISCONNECTED));
+        storeReadsDone(p);
+        assertEquals(0, expansion.cachedTotals());
+    }
+
+    @Test
+    void aPlayerWhoIsNotOnlineIsNotCached() throws Exception {
+        PlayerMock p = server.addPlayer("Gone");
+        p.disconnect();
+        assertEquals("0", expansion.onRequest(p, "sips_total"));
+        storeReadsDone(p);
         assertEquals(0, expansion.cachedTotals());
     }
 

@@ -121,7 +121,7 @@ With PlaceholderAPI installed, the expansion `prost` is registered. Values are p
 | `%prost_challenge%` | name of the running challenge in the player's language, empty if none |
 | `%prost_challenge_time%` | time left of the running challenge, empty if none |
 | `%prost_sips_session%` | sips the player drank in this round |
-| `%prost_sips_total%` | all-time sips drunk (cached for 30 seconds) |
+| `%prost_sips_total%` | all-time sips drunk (cached for 30 seconds), `0` for a player who is not online |
 | `%prost_jokers%` | jokers held |
 | `%prost_limit_left%` | sips left before the hourly limit, empty outside a round |
 | `%prost_tag%` | the `[Prost]` tag in the player's language, for scoreboards and TAB |
