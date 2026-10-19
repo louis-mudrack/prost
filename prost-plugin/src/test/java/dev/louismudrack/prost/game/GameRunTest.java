@@ -4,6 +4,8 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import dev.louismudrack.prost.api.event.ChallengeEndEvent;
 import dev.louismudrack.prost.catalogue.ChallengeDef;
+import dev.louismudrack.prost.menu.ChoiceMenu;
+import dev.louismudrack.prost.menu.HandoutMenu;
 import dev.louismudrack.prost.reward.Reward;
 import dev.louismudrack.prost.tracker.GameTracker;
 import dev.louismudrack.prost.tracker.Verdict;
@@ -12,6 +14,8 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -190,6 +194,31 @@ class GameRunTest {
         assertEquals(0, tally(ben).lost, "neither");
         List<String> told = TestServer.messages(host);
         assertTrue(told.stream().anyMatch(m -> m.contains("Made it: Host (no reward, someone drinks)")), told.toString());
+    }
+
+    private static InventoryHolder holder(PlayerMock p) {
+        Inventory top = p.getOpenInventory().getTopInventory();
+        return top == null ? null : top.getHolder(false);
+    }
+
+    /** the entry's own reward (hand out) would open the hand-out menu: the game decided a joker instead */
+    @Test
+    void aForcedRewardIsGivenAsItIsWithoutAMenu() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        game.verdict = new Verdict(Map.of(), List.of(id(host), id(anna)), Map.of(id(host), Reward.JOKER));
+        run.finish();
+        assertEquals(1, round.member(id(host)).jokers, "the forced joker");
+        assertFalse(holder(host) instanceof HandoutMenu || holder(host) instanceof ChoiceMenu, "no menu for a forced reward");
+        assertInstanceOf(HandoutMenu.class, holder(anna), "a winner without a forced reward gets the entry's reward");
+    }
+
+    @Test
+    void aForcedRewardFollowsTheOnePenaltyRule() {
+        ChallengeRun run = run(Kind.REACTION, host, anna, ben);
+        game.verdict = new Verdict(Map.of(id(ben), 2), List.of(id(host)), Map.of(id(host), Reward.JOKER));
+        run.finish();
+        assertEquals(0, round.member(id(host)).jokers, "somebody drinks: no reward on top");
+        assertEquals(Map.of(id(ben), 2), ended.get(0).drinks());
     }
 
     @Test

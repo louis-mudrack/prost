@@ -186,6 +186,20 @@ class ReactionGameTest {
         return c.children().stream().anyMatch(child -> redWord(child, color));
     }
 
+    /** the reaction kinds word their stakes: a freeze can be won by all, a solo freeze keeps the solo line */
+    @Test
+    void theStakesFollowTheReactionAndTheKind() {
+        for (PlayerMock p : List.of(host, anna, ben)) TestServer.messages(p);
+        force("react_freeze", "reaction");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("Whoever moves: 1 sip · Nobody moves: hand out 1 sip")), "freeze");
+        plugin.director().shutdown();
+        force("react_crouch", "reaction");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("Not in time or the last one: 1 sip")), "crouch");
+        plugin.director().shutdown();
+        force("react_freeze", "solo");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("Miss it: 1 sip · Make it: hand out 1 sip")), "solo freeze");
+    }
+
     @Test
     void freezeBreaksOnlyOnBodyMovementAfterTheGrace() {
         force("react_freeze", "reaction");

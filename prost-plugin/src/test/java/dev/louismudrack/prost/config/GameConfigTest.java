@@ -52,6 +52,7 @@ class GameConfigTest {
     void gamesDefaultsAndOverrides() throws Exception {
         eq("the game defaults", new GameConfig.Games(2, 3, 2, 15, 20, true), GameConfig.DEFAULTS.games());
         eq("reaction weight", 7, GameConfig.DEFAULTS.kindWeights().get(Kind.REACTION));
+        eq("luck weight", 3, GameConfig.DEFAULTS.kindWeights().get(Kind.LUCK));
         GameConfig c = GameConfig.parse(Map.of("reaction", Map.of("freeze-grace-seconds", 4), "potato", Map.of("pass-seconds", 5),
                 "luck", Map.of("reveal-seconds", 1), "vote", Map.of("view-seconds", 10, "vote-seconds", 30, "teleport", false),
                 "kind-weights", Map.of("reaction", 0)));

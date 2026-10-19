@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.StringJoiner;
 import java.util.UUID;
 
 /** What winners get - real life only: hand out sips, make a rule, a joker, pick the next challenge. */
@@ -97,6 +98,23 @@ public final class Rewards implements Listener {
             apply(r, winner, d, rw, team, teamMembers);
         }));
         offer(p, new ChoiceMenu(plugin, p, "menu.choice.reward", list).until(deadline()));
+    }
+
+    /** a reward the game itself decided (a chest, the dice): applied as it is, without a choice */
+    public void give(Round r, UUID winner, ChallengeDef d, Reward reward) { apply(r, winner, d, reward, false, List.of()); }
+
+    /** what a winner may get, worded for {@code viewer}: "hand out 2 sips or a rule"; a Team gets its group rewards */
+    public static String offered(UUID viewer, ChallengeDef d, boolean team) {
+        List<Reward> rewards = team ? RewardRules.teamOptions(d.rewards()) : d.rewards();
+        // trimmed: language files from 0.3.0 carry the spaces inside the value (" or ")
+        StringJoiner j = new StringJoiner(" " + Msg.str(viewer, "challenge.reward_or").trim() + " ");
+        for (Reward r : rewards) j.add(switch (r) {
+            case HANDOUT -> Msg.str(viewer, "challenge.reward.handout", V.mm("sips", Msg.sips(viewer, d.give())));
+            case RULE -> Msg.str(viewer, "challenge.reward.rule");
+            case JOKER -> Msg.str(viewer, team ? "challenge.reward.joker_each" : "challenge.reward.joker");
+            case NEXT -> Msg.str(viewer, "challenge.reward.next");
+        });
+        return j.toString();
     }
 
     /** a choice the winner may close by accident: the chat button (/prost reward) opens it again until it is decided */

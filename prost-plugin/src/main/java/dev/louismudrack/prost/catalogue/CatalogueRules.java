@@ -3,6 +3,7 @@ package dev.louismudrack.prost.catalogue;
 import dev.louismudrack.prost.game.Kind;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** Semantic checks of one catalogue entry: run on the shipped file at build and on every load. */
@@ -19,7 +20,7 @@ final class CatalogueRules {
     }
 
     static final Set<String> TRACKERS = Set.of("mine", "stat", "collect", "gift", "inventory", "count", "distinct", "reach",
-            "avoid", "wear", "tower", "proximity", "reaction", "potato");
+            "avoid", "wear", "tower", "proximity", "reaction", "potato", "luck");
     static final Set<String> AVOID_MODES = Set.of("damage", "explosion-damage", "death", "jump", "sprint", "eat", "chat",
             "break", "kill", "water", "sleep");
     private static final Set<String> DISTINCT_SOURCES = Set.of("mine", "collect", "consume", "craft", "kill", "biome");
@@ -30,8 +31,11 @@ final class CatalogueRules {
     private static final Set<Kind> REACTION_KINDS = Set.of(Kind.REACTION, Kind.SOLO);
     /** the game trackers that can be played as kind reaction */
     private static final Set<String> REACTION_TRACKERS = Set.of("reaction", "potato");
+    /** each luck game and the kinds it can be played as */
+    static final Map<String, Set<Kind>> LUCK_MODES = Map.of("wheel", Set.of(Kind.LUCK, Kind.SOLO), "coin", Set.of(Kind.DUEL),
+            "chests", Set.of(Kind.SOLO), "dice", Set.of(Kind.SOLO), "high_low", Set.of(Kind.DUEL, Kind.SOLO), "boxes", Set.of(Kind.LUCK));
     /** trackers that decide the run themselves (GameTracker): also-avoid would wrap them and hide the game from the run */
-    private static final Set<String> GAME_TRACKERS = Set.of("reaction", "potato");
+    private static final Set<String> GAME_TRACKERS = Set.of("reaction", "potato", "luck");
     private static final int MIN_SIPS = 1, MAX_SIPS = 6, MIN_SECONDS = 10, MAX_SECONDS = 900;
 
     private CatalogueRules() {}
@@ -48,6 +52,7 @@ final class CatalogueRules {
         for (String a : d.alsoAvoid()) if (!AVOID_MODES.contains(a)) p.add("unknown also-avoid '" + a + "'");
         if (!d.alsoAvoid().isEmpty() && GAME_TRACKERS.contains(d.tracker())) p.add("also-avoid does not work with tracker " + d.tracker());
         if (d.kinds().contains(Kind.REACTION) && !REACTION_TRACKERS.contains(d.tracker())) p.add("kind reaction does not work with tracker " + d.tracker());
+        if (d.kinds().contains(Kind.LUCK) && !"luck".equals(d.tracker())) p.add("kind luck does not work with tracker " + d.tracker());
         List<String> resolved = Tags.resolveAll(d.targets());
         if (resolved == null) {
             p.add("unknown tag in " + d.targets());
@@ -86,6 +91,11 @@ final class CatalogueRules {
                 if ("hold".equals(d.mode())) materials(p, resolved, names, true);
             }
             case "potato" -> { for (Kind k : d.kinds()) if (k != Kind.REACTION) p.add("potato cannot be played as " + k.key); }
+            case "luck" -> {
+                Set<Kind> allowed = LUCK_MODES.get(d.mode());
+                if (allowed == null) p.add("unknown luck mode '" + d.mode() + "'");
+                else for (Kind k : d.kinds()) if (!allowed.contains(k)) p.add("luck mode " + d.mode() + " cannot be played as " + k.key);
+            }
             default -> { }
         }
         for (String name : resolved) {

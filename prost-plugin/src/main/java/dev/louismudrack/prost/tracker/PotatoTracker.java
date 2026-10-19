@@ -96,6 +96,9 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
     public String cancelKey() { return order.size() < MIN_PARTICIPANTS ? "game.potato.too_few" : null; }
 
     @Override
+    public String stakes(UUID viewer) { return Msg.str(viewer, "challenge.stakes.potato", V.mm("sips", Msg.sips(viewer, ctx.def().sips()))); }
+
+    @Override
     public void dropped(UUID id) {
         order.remove(id);
         if (id.equals(holder)) passOn(id);

@@ -1,8 +1,10 @@
 package dev.louismudrack.prost.tracker;
 
 import com.destroystokyo.paper.event.player.PlayerJumpEvent;
+import dev.louismudrack.prost.game.Kind;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
+import dev.louismudrack.prost.reward.Rewards;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
@@ -77,6 +79,14 @@ final class ReactionTracker extends BaseTracker implements GameTracker {
 
     @Override
     public void dropped(UUID id) { order.remove(id); }
+
+    /** "don't move" is won by everybody who holds still, not lost by the last one; a Solo keeps the solo line */
+    @Override
+    public String stakes(UUID viewer) {
+        if (!freeze || ctx.kind() != Kind.REACTION) return null;
+        return Msg.str(viewer, "challenge.stakes.freeze", V.mm("sips", Msg.sips(viewer, ctx.def().sips())),
+                V.mm("reward", Rewards.offered(viewer, ctx.def(), false)));
+    }
 
     @Override
     public int progress(UUID id) { return (freeze ? !broken.contains(id) : doneAt.containsKey(id)) ? 1 : 0; }

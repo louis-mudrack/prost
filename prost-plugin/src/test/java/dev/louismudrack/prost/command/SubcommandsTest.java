@@ -90,6 +90,15 @@ class SubcommandsTest {
         assertEquals(List.of("round", "runde"), subs(Map.of("de", Map.of("round", List.of("runde")))).namesOf("round", "de"));
     }
 
+    /** /prost play reopens a game's menu: a chat button, not a command to learn */
+    @Test
+    void playIsAHiddenSubcommand() {
+        assertTrue(Subcommands.HIDDEN.contains("play"));
+        Subcommands s = subs(Map.of());
+        assertEquals("play", s.canonical("play"));
+        assertFalse(s.visible("en", true).contains("play"));
+    }
+
     /** without any language file: a German alias in a button or menu would stop working once lang/de.yml is gone */
     @Test
     void everyCommandTheCodeRunsIsARealEnglishSubcommand() throws IOException {

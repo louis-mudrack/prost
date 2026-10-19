@@ -24,6 +24,9 @@ public interface GameTracker extends Tracker {
     /** MiniMessage that replaces the default result line for {@code viewer}; null keeps the default */
     default String result(UUID viewer) { return null; }
 
+    /** MiniMessage: what is at stake, worded for {@code viewer}; null keeps the kind's own challenge.stakes line */
+    default String stakes(UUID viewer) { return null; }
+
     /** the clock reads "??" */
     default boolean hiddenClock() { return false; }
 

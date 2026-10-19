@@ -24,15 +24,17 @@ class KeyCoverageTest {
     /** one argument before the key (viewer, sender), with at most one level of parentheses: p.getUniqueId() */
     private static final String ARG = "(?:[^\"(),]|\\([^\"()]*\\))+";
     private static final String CALLS = "(?:(?:Msg\\.(?:str|lines|tell|error|round)|\\btext|\\blines|\\breply)\\(\\s*(?:" + ARG + ",\\s*)?"
-            + "|new ChoiceMenu\\(\\s*" + ARG + ",\\s*" + ARG + ",\\s*)";
+            + "|new (?:Choice|Game)Menu\\(\\s*" + ARG + ",\\s*" + ARG + ",\\s*)";
     private static final Pattern KEY = Pattern.compile(CALLS + "\"([a-z0-9_]+(?:\\.[a-z0-9_]+)+)\"");
     private static final Pattern BUILT = Pattern.compile(CALLS + "\"([a-z0-9_.]+\\.)\"\\s*\\+");
     /** keys built at runtime: prefix -> every ending that exists */
     static final Map<String, List<String>> EXPANSIONS = Map.of(
-            "kind.", List.of("team", "each", "race", "duel", "solo", "reaction"),
+            "kind.", List.of("team", "each", "race", "duel", "solo", "reaction", "luck"),
             "pace.", List.of("chill", "normal", "party"),
             "roulette.what.", List.of("break", "place", "craft", "kill", "boss", "eat", "fish", "breed", "trade", "enchant", "advancement", "death", "sleep"),
-            "reward.option.", List.of("handout", "rule", "joker", "next"));
+            "reward.option.", List.of("handout", "rule", "joker", "next"),
+            "game.luck.title.", List.of("wheel", "coin", "chests", "dice", "high_low", "boxes"),
+            "game.luck.prize.", List.of("drink", "joker", "handout"));
 
     private static Set<String> english() throws Exception { return LangParityTest.keys(LangParityTest.load("en")); }
 
@@ -57,7 +59,7 @@ class KeyCoverageTest {
 
     @Test
     void everyCallFormIsRecognised() {
-        assertEquals(List.of("a.b", "c.d", "e.f", "g.h", "i.j", "k.l", "m.n"), keysIn("""
+        assertEquals(List.of("a.b", "c.d", "e.f", "g.h", "i.j", "k.l", "m.n", "o.p"), keysIn("""
                 Msg.tell(p, "a.b", V.of("x", 1));
                 Msg.str(p.getUniqueId(), "c.d");
                 reply(s, "e.f");
@@ -65,6 +67,7 @@ class KeyCoverageTest {
                 text("i.j");
                 Msg.round(plugin.rounds().get(id), "k.l");
                 lines(viewer, "m.n");
+                new GameMenu(plugin, p, "o.p", menu -> draw(menu));
                 Msg.tell(p, "Not a key.", "Kein Schlüssel.");
                 """));
     }

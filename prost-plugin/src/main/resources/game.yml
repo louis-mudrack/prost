@@ -3,7 +3,7 @@
 max-players: 8
 warmup-seconds: 120
 pace: {chill: [720, 1080], normal: [480, 720], party: [240, 420]}   # seconds between two challenges
-kind-weights: {team: 20, each: 25, race: 15, duel: 10, solo: 15, reaction: 7}
+kind-weights: {team: 20, each: 25, race: 15, duel: 10, solo: 15, reaction: 7, luck: 3}
 reward-seconds: 60          # how long winners have to choose / hand out
 joker: {max: 2, offer-seconds: 10}
 limit: {default: 20, min: 5, max: 40}   # sips per rolling hour, set by each member

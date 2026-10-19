@@ -17,6 +17,7 @@ kind:
   duel: "Duell"
   solo: "Solo"
   reaction: "Reaktion"
+  luck: "Glück"
 pace:
   chill: "chill"
   normal: "normal"
@@ -136,6 +137,15 @@ challenge:
     reaction: "<gray>Zu spät oder als Letzter: <err><sips>"
     freeze: "<gray>Wer sich bewegt: <err><sips> <dark_gray>· <gray>Bewegt sich keiner: <ok><reward>"
     potato: "<gray>Wer am Ende die Kartoffel hält: <err><sips>"
+    luck: "<gray>Pech: <err><sips>"
+    wheel: "<gray>Die niedrigste Zahl trinkt <err><sips>"
+    wheel_solo: "<gray>1-3: <err><sips> <dark_gray>· <gray>4-10: <ok><reward>"
+    coin: "<gray>Falsch getippt: der Tipper trinkt <err><sips><gray>, richtig: der andere"
+    chests: "<gray>Trinken <err><sips><gray>, ein <ok>Joker <gray>oder <ok><give> verteilen"
+    dice: "<gray>1-2: <err><sips> <dark_gray>· <gray>3-4: nichts <dark_gray>· <gray>5-6: <ok><give> verteilen"
+    high_low: "<gray>Wer falsch tippt, trinkt <err><sips> <dark_gray>· <gray>Beide richtig: <ok><reward>"
+    high_low_solo: "<gray>Falsch: <err><sips> <dark_gray>· <gray>Richtig: <ok><reward>"
+    boxes: "<gray>Wer die Falle erwischt, trinkt <err><sips>"
   reward:
     handout: "<sips> verteilen"
     rule: "eine Regel"
@@ -169,6 +179,8 @@ result:
   lost: "<err>Verloren"
 # Spielstand in der Bossleiste und in der Aktionsleiste
 game:
+  reopen: "<click:run_command:'<cmd>'><ok>[Spiel öffnen]</click> <dark_gray>(öffnet sein Menü wieder)"
+  nothing_to_open: "Für dich ist gerade kein Spielmenü offen."
   reaction:
     waiting: "<gray>noch nicht"
     done: "<ok>geschafft"
@@ -184,6 +196,45 @@ game:
     got: "Du hast die <err>heiße Kartoffel<gray>! Wirf sie (Q) neben einem anderen Spieler ab: er hat <hl><seconds> s<gray>, um sie zu fangen."
     passed: "<hl><name> <gray>hat jetzt die heiße Kartoffel."
     too_few: "Für die heiße Kartoffel sind weniger als zwei Spieler übrig - abgebrochen, niemand trinkt."
+  luck:
+    title:
+      wheel: "Glücksrad"
+      coin: "Kopf oder Zahl?"
+      chests: "Wähle eine Truhe"
+      dice: "Würfle"
+      high_low: "Höher oder tiefer?"
+      boxes: "Wähle eine Kiste"
+    # die eigene Zeile, dann die Liste der Zuschauer: jeder Name, dann wählt noch oder bereit
+    choose: "<hl>Entscheide im Menü"
+    picked: "<ok>Entschieden <gray>- warte auf die anderen"
+    calls: "<hl><name> <gray>tippt"
+    choosing: "<gray>wählt noch"
+    ready: "<ok>bereit"
+    revealing: "<hl>Und das Ergebnis ist ..."
+    spin: "Dreh am Rad"
+    roll: "Würfeln"
+    heads: "Kopf"
+    tails: "Zahl"
+    shown: "<gray>Die Zahl: <hl><n>"
+    next: "<gray>Die nächste: <hl><n>"
+    higher: "Höher"
+    lower: "Tiefer"
+    chest: "Truhe <n>"
+    box: "Kiste <n>"
+    trap: "Die Falle!"
+    your_pick: "<ok>Deine Wahl"
+    prize:
+      drink: "<sips> trinken"
+      joker: "Joker"
+      handout: "<sips> verteilen"
+    result:
+      wheel: "<gray>Gedreht: <rolls>"
+      coin: "<hl><name> <gray>tippte auf <hl><call><gray> - es ist <hl><side>"
+      chests: "<hl><name> <gray>öffnete: <hl><prize>"
+      dice: "<hl><name> <gray>würfelte eine <hl><roll>"
+      high_low: "<hl><shown><gray>, dann <hl><next> <dark_gray>· <guesses>"
+      boxes: "<gray>Die Falle war in Kiste <hl><box><gray>: <hl><name>"
+      boxes_free: "<gray>Die Falle war in Kiste <hl><box><gray> - keiner hat sie genommen"
 reward:
   option:
     handout: "<sips> verteilen"

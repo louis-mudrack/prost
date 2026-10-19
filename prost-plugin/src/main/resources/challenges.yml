@@ -1,10 +1,12 @@
 # Prost challenge catalogue. Written once by the plugin, then yours: /prost reload reads it again. A broken entry is skipped
 # with a warning.
 # sips = fixed penalty shown at the start (1-6); give = what a winner hands out (default sips); kinds: team each race duel solo
-# reaction (reaction: only with tracker reaction or potato); rewards: handout rule joker next; needs: nether end night day
-# rain thunder. Team without rule/joker/next = a joker each. Tracker reaction, mode: crouch water chat look_up jump hold sit
-# eat freeze (chat: value = the word, hold: targets). Tracker potato = hot potato, kind reaction only, the time hidden
-# (half of seconds to seconds). since = the Prost version that added the entry.
+# reaction luck (reaction: only with tracker reaction or potato; luck: only with tracker luck); rewards: handout rule joker
+# next; needs: nether end night day rain thunder. Team without rule/joker/next = a joker each. Tracker reaction, mode: crouch
+# water chat look_up jump hold sit eat freeze (chat: value = the word, hold: targets). Tracker potato = hot potato, kind
+# reaction only, the time hidden (half of seconds to seconds). Tracker luck = a game in a menu, mode and its kinds: wheel
+# (luck, solo), coin (duel), chests (solo), dice (solo), high_low (duel, solo), boxes (luck). since = the Prost version that
+# added the entry.
 
 # --- Mining ---
 mine_iron: {name: {de: "Eisenfieber", en: "Iron fever"}, text: {de: "Baue {amount} Eisenerz ab", en: "Mine {amount} iron ore"}, tracker: mine, targets: [IRON_ORE, DEEPSLATE_IRON_ORE], amount: 16, seconds: 360, sips: 3, kinds: [each, race, duel, solo, team], rewards: [handout]}
@@ -138,3 +140,11 @@ react_sit: {name: {de: "Platz nehmen", en: "Take a seat"}, text: {de: "Setz dich
 react_eat: {name: {de: "Snackpause", en: "Snack break"}, text: {de: "Iss etwas", en: "Eat something"}, tracker: reaction, mode: eat, seconds: 30, sips: 1, kinds: [reaction, solo], rewards: [handout], since: "0.4.0"}
 react_freeze: {name: {de: "Eingefroren", en: "Freeze!"}, text: {de: "Beweg dich nicht von der Stelle", en: "Don't move from the spot"}, tracker: reaction, mode: freeze, seconds: 10, sips: 1, kinds: [reaction, solo], rewards: [handout], since: "0.4.0"}
 hot_potato: {name: {de: "Heiße Kartoffel", en: "Hot potato"}, text: {de: "Gib die heiße Kartoffel weiter - wer sie am Ende hält, trinkt", en: "Pass the hot potato on - whoever holds it at the end drinks"}, tracker: potato, seconds: 120, sips: 3, kinds: [reaction], min-players: 2, rewards: [handout], since: "0.4.0"}
+
+# --- Luck ---
+wheel: {name: {de: "Glücksrad", en: "Wheel of fortune"}, text: {de: "Dreh am Glücksrad", en: "Spin the wheel of fortune"}, tracker: luck, mode: wheel, seconds: 30, sips: 2, kinds: [luck, solo], rewards: [handout], since: "0.4.0"}
+coin_flip: {name: {de: "Kopf oder Zahl", en: "Heads or tails"}, text: {de: "Einer tippt auf Kopf oder Zahl - die Münze entscheidet, wer trinkt", en: "One calls heads or tails - the coin decides who drinks"}, tracker: luck, mode: coin, seconds: 30, sips: 2, kinds: [duel], rewards: [handout], since: "0.4.0"}
+three_chests: {name: {de: "Drei Truhen", en: "Three chests"}, text: {de: "Öffne eine von drei Truhen: Trinken, Joker oder Verteilen", en: "Open one of three chests: drink, joker or hand out"}, tracker: luck, mode: chests, seconds: 30, sips: 3, kinds: [solo], rewards: [handout], since: "0.4.0"}
+dice: {name: {de: "Würfelglück", en: "Lucky roll"}, text: {de: "Würfle: 1-2 trinken, 5-6 verteilen", en: "Roll the die: 1-2 drink, 5-6 hand out"}, tracker: luck, mode: dice, seconds: 30, sips: 2, kinds: [solo], rewards: [handout], since: "0.4.0"}
+high_low: {name: {de: "Höher oder tiefer", en: "Higher or lower"}, text: {de: "Ist die nächste Zahl höher oder tiefer?", en: "Is the next number higher or lower?"}, tracker: luck, mode: high_low, seconds: 30, sips: 2, kinds: [duel, solo], rewards: [handout], since: "0.4.0"}
+mystery_box: {name: {de: "Wundertüte", en: "Mystery box"}, text: {de: "Nimm dir eine Kiste - in einer steckt die Falle", en: "Take a box - one of them hides the trap"}, tracker: luck, mode: boxes, seconds: 45, sips: 3, kinds: [luck], min-players: 2, rewards: [handout], since: "0.4.0"}

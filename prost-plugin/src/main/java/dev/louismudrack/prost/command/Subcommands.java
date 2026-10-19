@@ -15,7 +15,7 @@ public final class Subcommands {
     public static final List<String> PLAYER = List.of("start", "join", "invite", "decline", "leave", "pause", "status", "next",
             "pace", "kick", "end", "stats", "language");
     /** chat buttons and the argument of pause */
-    public static final List<String> HIDDEN = List.of("reward", "handout", "joker", "round");
+    public static final List<String> HIDDEN = List.of("reward", "handout", "joker", "play", "round");
     public static final List<String> ADMIN = List.of("admin", "reload");
     private static final Set<String> ALL = Stream.of(PLAYER, HIDDEN, ADMIN).flatMap(List::stream).collect(Collectors.toUnmodifiableSet());
 

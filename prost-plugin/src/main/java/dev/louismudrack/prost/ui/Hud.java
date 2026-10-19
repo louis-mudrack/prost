@@ -18,7 +18,7 @@ public final class Hud {
 
     public static BossBar.Color color(Kind k) {
         return switch (k) {
-            case TEAM -> BossBar.Color.GREEN;
+            case TEAM, LUCK -> BossBar.Color.GREEN;
             case EACH -> BossBar.Color.BLUE;
             case RACE, DUEL, REACTION -> BossBar.Color.RED;
             case SOLO -> BossBar.Color.YELLOW;

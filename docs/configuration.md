@@ -124,7 +124,7 @@ zero or more; a negative or non-numeric value is replaced by the default. Unlike
 | `max-players` | `8` | Players per round. |
 | `warmup-seconds` | `120` | Time from opening a round (or restoring it after a restart) to the first challenge. |
 | `pace` | `chill: [720, 1080]`, `normal: [480, 720]`, `party: [240, 420]` | Seconds between two challenges: a random time between the two numbers. Both must be above 0 and the first no larger than the second, otherwise that pace uses its default. |
-| `kind-weights` | `team: 20, each: 25, race: 15, duel: 10, solo: 15, reaction: 7` | How likely each challenge kind is among the kinds that fit the number of active players. All zero: every kind is equally likely. |
+| `kind-weights` | `team: 20, each: 25, race: 15, duel: 10, solo: 15, reaction: 7, luck: 3` | How likely each challenge kind is among the kinds that fit the number of active players. All zero: every kind is equally likely. |
 | `reward-seconds` | `60` | How long winners have to choose a reward or hand out sips; after that the first listed reward is taken, and sips not yet assigned go to random members. Also added to the pause before the next challenge. |
 | `joker.max` | `2` | Jokers a member can hold; a third one lapses. |
 | `joker.offer-seconds` | `10` | How long the "use a joker" button stays after a penalty. |

@@ -192,6 +192,26 @@ class CatalogueRulesTest {
     }
 
     @Test
+    void luckModesAllowTheirKinds() {
+        eq("a coin flip as a duel is valid", List.of(), CatalogueRules.validate(
+                def("luck", "", "", "coin", "", List.of(), List.of(Kind.DUEL), Set.of(), List.of(), 2, 30), FAKE_API));
+        eq("a coin flip for one player", List.of("luck mode coin cannot be played as solo"), CatalogueRules.validate(
+                def("luck", "", "", "coin", "", List.of(), List.of(Kind.SOLO), Set.of(), List.of(), 2, 30), FAKE_API));
+        eq("mystery boxes as luck are valid", List.of(), CatalogueRules.validate(
+                def("luck", "", "", "boxes", "", List.of(), List.of(Kind.LUCK), Set.of(), List.of(), 3, 45), FAKE_API));
+        eq("the wheel as luck or solo is valid", List.of(), CatalogueRules.validate(
+                def("luck", "", "", "wheel", "", List.of(), List.of(Kind.LUCK, Kind.SOLO), Set.of(), List.of(), 2, 30), FAKE_API));
+        eq("higher or lower as a duel or solo is valid", List.of(), CatalogueRules.validate(
+                def("luck", "", "", "high_low", "", List.of(), List.of(Kind.DUEL, Kind.SOLO), Set.of(), List.of(), 2, 30), FAKE_API));
+        eq("a slot machine is no luck mode", List.of("unknown luck mode 'slots'"), CatalogueRules.validate(
+                def("luck", "", "", "slots", "", List.of(), List.of(Kind.LUCK), Set.of(), List.of(), 2, 30), FAKE_API));
+        eq("kind luck only with tracker luck", List.of("kind luck does not work with tracker mine"), CatalogueRules.validate(
+                def("mine", "", "", "", "", List.of("IRON_ORE"), List.of(Kind.LUCK), Set.of(), List.of(), 3, 360), FAKE_API));
+        eq("a luck game with also-avoid", List.of("also-avoid does not work with tracker luck"), CatalogueRules.validate(
+                def("luck", "", "", "dice", "", List.of(), List.of(Kind.SOLO), Set.of(), List.of("jump"), 2, 30), FAKE_API));
+    }
+
+    @Test
     void rulesFile() {
         List<Rule> rules = RulesFile.parse(List.of(Map.of("de", "Niemand sagt \"ich\".", "en", "Nobody says \"I\"."),
                 Map.of("de", "nur deutsch"), Map.of("de", " "), "junk"));

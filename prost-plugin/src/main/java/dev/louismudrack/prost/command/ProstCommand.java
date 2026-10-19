@@ -18,6 +18,7 @@ import dev.louismudrack.prost.menu.MainMenu;
 import dev.louismudrack.prost.menu.RoundMenu;
 import dev.louismudrack.prost.menu.StatsMenu;
 import dev.louismudrack.prost.roulette.Roulette;
+import dev.louismudrack.prost.tracker.GameTracker;
 import dev.louismudrack.prost.ui.Sounds;
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -45,6 +46,7 @@ public final class ProstCommand implements BasicCommand {
     public static final String RUN_REWARD = "/prost reward";
     public static final String RUN_HANDOUT = "/prost handout";
     public static final String RUN_JOKER = "/prost joker";
+    public static final String RUN_PLAY = "/prost play";
 
     private final ProstPlugin plugin;
     private volatile Subcommands subs;
@@ -92,6 +94,7 @@ public final class ProstCommand implements BasicCommand {
             case "joker" -> joker(p);
             case "handout" -> handout(p);
             case "reward" -> reward(p);
+            case "play" -> play(p, r);
             default -> help(p);
         }
     }
@@ -240,6 +243,13 @@ public final class ProstCommand implements BasicCommand {
 
     private void reward(Player p) {
         if (!plugin.rewards().reopenChoice(p)) Msg.error(p, "command.no_choice");
+    }
+
+    /** the menu of the running game (a luck game), closed by accident */
+    private void play(Player p, Round r) {
+        ChallengeRun run = r == null ? null : plugin.director().running(r);
+        GameTracker game = run == null ? null : run.game();
+        if (game == null || !game.reopen(p)) Msg.error(p, "game.nothing_to_open");
     }
 
     /** /prost admin reload|list|end|force|debug|migrate; /prost reload stays as the short form */

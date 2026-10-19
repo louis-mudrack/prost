@@ -4,7 +4,7 @@ import java.util.Locale;
 
 /** How a challenge is played. */
 public enum Kind {
-    TEAM("team", 2), EACH("each", 2), RACE("race", 2), DUEL("duel", 2), SOLO("solo", 1), REACTION("reaction", 2);
+    TEAM("team", 2), EACH("each", 2), RACE("race", 2), DUEL("duel", 2), SOLO("solo", 1), REACTION("reaction", 2), LUCK("luck", 2);
 
     public final String key;
     public final int minPlayers;

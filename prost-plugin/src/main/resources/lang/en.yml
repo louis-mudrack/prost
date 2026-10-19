@@ -17,6 +17,7 @@ kind:
   duel: "Duel"
   solo: "Solo"
   reaction: "Reaction"
+  luck: "Luck"
 pace:
   chill: "chill"
   normal: "normal"
@@ -136,6 +137,15 @@ challenge:
     reaction: "<gray>Not in time or the last one: <err><sips>"
     freeze: "<gray>Whoever moves: <err><sips> <dark_gray>· <gray>Nobody moves: <ok><reward>"
     potato: "<gray>Whoever holds the potato at the end: <err><sips>"
+    luck: "<gray>Bad luck: <err><sips>"
+    wheel: "<gray>The lowest number drinks <err><sips>"
+    wheel_solo: "<gray>1-3: <err><sips> <dark_gray>· <gray>4-10: <ok><reward>"
+    coin: "<gray>A wrong call: the caller drinks <err><sips><gray>, a right one: the other"
+    chests: "<gray>Drink <err><sips><gray>, a <ok>joker <gray>or <ok>hand out <give>"
+    dice: "<gray>1-2: <err><sips> <dark_gray>· <gray>3-4: nothing <dark_gray>· <gray>5-6: <ok>hand out <give>"
+    high_low: "<gray>A wrong guess drinks <err><sips> <dark_gray>· <gray>Both right: <ok><reward>"
+    high_low_solo: "<gray>Wrong: <err><sips> <dark_gray>· <gray>Right: <ok><reward>"
+    boxes: "<gray>Whoever takes the trap drinks <err><sips>"
   reward:
     handout: "hand out <sips>"
     rule: "a rule"
@@ -169,6 +179,8 @@ result:
   lost: "<err>Lost"
 # the games' status in the boss bar and the action bar
 game:
+  reopen: "<click:run_command:'<cmd>'><ok>[Open the game]</click> <dark_gray>(opens its menu again)"
+  nothing_to_open: "There is no game menu for you right now."
   reaction:
     waiting: "<gray>waiting"
     done: "<ok>done"
@@ -184,6 +196,45 @@ game:
     got: "You have the <err>hot potato<gray>! Drop it (Q) next to another player: they have <hl><seconds> s <gray>to catch it."
     passed: "<hl><name> <gray>holds the hot potato now."
     too_few: "Fewer than two players are left for the hot potato - cancelled, nobody drinks."
+  luck:
+    title:
+      wheel: "Wheel of fortune"
+      coin: "Heads or tails?"
+      chests: "Pick a chest"
+      dice: "Roll the die"
+      high_low: "Higher or lower?"
+      boxes: "Pick a box"
+    # the own line, then a watcher's list: each name, then choosing or ready
+    choose: "<hl>Decide in the menu"
+    picked: "<ok>Decided <gray>- waiting for the others"
+    calls: "<hl><name> <gray>calls it"
+    choosing: "<gray>choosing"
+    ready: "<ok>ready"
+    revealing: "<hl>And the result is ..."
+    spin: "Spin the wheel"
+    roll: "Roll the die"
+    heads: "Heads"
+    tails: "Tails"
+    shown: "<gray>The number: <hl><n>"
+    next: "<gray>The next one: <hl><n>"
+    higher: "Higher"
+    lower: "Lower"
+    chest: "Chest <n>"
+    box: "Box <n>"
+    trap: "The trap!"
+    your_pick: "<ok>Your pick"
+    prize:
+      drink: "Drink <sips>"
+      joker: "Joker"
+      handout: "Hand out <sips>"
+    result:
+      wheel: "<gray>Spins: <rolls>"
+      coin: "<hl><name> <gray>called <hl><call><gray> - it is <hl><side>"
+      chests: "<hl><name> <gray>opened: <hl><prize>"
+      dice: "<hl><name> <gray>rolled a <hl><roll>"
+      high_low: "<hl><shown> <gray>then <hl><next> <dark_gray>· <guesses>"
+      boxes: "<gray>The trap was in box <hl><box><gray>: <hl><name>"
+      boxes_free: "<gray>The trap was in box <hl><box><gray> - nobody took it"
 reward:
   option:
     handout: "Hand out <sips>"

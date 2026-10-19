@@ -53,7 +53,7 @@ public abstract class Menu implements InventoryHolder {
     /** the inventory closed (by the player or by us) */
     protected void closed() { }
 
-    /** shows a countdown in the top row while the menu is open (without it a timeout looked like a wrong pick) */
+    /** shows a countdown in the top row while the menu is open (without it a timeout looked like a wrong pick); 0 hides it */
     public final Menu until(long deadlineMs) {
         deadline = deadlineMs;
         return this;
@@ -80,7 +80,7 @@ public abstract class Menu implements InventoryHolder {
             clock = null;
             return;
         }
-        inv.setItem(CLOCK_SLOT, clockItem());
+        if (deadline > 0) inv.setItem(CLOCK_SLOT, clockItem());
     }
 
     private ItemStack clockItem() {

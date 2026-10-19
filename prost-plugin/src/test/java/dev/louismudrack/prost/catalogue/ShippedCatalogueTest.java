@@ -29,7 +29,7 @@ class ShippedCatalogueTest {
         try (Reader r = Files.newBufferedReader(Path.of("src/main/resources/challenges.yml"))) { root = new Yaml(options).load(r); }
         CatalogueParser.Parsed parsed = CatalogueParser.parse(root);
         eq("every entry parses", List.of(), parsed.problems());
-        eq("the catalogue ships 113 challenges", 113, parsed.defs().size());
+        eq("the catalogue ships 119 challenges", 119, parsed.defs().size());
         CatalogueRules.Names api = new CatalogueRules.Names() {
             public boolean material(String n) { return field("org.bukkit.Material", n); }
             public boolean entity(String n) { return field("org.bukkit.entity.EntityType", n); }

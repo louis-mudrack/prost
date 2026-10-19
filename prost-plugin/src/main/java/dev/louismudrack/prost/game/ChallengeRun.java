@@ -9,7 +9,7 @@ import dev.louismudrack.prost.drink.SipLedger;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.reward.Reward;
-import dev.louismudrack.prost.reward.RewardRules;
+import dev.louismudrack.prost.reward.Rewards;
 import dev.louismudrack.prost.storage.StatsField;
 import dev.louismudrack.prost.tracker.GameTracker;
 import dev.louismudrack.prost.tracker.TrackContext;
@@ -182,7 +182,7 @@ public final class ChallengeRun {
             case EACH -> def.avoidType() ? participants.stream().allMatch(id -> tracker.broken(id)) : allSettled;
             case TEAM -> def.avoidType() ? anyBroken : teamSum() >= teamTarget();
             case RACE, DUEL -> !doneAt.isEmpty();
-            case REACTION -> throw new IllegalStateException("decided by its game");
+            case REACTION, LUCK -> throw new IllegalStateException("decided by its game");
         };
     }
 
@@ -192,10 +192,12 @@ public final class ChallengeRun {
         tracker.poll(online());
         int target = teamTarget(), sum = teamSum();
         Resolution.Outcome o;
+        Map<UUID, Reward> forced = Map.of();
         if (kind == Kind.DUEL && participants.size() == 1) {
             o = new Resolution.Outcome(Map.of(), List.copyOf(participants), null, true);
         } else if (game != null) {
             Verdict v = game.verdict();
+            forced = v.forced();
             o = new Resolution.Outcome(v.drinks(), v.winners(), null, !v.winners().isEmpty());
         } else {
             long now = plugin.now();
@@ -220,7 +222,11 @@ public final class ChallengeRun {
         if (kind == Kind.TEAM) {
             if (!o.rewarded().isEmpty()) plugin.rewards().grant(round, o.mvp(), def, true, o.winners());
         } else {
-            for (UUID w : o.rewarded()) plugin.rewards().grant(round, w, def, false, List.of());
+            for (UUID w : o.rewarded()) {
+                Reward given = forced.get(w);
+                if (given != null) plugin.rewards().give(round, w, def, given);
+                else plugin.rewards().grant(round, w, def, false, List.of());
+            }
         }
         Bukkit.getPluginManager().callEvent(new ChallengeEndEvent(Views.round(round, this), Views.challenge(this), true, o.winners(), o.drinks()));
         plugin.director().ended(round, true);
@@ -261,37 +267,20 @@ public final class ChallengeRun {
         };
     }
 
-    /** what is at stake, honest per kind: rewards only come when nobody drinks (Resolution.Outcome#rewarded) */
+    /** what is at stake, honest per kind (a game may word its own): rewards only come when nobody drinks (Resolution.Outcome#rewarded) */
     private String stakes(UUID viewer) {
-        V sips = V.mm("sips", Msg.sips(viewer, def.sips())), reward = V.mm("reward", rewardText(viewer));
+        String own = game == null ? null : game.stakes(viewer);
+        if (own != null) return own;
+        V sips = V.mm("sips", Msg.sips(viewer, def.sips())), reward = V.mm("reward", Rewards.offered(viewer, def, kind == Kind.TEAM));
         return switch (kind) {
             case SOLO -> Msg.str(viewer, "challenge.stakes.solo", sips, reward);
             case EACH -> Msg.str(viewer, "challenge.stakes.each", sips, reward);
             case TEAM -> Msg.str(viewer, "challenge.stakes.team", sips, reward);
             case RACE -> Msg.str(viewer, "challenge.stakes.race", sips);
             case DUEL -> Msg.str(viewer, "challenge.stakes.duel", sips);
-            case REACTION -> {
-                if (freeze()) yield Msg.str(viewer, "challenge.stakes.freeze", sips, reward);
-                if ("potato".equals(def.tracker())) yield Msg.str(viewer, "challenge.stakes.potato", sips);
-                yield Msg.str(viewer, "challenge.stakes.reaction", sips);
-            }
+            case REACTION -> Msg.str(viewer, "challenge.stakes.reaction", sips);
+            case LUCK -> Msg.str(viewer, "challenge.stakes.luck", sips);
         };
-    }
-
-    /** "don't move" is won by everybody who holds still, not lost by the last one */
-    private boolean freeze() { return "reaction".equals(def.tracker()) && "freeze".equals(def.mode()); }
-
-    private String rewardText(UUID viewer) {
-        List<Reward> rewards = kind == Kind.TEAM ? RewardRules.teamOptions(def.rewards()) : def.rewards();
-        // trimmed: language files from 0.3.0 carry the spaces inside the value (" or ")
-        StringJoiner j = new StringJoiner(" " + Msg.str(viewer, "challenge.reward_or").trim() + " ");
-        for (Reward r : rewards) j.add(switch (r) {
-            case HANDOUT -> Msg.str(viewer, "challenge.reward.handout", V.mm("sips", Msg.sips(viewer, def.give())));
-            case RULE -> Msg.str(viewer, "challenge.reward.rule");
-            case JOKER -> Msg.str(viewer, kind == Kind.TEAM ? "challenge.reward.joker_each" : "challenge.reward.joker");
-            case NEXT -> Msg.str(viewer, "challenge.reward.next");
-        });
-        return j.toString();
     }
 
     private void announceResult(Resolution.Outcome o, int sum, int target) {
