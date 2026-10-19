@@ -183,6 +183,20 @@ thread.
 The plugin jar is `Prost-<version>.jar` in `prost-plugin/build/libs/`. The toolchain is Java 21; the plugin compiles
 against Paper API 1.21.4 only.
 
+## Releasing
+
+For the maintainer. Once: create a Hangar API key with the permission to create versions (hangar.papermc.io, profile
+menu, API keys) and store it as the repository secret `HANGAR_API_TOKEN` (Settings, Secrets and variables, Actions).
+
+1. Set `version` in `build.gradle.kts`, add the version to `CHANGELOG.md`, push, and wait for CI to pass.
+2. Tag the commit (`v<version>`), push the tag, and publish a GitHub release from it with the changelog as its text.
+
+The release workflow then builds the tag, attaches `Prost-<version>.jar` and `prost-api-<version>.jar` to the release,
+and uploads the plugin jar to Hangar (channel Release, every Paper version Hangar lists from 1.21.4 on, the release text
+as the changelog). A pre-release stays on GitHub only. Without the secret the Hangar step is skipped with a notice. By
+hand: `HANGAR_API_TOKEN=<key> scripts/publish-hangar.sh <version> <jar> [changelog file]`; `DRY_RUN=1` prints what
+would be sent.
+
 ## License
 
 The plugin is GPL-3.0 ([LICENSE](LICENSE)). The API module `prost-api` is MIT ([prost-api/LICENSE](prost-api/LICENSE)).

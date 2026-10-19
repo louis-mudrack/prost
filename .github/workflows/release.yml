@@ -1,0 +1,59 @@
+name: Release
+
+# A published release (not a pre-release): build the tag, attach the jars, upload the plugin to Hangar.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write   # gh release upload
+
+jobs:
+  publish:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      # basic = the MIT cache on actions/cache, no Gradle terms of use
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+      - name: Build and unit tests
+        run: ./gradlew build
+      - name: Find the jars of the tag's version
+        id: jars
+        run: |
+          version="${TAG#v}"
+          plugin="prost-plugin/build/libs/Prost-$version.jar"
+          api="prost-api/build/libs/prost-api-$version.jar"
+          for jar in "$plugin" "$api"; do
+            [ -f "$jar" ] || { echo "::error::$jar was not built - does build.gradle.kts say version = \"$version\"?"; exit 1; }
+          done
+          {
+            echo "version=$version"
+            echo "plugin=$plugin"
+            echo "api=$api"
+          } >> "$GITHUB_OUTPUT"
+      - name: Attach the jars to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" "${{ steps.jars.outputs.plugin }}" "${{ steps.jars.outputs.api }}" --clobber
+      - name: Upload to Hangar
+        env:
+          HANGAR_API_TOKEN: ${{ secrets.HANGAR_API_TOKEN }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          if [ -z "$HANGAR_API_TOKEN" ]; then
+            echo "::notice::The secret HANGAR_API_TOKEN is not set - the Hangar upload is skipped"
+            exit 0
+          fi
+          printf '%s\n' "$RELEASE_BODY" > "$RUNNER_TEMP/changelog.md"
+          scripts/publish-hangar.sh "${{ steps.jars.outputs.version }}" "${{ steps.jars.outputs.plugin }}" "$RUNNER_TEMP/changelog.md"
