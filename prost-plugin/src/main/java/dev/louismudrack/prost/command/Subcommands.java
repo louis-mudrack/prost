@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 /** English subcommand names plus each language file's aliases (commands.<name>: [...]); aliases work for everyone. */
 public final class Subcommands {
     public static final List<String> PLAYER = List.of("start", "join", "invite", "decline", "leave", "pause", "status", "next",
-            "pace", "kick", "end", "stats", "language");
+            "pace", "kick", "end", "stats", "language", "here");
     /** chat buttons and the argument of pause */
     public static final List<String> HIDDEN = List.of("reward", "handout", "joker", "play", "round");
     public static final List<String> ADMIN = List.of("admin", "reload");

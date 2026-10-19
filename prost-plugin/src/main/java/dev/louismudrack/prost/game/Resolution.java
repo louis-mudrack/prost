@@ -29,7 +29,7 @@ final class Resolution {
             case TEAM -> team(avoid, sips, teamTarget, ps);
             case RACE -> race(sips, ps);
             case DUEL -> duel(sips, ps);
-            case REACTION, LUCK -> throw new IllegalStateException("decided by its game");
+            case REACTION, LUCK, VOTE -> throw new IllegalStateException("decided by its game");
         };
     }
 

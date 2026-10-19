@@ -182,7 +182,7 @@ public final class ChallengeRun {
             case EACH -> def.avoidType() ? participants.stream().allMatch(id -> tracker.broken(id)) : allSettled;
             case TEAM -> def.avoidType() ? anyBroken : teamSum() >= teamTarget();
             case RACE, DUEL -> !doneAt.isEmpty();
-            case REACTION, LUCK -> throw new IllegalStateException("decided by its game");
+            case REACTION, LUCK, VOTE -> throw new IllegalStateException("decided by its game");
         };
     }
 
@@ -280,6 +280,7 @@ public final class ChallengeRun {
             case DUEL -> Msg.str(viewer, "challenge.stakes.duel", sips);
             case REACTION -> Msg.str(viewer, "challenge.stakes.reaction", sips);
             case LUCK -> Msg.str(viewer, "challenge.stakes.luck", sips);
+            case VOTE -> Msg.str(viewer, "challenge.stakes.vote", sips);
         };
     }
 

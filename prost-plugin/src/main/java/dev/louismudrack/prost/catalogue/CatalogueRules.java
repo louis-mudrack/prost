@@ -20,7 +20,7 @@ final class CatalogueRules {
     }
 
     static final Set<String> TRACKERS = Set.of("mine", "stat", "collect", "gift", "inventory", "count", "distinct", "reach",
-            "avoid", "wear", "tower", "proximity", "reaction", "potato", "luck");
+            "avoid", "wear", "tower", "proximity", "reaction", "potato", "luck", "vote");
     static final Set<String> AVOID_MODES = Set.of("damage", "explosion-damage", "death", "jump", "sprint", "eat", "chat",
             "break", "kill", "water", "sleep");
     private static final Set<String> DISTINCT_SOURCES = Set.of("mine", "collect", "consume", "craft", "kill", "biome");
@@ -35,7 +35,9 @@ final class CatalogueRules {
     static final Map<String, Set<Kind>> LUCK_MODES = Map.of("wheel", Set.of(Kind.LUCK, Kind.SOLO), "coin", Set.of(Kind.DUEL),
             "chests", Set.of(Kind.SOLO), "dice", Set.of(Kind.SOLO), "high_low", Set.of(Kind.DUEL, Kind.SOLO), "boxes", Set.of(Kind.LUCK));
     /** trackers that decide the run themselves (GameTracker): also-avoid would wrap them and hide the game from the run */
-    private static final Set<String> GAME_TRACKERS = Set.of("reaction", "potato", "luck");
+    private static final Set<String> GAME_TRACKERS = Set.of("reaction", "potato", "luck", "vote");
+    /** a plain build contest, or each builder portrays another participant */
+    private static final Set<String> VOTE_MODES = Set.of("", "portrait");
     private static final int MIN_SIPS = 1, MAX_SIPS = 6, MIN_SECONDS = 10, MAX_SECONDS = 900;
 
     private CatalogueRules() {}
@@ -53,6 +55,7 @@ final class CatalogueRules {
         if (!d.alsoAvoid().isEmpty() && GAME_TRACKERS.contains(d.tracker())) p.add("also-avoid does not work with tracker " + d.tracker());
         if (d.kinds().contains(Kind.REACTION) && !REACTION_TRACKERS.contains(d.tracker())) p.add("kind reaction does not work with tracker " + d.tracker());
         if (d.kinds().contains(Kind.LUCK) && !"luck".equals(d.tracker())) p.add("kind luck does not work with tracker " + d.tracker());
+        if (d.kinds().contains(Kind.VOTE) && !"vote".equals(d.tracker())) p.add("kind vote does not work with tracker " + d.tracker());
         List<String> resolved = Tags.resolveAll(d.targets());
         if (resolved == null) {
             p.add("unknown tag in " + d.targets());
@@ -95,6 +98,10 @@ final class CatalogueRules {
                 Set<Kind> allowed = LUCK_MODES.get(d.mode());
                 if (allowed == null) p.add("unknown luck mode '" + d.mode() + "'");
                 else for (Kind k : d.kinds()) if (!allowed.contains(k)) p.add("luck mode " + d.mode() + " cannot be played as " + k.key);
+            }
+            case "vote" -> {
+                if (!VOTE_MODES.contains(d.mode())) p.add("unknown vote mode '" + d.mode() + "'");
+                for (Kind k : d.kinds()) if (k != Kind.VOTE) p.add("vote cannot be played as " + k.key);
             }
             default -> { }
         }

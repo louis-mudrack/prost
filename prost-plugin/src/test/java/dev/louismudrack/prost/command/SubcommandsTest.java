@@ -1,7 +1,9 @@
 package dev.louismudrack.prost.command;
 
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -97,6 +99,15 @@ class SubcommandsTest {
         Subcommands s = subs(Map.of());
         assertEquals("play", s.canonical("play"));
         assertFalse(s.visible("en", true).contains("play"));
+    }
+
+    /** /prost here marks a build; the German alias comes from lang/de.yml */
+    @Test
+    void hereIsAPlayerSubcommandWithTheGermanAliasHier() {
+        assertTrue(Subcommands.PLAYER.contains("here"));
+        YamlConfiguration de = YamlConfiguration.loadConfiguration(new File("src/main/resources/lang/de.yml"));
+        assertEquals(List.of("hier"), de.getStringList("commands.here"));
+        assertEquals("here", subs(Map.of("de", Map.of("here", List.of("hier")))).canonical("hier"));
     }
 
     /** without any language file: a German alias in a button or menu would stop working once lang/de.yml is gone */

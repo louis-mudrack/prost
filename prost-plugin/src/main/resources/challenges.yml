@@ -1,12 +1,13 @@
 # Prost challenge catalogue. Written once by the plugin, then yours: /prost reload reads it again. A broken entry is skipped
 # with a warning.
 # sips = fixed penalty shown at the start (1-6); give = what a winner hands out (default sips); kinds: team each race duel solo
-# reaction luck (reaction: only with tracker reaction or potato; luck: only with tracker luck); rewards: handout rule joker
-# next; needs: nether end night day rain thunder. Team without rule/joker/next = a joker each. Tracker reaction, mode: crouch
-# water chat look_up jump hold sit eat freeze (chat: value = the word, hold: targets). Tracker potato = hot potato, kind
-# reaction only, the time hidden (half of seconds to seconds). Tracker luck = a game in a menu, mode and its kinds: wheel
-# (luck, solo), coin (duel), chests (solo), dice (solo), high_low (duel, solo), boxes (luck). since = the Prost version that
-# added the entry.
+# reaction luck vote (reaction: only with tracker reaction or potato; luck: only with tracker luck; vote: only with tracker
+# vote); rewards: handout rule joker next; needs: nether end night day rain thunder. Team without rule/joker/next = a joker
+# each. Tracker reaction, mode: crouch water chat look_up jump hold sit eat freeze (chat: value = the word, hold: targets).
+# Tracker potato = hot potato, kind reaction only, the time hidden (half of seconds to seconds). Tracker luck = a game in a
+# menu, mode and its kinds: wheel (luck, solo), coin (duel), chests (solo), dice (solo), high_low (duel, solo), boxes
+# (luck). Tracker vote = a build contest, kind vote only: build for seconds, a tour of the builds, then a vote; mode
+# portrait tells each builder whom to portray. since = the Prost version that added the entry.
 
 # --- Mining ---
 mine_iron: {name: {de: "Eisenfieber", en: "Iron fever"}, text: {de: "Baue {amount} Eisenerz ab", en: "Mine {amount} iron ore"}, tracker: mine, targets: [IRON_ORE, DEEPSLATE_IRON_ORE], amount: 16, seconds: 360, sips: 3, kinds: [each, race, duel, solo, team], rewards: [handout]}
@@ -148,3 +149,15 @@ three_chests: {name: {de: "Drei Truhen", en: "Three chests"}, text: {de: "Öffne
 dice: {name: {de: "Würfelglück", en: "Lucky roll"}, text: {de: "Würfle: 1-2 trinken, 5-6 verteilen", en: "Roll the die: 1-2 drink, 5-6 hand out"}, tracker: luck, mode: dice, seconds: 30, sips: 2, kinds: [solo], rewards: [handout], since: "0.4.0"}
 high_low: {name: {de: "Höher oder tiefer", en: "Higher or lower"}, text: {de: "Ist die nächste Zahl höher oder tiefer?", en: "Is the next number higher or lower?"}, tracker: luck, mode: high_low, seconds: 30, sips: 2, kinds: [duel, solo], rewards: [handout], since: "0.4.0"}
 mystery_box: {name: {de: "Wundertüte", en: "Mystery box"}, text: {de: "Nimm dir eine Kiste - in einer steckt die Falle", en: "Take a box - one of them hides the trap"}, tracker: luck, mode: boxes, seconds: 45, sips: 3, kinds: [luck], min-players: 2, rewards: [handout], since: "0.4.0"}
+
+# --- Vote ---
+vote_ugly_house: {name: {de: "Bruchbude", en: "Shack attack"}, text: {de: "Bau das hässlichste Haus", en: "Build the ugliest house"}, tracker: vote, seconds: 300, sips: 3, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_statue: {name: {de: "Denkmal", en: "Monument"}, text: {de: "Bau die beste Statue", en: "Build the best statue"}, tracker: vote, seconds: 300, sips: 3, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_pixel_art: {name: {de: "Pixelkunst", en: "Pixel art"}, text: {de: "Bau ein Pixelbild aus 8x8 Blöcken", en: "Build pixel art of 8x8 blocks"}, tracker: vote, seconds: 360, sips: 3, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_armor_stand: {name: {de: "Modellpose", en: "Strike a pose"}, text: {de: "Zieh einen Rüstungsständer an und gib ihm die beste Pose", en: "Dress up an armor stand and give it the best pose"}, tracker: vote, seconds: 300, sips: 3, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_garden: {name: {de: "Blütenpracht", en: "In full bloom"}, text: {de: "Leg den schönsten Blumengarten an", en: "Plant the most beautiful flower garden"}, tracker: vote, seconds: 360, sips: 3, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_portrait: {name: {de: "Porträt", en: "Portrait"}, text: {de: "Bau ein Porträt des Mitspielers, den du geheim genannt bekommst", en: "Build a portrait of the player you are secretly given"}, tracker: vote, mode: portrait, seconds: 360, sips: 3, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_outfit: {name: {de: "Modenschau", en: "Fashion show"}, text: {de: "Zieh das beste Outfit an (Rüstung und was du in der Hand hältst)", en: "Put on the best outfit (armor and what you hold)"}, tracker: vote, seconds: 240, sips: 2, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_sign: {name: {de: "Schilderwald", en: "Sign language"}, text: {de: "Schreib das lustigste Schild", en: "Write the funniest sign"}, tracker: vote, seconds: 180, sips: 1, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_mini_house: {name: {de: "Häuschen", en: "Tiny home"}, text: {de: "Bau das beste kleine Haus", en: "Build the best small house"}, tracker: vote, seconds: 480, sips: 4, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}
+vote_bridge: {name: {de: "Brückenbauer", en: "Bridge builder"}, text: {de: "Bau die schönste Brücke über Wasser", en: "Build the most beautiful bridge over water"}, tracker: vote, seconds: 360, sips: 3, kinds: [vote], min-players: 3, rewards: [handout], since: "0.4.0"}

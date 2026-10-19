@@ -70,6 +70,7 @@ Both always work. "Host" means the player who opened the round.
 | `/prost end` | end the round | host |
 | `/prost stats [player]` | all-time stats and the top lists | `prost.play` |
 | `/prost language [code\|auto]` | show or choose your language | `prost.play` |
+| `/prost here` | mark your build in a build contest where you stand | `prost.play`, while building |
 | `/prost admin reload` | read all files again (also `/prost reload`) | `prost.admin`, console |
 | `/prost admin list` | list running rounds (also what `/prost admin` does without an argument) | `prost.admin`, console |
 | `/prost admin end <code>` | end a round | `prost.admin`, console |

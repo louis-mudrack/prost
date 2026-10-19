@@ -36,6 +36,7 @@ public record GameConfig(int maxPlayers, int warmupSeconds, Map<Pace, int[]> pac
         kw.put(Kind.SOLO, num(kws.get("solo"), 15));
         kw.put(Kind.REACTION, num(kws.get("reaction"), 7));
         kw.put(Kind.LUCK, num(kws.get("luck"), 3));
+        kw.put(Kind.VOTE, num(kws.get("vote"), 5));
         Map<?, ?> limit = sub(root, "limit");
         int min = num(limit.get("min"), 5), max = num(limit.get("max"), 40);
         if (min < 1 || min > max) { min = 5; max = 40; }

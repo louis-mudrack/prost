@@ -22,6 +22,7 @@ public final class Hud {
             case EACH -> BossBar.Color.BLUE;
             case RACE, DUEL, REACTION -> BossBar.Color.RED;
             case SOLO -> BossBar.Color.YELLOW;
+            case VOTE -> BossBar.Color.PURPLE;
         };
     }
 

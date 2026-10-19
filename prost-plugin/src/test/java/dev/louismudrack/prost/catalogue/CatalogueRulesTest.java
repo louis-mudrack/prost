@@ -212,6 +212,22 @@ class CatalogueRulesTest {
     }
 
     @Test
+    void voteOnlyAsVoteWithoutModeOrAsPortrait() {
+        eq("a build contest is valid", List.of(), CatalogueRules.validate(
+                def("vote", "", "", "", "", List.of(), List.of(Kind.VOTE), Set.of(), List.of(), 3, 300), FAKE_API));
+        eq("a portrait contest is valid", List.of(), CatalogueRules.validate(
+                def("vote", "", "", "portrait", "", List.of(), List.of(Kind.VOTE), Set.of(), List.of(), 3, 360), FAKE_API));
+        eq("a landscape is no vote mode", List.of("unknown vote mode 'landscape'"), CatalogueRules.validate(
+                def("vote", "", "", "landscape", "", List.of(), List.of(Kind.VOTE), Set.of(), List.of(), 3, 300), FAKE_API));
+        eq("a build contest for one player", List.of("vote cannot be played as solo"), CatalogueRules.validate(
+                def("vote", "", "", "", "", List.of(), List.of(Kind.VOTE, Kind.SOLO), Set.of(), List.of(), 3, 300), FAKE_API));
+        eq("kind vote only with tracker vote", List.of("kind vote does not work with tracker tower"), CatalogueRules.validate(
+                def("tower", "", "", "", "", List.of(), List.of(Kind.VOTE), Set.of(), List.of(), 3, 300), FAKE_API));
+        eq("a build contest with also-avoid", List.of("also-avoid does not work with tracker vote"), CatalogueRules.validate(
+                def("vote", "", "", "", "", List.of(), List.of(Kind.VOTE), Set.of(), List.of("jump"), 3, 300), FAKE_API));
+    }
+
+    @Test
     void rulesFile() {
         List<Rule> rules = RulesFile.parse(List.of(Map.of("de", "Niemand sagt \"ich\".", "en", "Nobody says \"I\"."),
                 Map.of("de", "nur deutsch"), Map.of("de", " "), "junk"));

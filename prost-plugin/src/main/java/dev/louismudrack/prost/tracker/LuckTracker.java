@@ -40,10 +40,6 @@ final class LuckTracker extends BaseTracker implements GameTracker {
     private static final int[] CHEST_SLOTS = {LEFT, MIDDLE, RIGHT};
     /** the coin's call and the high/low guess as a decision */
     private static final int HEADS = 1, TAILS = 0, HIGHER = 1, LOWER = 0, TWO_SIDES = 2;
-    /** as in a choice menu: up to four boxes spaced out in the middle row, up to a row side by side */
-    private static final int SPACED_MAX = 4, ROW = 9;
-    /** more boxes: every slot but the clock (4) and Close (26), the middle row first */
-    private static final int[] BOX_SLOTS = {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 1, 2, 3, 5, 6, 7, 8};
     private static final float SPIN_PITCH = 1.6f;
     private static final Prize[] PRIZES = Prize.values();
 
@@ -78,7 +74,7 @@ final class LuckTracker extends BaseTracker implements GameTracker {
                 next = LuckRules.nextNumber(shown, rnd());
             }
             case "boxes" -> {
-                boxes = Math.min(order.size(), BOX_SLOTS.length);
+                boxes = Math.min(order.size(), MenuSlots.MAX);
                 trap = rnd().nextInt(boxes);
             }
             default -> { }
@@ -349,7 +345,7 @@ final class LuckTracker extends BaseTracker implements GameTracker {
             if (revealing && b == (settled() ? trap : shaken)) icon = Items.item(Material.TNT, "<err>" + Msg.str(viewer, "game.luck.trap"), takerLore);
             else if (taker != null) icon = Items.head(taker, "<hl>" + label, takerLore);
             else icon = Items.item(Material.BARREL, "<hl>" + label, List.of());
-            m.button(boxSlot(b), icon, taker == null ? choose(viewer, b) : null);
+            m.button(MenuSlots.of(b, boxes), icon, taker == null ? choose(viewer, b) : null);
         }
     }
 
@@ -362,12 +358,6 @@ final class LuckTracker extends BaseTracker implements GameTracker {
     }
 
     private List<String> mark(UUID viewer, int option) { return picked(viewer, option) ? List.of(Msg.str(viewer, "game.luck.your_pick")) : List.of(); }
-
-    private int boxSlot(int b) {
-        if (boxes <= SPACED_MAX) return MIDDLE - (boxes - 1) + 2 * b;
-        if (boxes <= ROW) return ROW + (ROW - boxes) / 2 + b;
-        return BOX_SLOTS[b];
-    }
 
     /** a number to read at a glance: the stack shows it too */
     private static ItemStack number(int n, String nameMini) {

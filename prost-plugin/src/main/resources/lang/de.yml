@@ -18,6 +18,7 @@ kind:
   solo: "Solo"
   reaction: "Reaktion"
   luck: "Glück"
+  vote: "Bauwettbewerb"
 pace:
   chill: "chill"
   normal: "normal"
@@ -146,6 +147,7 @@ challenge:
     high_low: "<gray>Wer falsch tippt, trinkt <err><sips> <dark_gray>· <gray>Beide richtig: <ok><reward>"
     high_low_solo: "<gray>Falsch: <err><sips> <dark_gray>· <gray>Richtig: <ok><reward>"
     boxes: "<gray>Wer die Falle erwischt, trinkt <err><sips>"
+    vote: "<gray>Die wenigsten Stimmen trinken <err><sips> <dark_gray>· <gray>Keine Stimme: <err>+1"
   reward:
     handout: "<sips> verteilen"
     rule: "eine Regel"
@@ -235,6 +237,38 @@ game:
       high_low: "<hl><shown><gray>, dann <hl><next> <dark_gray>· <guesses>"
       boxes: "<gray>Die Falle war in Kiste <hl><box><gray>: <hl><name>"
       boxes_free: "<gray>Die Falle war in Kiste <hl><box><gray> - keiner hat sie genommen"
+  vote:
+    here_button: "<click:run_command:'<cmd>'><ok>[Meinen Bau hier markieren]</click> <dark_gray>(sonst steht dein Bau dort, wo du bist, wenn die Zeit um ist)"
+    marked: "Dein Bau ist markiert: <hl><world> <x> <y> <z>"
+    not_now: "Gerade gibt es keinen Bau zu markieren."
+    wrong_world: "Bauten zählen nur in den Welten, in denen Prost spielt - nicht markiert."
+    excluded: "Dieser Bereich ist von Prost ausgenommen - nicht markiert."
+    model: "Dein Modell: <hl><name> <dark_gray>(nur du weißt es - bau sein Porträt)"
+    too_few: "Für den Bauwettbewerb sind weniger als drei Spieler übrig - abgebrochen, niemand trinkt."
+    # die eigene Zeile, dann die Liste für Zuschauer: jeder Name, dann baut oder markiert, wird gezeigt oder schaut, stimmt ab oder hat gestimmt
+    build: "<hl>Bau los! <gray>/prost hier markiert die Stelle"
+    built: "<ok>Markiert <gray>bei <white><x> <y> <z>"
+    building: "<gray>baut"
+    has_spot: "<ok>markiert"
+    showing: "<hl>Jetzt: <white>der Bau von <name>"
+    on_show: "<hl>wird gezeigt"
+    looking: "<gray>schaut"
+    choose: "<hl>Stimm im Menü ab"
+    voted: "<ok>Gestimmt für <hl><name> <gray>- du kannst noch wechseln"
+    voting: "<gray>stimmt ab"
+    has_voted: "<ok>hat gestimmt"
+    # die Tour: Titel, Untertitel und Chatzeile jedes Baus
+    show_title: "Bau von <name>"
+    show_place: "<white><world> <x> <y> <z>"
+    show_nowhere: "<gray>kann nicht besucht werden"
+    show_at: "<hl>Bau von <name><gray>: <white><world> <x> <y> <z>"
+    show_missing: "<hl>Bau von <name><gray>: kann nicht besucht werden (keine Stelle), bekommt trotzdem Stimmen"
+    title: "Stimm für deinen Lieblingsbau"
+    your_vote: "<ok>Deine Stimme"
+    click: "<gray>Klicken zum Abstimmen"
+    vote_now: "Stimm im Menü für deinen Lieblingsbau: die wenigsten Stimmen trinken, keine Stimme <err>+1<gray>."
+    vote_gone: "<hl><name> <gray>ist raus - deine Stimme ist weg, stimm neu ab."
+    result: "<gray>Stimmen: <votes>"
 reward:
   option:
     handout: "<sips> verteilen"
@@ -369,3 +403,4 @@ commands:
   reward: [belohnung]
   handout: [verteilen]
   round: [runde]
+  here: [hier]

@@ -25,6 +25,7 @@ public final class Trackers {
             case "reaction" -> new ReactionTracker(ctx);
             case "potato" -> new PotatoTracker(ctx);
             case "luck" -> new LuckTracker(ctx);
+            case "vote" -> new VoteTracker(ctx);
             default -> throw new IllegalArgumentException("unknown tracker " + d.tracker());
         };
         if (d.alsoAvoid().isEmpty()) return goal;
