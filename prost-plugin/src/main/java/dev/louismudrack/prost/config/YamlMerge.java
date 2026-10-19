@@ -9,10 +9,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Admin-owned files that grow with updates (config.yml, game.yml, lang/*.yml): the shipped copy is written once; later
- * versions only append the keys the server copy lacks, with their comments. The admin's values are never touched.
+ * versions only append the keys the server copy lacks, with their comments. The admin's values are never touched - except
+ * a text that still is exactly what an older version shipped, when this version ships a new one (formerDefaults).
  */
 public final class YamlMerge {
     private YamlMerge() {}
@@ -29,7 +38,10 @@ public final class YamlMerge {
     }
 
     /** true when the file was written or extended */
-    public static boolean ensure(JavaPlugin plugin, String path) {
+    public static boolean ensure(JavaPlugin plugin, String path) { return ensure(plugin, path, Map.of()); }
+
+    /** formerDefaults: per key, the SHA-256 of texts older versions shipped there; a value still equal to one is renewed */
+    public static boolean ensure(JavaPlugin plugin, String path, Map<String, Set<String>> formerDefaults) {
         File file = new File(plugin.getDataFolder(), path);
         if (!file.exists()) {
             plugin.saveResource(path, false);
@@ -40,9 +52,13 @@ public final class YamlMerge {
             YamlConfiguration shipped = YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
             YamlConfiguration user = new YamlConfiguration();
             user.load(file);
-            if (!appendMissing(user, shipped)) return false;
+            boolean appended = appendMissing(user, shipped);
+            List<String> renewed = renewFormerDefaults(user, shipped, formerDefaults);
+            if (!appended && renewed.isEmpty()) return false;
             user.save(file);
-            plugin.getLogger().info(path + ": new settings added with their defaults");
+            if (appended) plugin.getLogger().info(path + ": new settings added with their defaults");
+            if (!renewed.isEmpty()) plugin.getLogger().info(path + ": " + String.join(", ", renewed)
+                    + " still had an older version's text - now this version's");
             return true;
         } catch (IOException | InvalidConfigurationException | RuntimeException e) {   // Bukkit lets an unknown tag through bare
             plugin.getLogger().warning(path + " could not be updated (" + YamlErrors.describe(e) + ") - fix the file; defaults apply to anything missing");
@@ -61,6 +77,26 @@ public final class YamlMerge {
             changed = true;
         }
         return changed;
+    }
+
+    /** the keys whose value was replaced by the shipped one */
+    static List<String> renewFormerDefaults(YamlConfiguration user, YamlConfiguration shipped, Map<String, Set<String>> former) {
+        List<String> renewed = new ArrayList<>();
+        for (Map.Entry<String, Set<String>> e : new TreeMap<>(former).entrySet()) {
+            String key = e.getKey();
+            if (!user.isString(key) || !shipped.isString(key) || !e.getValue().contains(sha256(user.getString(key)))) continue;
+            user.set(key, shipped.getString(key));
+            renewed.add(key);
+        }
+        return renewed;
+    }
+
+    static String sha256(String text) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {   // every Java has SHA-256
+            throw new IllegalStateException(e);
+        }
     }
 
     /** the admin turned a section into a plain value: leave their file alone below it */

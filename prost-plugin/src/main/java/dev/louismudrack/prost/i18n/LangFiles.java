@@ -31,6 +31,13 @@ public final class LangFiles {
     static final List<String> SHIPPED = List.of("en", "de");
     private static final String FOLDER = "lang";
     private static final String SUFFIX = ".yml";
+    /**
+     * texts an older Prost shipped and this one changed, as SHA-256 (the 0.3.0 update.available linked a page Prost no
+     * longer uses): a server file still holding one exactly gets the new text, an edited one stays
+     */
+    private static final Map<String, Set<String>> FORMER_DEFAULTS = Map.of("update.available", Set.of(
+            "dfd28471194f84080e8f96700c9a5166fc0d3f054afc28b517d9b88b6c2ab197",     // 0.3.0, en
+            "d2d859a285118a6da6e78bd6b5dcc2fca747c5409243ed3e7192b28b981c979d"));   // 0.3.0, de
 
     /** one file: its texts, its sections, and the keys that are neither */
     private record Parsed(String file, Map<String, Object> texts, Set<String> sections, Set<String> notText) {}
@@ -41,7 +48,7 @@ public final class LangFiles {
         for (String code : SHIPPED) {
             String path = FOLDER + "/" + code + SUFFIX;
             // read() reports a file that does not parse; YamlMerge would warn about it a second time
-            if (!YamlMerge.unparseable(new File(plugin.getDataFolder(), path))) YamlMerge.ensure(plugin, path);
+            if (!YamlMerge.unparseable(new File(plugin.getDataFolder(), path))) YamlMerge.ensure(plugin, path, FORMER_DEFAULTS);
         }
         return read(new File(plugin.getDataFolder(), FOLDER), defaultLanguage, shippedEnglish(plugin), plugin.getLogger()::warning);
     }
