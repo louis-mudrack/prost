@@ -22,7 +22,9 @@ cp "$JAR" "$DIR/plugins/Prost.jar"
 echo "enabled: false" > "$DIR/plugins/bStats/config.yml"
 if $WITH_PAPI; then
   # Hangar's download endpoint for the version's Paper jar (the file the pinned sha256 was taken from)
-  curl -sfL -o "$DIR/plugins/PlaceholderAPI.jar" "https://hangar.papermc.io/api/v1/projects/PlaceholderAPI/versions/$PAPI_VERSION/PAPER/download"
+  # set -e would end the script without a word when curl fails
+  curl -sfL -o "$DIR/plugins/PlaceholderAPI.jar" "https://hangar.papermc.io/api/v1/projects/PlaceholderAPI/versions/$PAPI_VERSION/PAPER/download" \
+    || { echo "PlaceholderAPI $PAPI_VERSION could not be downloaded from Hangar (curl exit $?)" >&2; exit 1; }
   (cd "$DIR/plugins" && echo "$PAPI_SHA256  PlaceholderAPI.jar" | sha256sum -c --quiet -) \
     || { echo "PlaceholderAPI.jar does not match the pinned sha256" >&2; exit 1; }
 fi
@@ -78,7 +80,7 @@ check "game.yml came from AniDrinks" 'grep -q "max-players: 6" "$DIR/plugins/Pro
 check "/prost answers the console" '[[ $(R prost admin list) == *"No round is running"* ]]'
 check "/drinks is an alias" '[[ $(R drinks admin list) == *"No round is running"* ]]'
 if $WITH_PAPI; then
-  check "PlaceholderAPI registered the expansion" '[[ $LOG == *"registered internal expansion: prost"* ]]'
+  check "PlaceholderAPI registered the expansion" 'grep -qi "registered internal expansion: prost" <<<"$LOG"'
   R papi parse --null %prost_top_1_name% >/dev/null || true; sleep 2   # the first request only starts the 30 s cache
   check "%prost_top_1_name% answers the migrated leader" '[[ $(R papi parse --null %prost_top_1_name%) == *Alex* ]]'
 fi
