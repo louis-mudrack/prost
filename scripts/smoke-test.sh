@@ -16,8 +16,10 @@ PAPI_SHA256=fde03259f5af6938f3c33eeb4d814000a1adabf1d2304ce14970be81f609a437
 DIR=$(mktemp -d)
 NAME=prost-smoke-$$
 trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true; rm -rf "$DIR"' EXIT
-mkdir -p "$DIR/plugins/AniDrinks"
+mkdir -p "$DIR/plugins/AniDrinks" "$DIR/plugins/bStats"
 cp "$JAR" "$DIR/plugins/Prost.jar"
+# a throwaway server must not count as an install on bstats.org
+echo "enabled: false" > "$DIR/plugins/bStats/config.yml"
 if $WITH_PAPI; then
   PAPI_URL=$(curl -sf "https://api.modrinth.com/v2/project/placeholderapi/version?loaders=%5B%22paper%22%5D" \
     | python3 -c 'import json,sys; print(next((v["files"][0]["url"] for v in json.load(sys.stdin) if v["version_number"] == sys.argv[1]), ""))' "$PAPI_VERSION")

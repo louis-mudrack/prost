@@ -110,7 +110,7 @@ next write. If the database cannot be opened on start, the game still runs and s
 
 | key | default | meaning |
 |---|---|---|
-| `metrics` | `true` | Anonymous usage statistics on bstats.org **(restart)**. Also off when bStats is switched off server-wide. Prost sends nothing until the plugin is registered on bstats.org, whatever this says. |
+| `metrics` | `true` | Anonymous usage statistics on [bStats](https://bstats.org/plugin/bukkit/Prost/34824) **(restart)**: bStats' usual server data plus the storage type, the server language, whether languages are per player and the players per round. `false` switches it off; it is also off when bStats is switched off server-wide (`plugins/bStats/config.yml`). |
 | `update-checker` | `true` | Ask Modrinth once at start whether a newer Prost exists and tell `prost.admin` players on join **(restart)**. A failure only logs one line. |
 
 ## game.yml

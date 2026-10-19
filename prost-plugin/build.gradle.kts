@@ -54,4 +54,5 @@ val integrationTest by tasks.registering(Test::class) {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     useJUnitPlatform { includeTags("integration") }
+    systemProperty("prost.offline", "true")
 }

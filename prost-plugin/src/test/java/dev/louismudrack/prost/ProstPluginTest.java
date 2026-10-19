@@ -32,6 +32,14 @@ class ProstPluginTest {
         assertNotNull(server.getServicesManager().load(ProstApi.class));
     }
 
+    /** metrics is on by default and Prost is registered on bStats: only prost.offline (build.gradle.kts) keeps tests out */
+    @Test
+    void theTestBuildNeverStartsBstats() {
+        assertTrue(Boolean.getBoolean("prost.offline"));
+        assertTrue(plugin.pluginConfig().metrics());
+        assertFalse(new File(plugin.getDataFolder().getParentFile(), "bStats").exists(), "bStats writes its config when it starts");
+    }
+
     @Test
     void registersProstAndItsAlias() {
         assertNotNull(server.getCommandMap().getCommand("prost"));
