@@ -23,13 +23,16 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** "Pick the next challenge" with a Solo card: the winner also names who plays, on the same clock as every other choice. */
+/** "Pick the next challenge" with a Solo or Duel card: the winner also names who plays, on the clock of every other choice. */
 class PickNextTest {
-    /** one Solo entry whose only reward is picking the next challenge */
-    private static final String CATALOGUE = "pick: {name: {en: \"Bunny\"}, text: {en: \"Jump {amount} times\"}, tracker: stat, "
-            + "stat: JUMP, amount: 200, seconds: 240, sips: 2, kinds: [solo], rewards: [next]}\n";
-    /** ChoiceMenu puts a single option in the middle */
-    private static final int SINGLE_OPTION = 13;
+    /** one entry of that kind whose only reward is picking the next challenge */
+    private static String catalogue(String kind) {
+        return "pick: {name: {en: \"Bunny\"}, text: {en: \"Jump {amount} times\"}, tracker: stat, "
+                + "stat: JUMP, amount: 200, seconds: 240, sips: 2, kinds: [" + kind + "], rewards: [next]}\n";
+    }
+
+    /** ChoiceMenu puts a single option in the middle, two options left and right of it */
+    private static final int SINGLE_OPTION = 13, FIRST_OF_TWO = 12;
     private static final int CLOCK_SLOT = 4;
 
     private ServerMock server;
@@ -39,12 +42,14 @@ class PickNextTest {
     private ChallengeDef card;
 
     @BeforeEach
-    void start() {
-        server = TestServer.mock();
+    void mock() { server = TestServer.mock(); }
+
+    /** Prost with a one-card catalogue, and the host's round */
+    private void start(String kind) {
         plugin = TestServer.start(server, folder -> {
             try {
                 Files.createDirectories(folder.toPath());
-                Files.writeString(folder.toPath().resolve("challenges.yml"), CATALOGUE);
+                Files.writeString(folder.toPath().resolve("challenges.yml"), catalogue(kind));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
@@ -74,7 +79,7 @@ class PickNextTest {
         server.getScheduler().performTicks(1);   // a menu acts one tick after the click
     }
 
-    /** the winner picked the Solo card: the "who plays" picker is open */
+    /** the winner picked the card: the "who plays" picker is open */
     private ChoiceMenu whoPlays() {
         plugin.rewards().grant(round, host.getUniqueId(), card, false, List.of());
         assertInstanceOf(ChoiceMenu.class, holder(), "the card picker");
@@ -86,6 +91,7 @@ class PickNextTest {
 
     @Test
     void theWhoPlaysPickerRunsOutAndTheDrawPicks() {
+        start("solo");
         ChoiceMenu who = whoPlays();
         assertEquals(Material.CLOCK, who.getInventory().getItem(CLOCK_SLOT).getType(), "the countdown clock");
         TestServer.messages(host);
@@ -100,6 +106,7 @@ class PickNextTest {
 
     @Test
     void aPickInTimeStandsAndTheClockStops() {
+        start("solo");
         whoPlays();
         click(SINGLE_OPTION);
         assertEquals(List.of(host.getUniqueId()), round.queued.players());
@@ -108,5 +115,24 @@ class PickNextTest {
         server.getScheduler().performTicks(rewardTicks());
         assertEquals(List.of(host.getUniqueId()), round.queued.players());
         assertTrue(TestServer.messages(host).isEmpty(), "no time-up message after the pick");
+    }
+
+    /** a Duel names two: both picks share the one clock, and a time-out after the first name drops it - the draw picks both */
+    @Test
+    void aDuelPickRunsOnOneClockAndATimeOutDropsTheFirstName() {
+        start("duel");
+        PlayerMock guest = server.addPlayer("Guest");
+        guest.performCommand("prost join " + round.code);
+        ChoiceMenu first = whoPlays();
+        click(FIRST_OF_TWO);   // one tick of the clock
+        ChoiceMenu second = assertInstanceOf(ChoiceMenu.class, holder(), "the second pick");
+        assertNotSame(first, second);
+        assertEquals(Material.CLOCK, second.getInventory().getItem(CLOCK_SLOT).getType());
+        TestServer.messages(host);
+        server.getScheduler().performTicks(rewardTicks() - 1);   // a clock started for the second pick would run one tick longer
+        assertNotNull(round.queued, "the card still comes next");
+        assertEquals(List.of(), round.queued.players(), "the first name is dropped: the draw picks both");
+        List<String> told = TestServer.messages(host);
+        assertTrue(told.stream().anyMatch(m -> m.contains("Time's up - the game picks who plays.")), told.toString());
     }
 }
