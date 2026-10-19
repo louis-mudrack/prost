@@ -45,9 +45,4 @@ class ModrinthLinksTest {
         assertEquals(List.of(), wrong);
         assertTrue(links >= 5, "plugin.yml, config.yml, en.yml, de.yml and the update checker link the page");
     }
-
-    @Test
-    void theUpdateCheckAsksByProjectId() {
-        assertEquals("https://api.modrinth.com/v2/project/q9F9i8rt/version", UpdateChecker.API);
-    }
 }

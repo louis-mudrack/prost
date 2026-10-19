@@ -20,13 +20,30 @@ class VersionsTest {
         assertTrue(Versions.newer("v0.4.0", "0.3.0"));
     }
 
-    @Test
-    void theNewestReleaseFromModrinth() {
-        String json = "[{\"version_number\":\"0.5.0-beta\",\"version_type\":\"beta\"},"
-                + "{\"version_number\":\"0.4.0\",\"version_type\":\"release\"},{\"version_number\":\"0.3.0\",\"version_type\":\"release\"}]";
-        assertEquals("0.4.0", Versions.latestRelease(json));
-        assertNull(Versions.latestRelease("[]"));
+    private static String release(String tag, boolean draft, boolean prerelease) {
+        return "{\"tag_name\":\"" + tag + "\",\"name\":\"Prost " + tag + "\",\"draft\":" + draft + ",\"prerelease\":" + prerelease + "}";
     }
+
+    @Test
+    void theNewestReleaseOnGitHubWithoutItsV() {
+        String json = "[" + release("v0.5.0", false, true) + "," + release("v0.4.0", false, false) + ","
+                + release("v0.3.1", false, false) + "]";
+        assertEquals("0.4.0", Versions.latestRelease(json));
+    }
+
+    /** GitHub lists by date: a fix for an older line published later is not the newest version */
+    @Test
+    void theHighestVersionWinsOverTheLatestDate() {
+        assertEquals("0.4.0", Versions.latestRelease("[" + release("v0.3.2", false, false) + "," + release("v0.4.0", false, false) + "]"));
+    }
+
+    @Test
+    void preReleasesAndDraftsAreSkipped() {
+        assertNull(Versions.latestRelease("[" + release("v0.6.0", true, false) + "," + release("v0.5.0", false, true) + "]"));
+    }
+
+    @Test
+    void noReleaseYet() { assertNull(Versions.latestRelease("[]")); }
 
     /** Prost is built against Paper 1.21.4: older 1.21 servers load it (api-version 1.21) but must not run it */
     @Test

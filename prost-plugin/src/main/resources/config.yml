@@ -62,5 +62,5 @@ storage:
 
 # Anonymous usage statistics on bstats.org (also off when bStats is switched off server-wide). (restart)
 metrics: true
-# Look for a newer Prost on Modrinth at startup and tell admins. (restart)
+# Look for a newer Prost release on GitHub at startup and tell admins. (restart)
 update-checker: true

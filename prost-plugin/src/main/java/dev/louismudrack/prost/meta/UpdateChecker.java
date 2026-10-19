@@ -8,26 +8,23 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
-import java.util.logging.Level;
 
-/** One asynchronous look at Modrinth at startup; a newer release is told to the console and to admins on join. */
+/** One asynchronous look at the GitHub releases at startup; a newer release is told to the console and to admins on join. */
 public final class UpdateChecker implements Listener {
-    /** by project id, not slug: the id survives a rename, and the slug "prost" belongs to another project */
-    static final String API = "https://api.modrinth.com/v2/project/q9F9i8rt/version";
+    /** newest first by date; without a token GitHub lists only published releases (no drafts) */
+    static final String API = "https://api.github.com/repos/louis-mudrack/prost/releases?per_page=20";
     private static final String PAGE = "https://modrinth.com/plugin/prost-game";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final String ADMIN = "prost.admin";
-    private static final int HTTP_NOT_FOUND = 404;
+    private static final int HTTP_OK = 200;
 
     private final ProstPlugin plugin;
     private volatile String available;
@@ -37,24 +34,34 @@ public final class UpdateChecker implements Listener {
 
     public void check() {
         String current = plugin.getPluginMeta().getVersion();
-        String query = "?loaders=" + enc("[\"paper\"]");
-        HttpRequest request = HttpRequest.newBuilder(URI.create(API + query)).timeout(TIMEOUT)
-                .header("User-Agent", "Kasheyy/Prost/" + current + " (" + PAGE + ")").GET().build();
+        HttpRequest request = HttpRequest.newBuilder(URI.create(API)).timeout(TIMEOUT)
+                .header("User-Agent", "Kasheyy/Prost/" + current + " (" + PAGE + ")")
+                .header("Accept", "application/vnd.github+json").GET().build();
         HttpClient http = client();
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
-            if (response.statusCode() != 200) {
-                plugin.getLogger().log(failureLevel(response.statusCode()), "update check failed: HTTP " + response.statusCode());
-                return;
-            }
-            String latest = Versions.latestRelease(response.body());
-            if (latest != null && Versions.newer(latest, current)) {
-                available = latest;
-                plugin.getLogger().info("Prost " + latest + " is available: " + PAGE + " (this server runs " + current + ")");
-            }
-        }).exceptionally(e -> {
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> answer(response.statusCode(), response.body(), current)).exceptionally(e -> {
             plugin.getLogger().info("update check failed: " + reason(e));
             return null;
         }).whenComplete((done, e) -> http.shutdown());   // one check per start: its threads need not stay
+    }
+
+    /** one line at most; a refusal (403: GitHub's limit per address) or an unreadable body is no reason for a stack trace */
+    void answer(int status, String body, String current) {
+        if (status != HTTP_OK) {
+            plugin.getLogger().info("update check failed: HTTP " + status);
+            return;
+        }
+        String latest;
+        try {
+            latest = Versions.latestRelease(body);
+        } catch (RuntimeException e) {   // Gson's texts quote the body: only the kind is logged
+            plugin.getLogger().info("update check failed: GitHub's answer is not a list of releases (" + e.getClass().getSimpleName() + ")");
+            return;
+        }
+        if (latest != null && Versions.newer(latest, current)) {
+            available = latest;
+            plugin.getLogger().info("Prost " + latest + " is available: " + PAGE + " (this server runs " + current + ")");
+        }
     }
 
     static HttpClient client() { return HttpClient.newBuilder().connectTimeout(TIMEOUT).build(); }
@@ -65,11 +72,6 @@ public final class UpdateChecker implements Listener {
         String message = cause.getMessage();
         return message == null || message.isBlank() ? cause.getClass().getSimpleName() : message;
     }
-
-    /** a draft project answers 404 until Modrinth approves it: not worth a line in the console */
-    static Level failureLevel(int status) { return status == HTTP_NOT_FOUND ? Level.FINE : Level.INFO; }
-
-    private static String enc(String s) { return URLEncoder.encode(s, StandardCharsets.UTF_8); }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {

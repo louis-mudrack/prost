@@ -34,12 +34,20 @@ public final class Versions {
         return out;
     }
 
-    /** Modrinth lists versions newest first; null when none is a release */
+    /**
+     * GitHub's release list: the highest tag that is neither a draft nor a pre-release, without its v; null when there is
+     * none. GitHub sorts by date, so a fix for an older line may come first. A body that is no such list throws.
+     */
     public static String latestRelease(String json) {
+        String latest = null;
         for (JsonElement e : JsonParser.parseString(json).getAsJsonArray()) {
-            JsonObject o = e.getAsJsonObject();
-            if ("release".equals(o.get("version_type").getAsString())) return o.get("version_number").getAsString();
+            JsonObject release = e.getAsJsonObject();
+            if (flag(release, "draft") || flag(release, "prerelease") || !release.has("tag_name")) continue;
+            String version = bare(release.get("tag_name").getAsString());
+            if (latest == null || newer(version, latest)) latest = version;
         }
-        return null;
+        return latest;
     }
+
+    private static boolean flag(JsonObject release, String key) { return release.has(key) && release.get(key).getAsBoolean(); }
 }
