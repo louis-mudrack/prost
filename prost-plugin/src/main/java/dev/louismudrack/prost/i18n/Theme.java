@@ -45,7 +45,8 @@ public final class Theme {
     }
 
     private static String color(String value, String fallback, String key, Consumer<String> warn) {
-        String v = value.trim().toLowerCase(Locale.ROOT);
+        // MiniMessage's own aliases: grey and dark_grey name gray and dark_gray
+        String v = value.trim().toLowerCase(Locale.ROOT).replace("grey", "gray");
         if (HEX.matcher(v).matches() || NamedTextColor.NAMES.value(v) != null) return "<" + v + ">";
         return "<" + fallback(warn, key, value, fallback) + ">";
     }

@@ -33,7 +33,7 @@ too: a single value where a list belongs (`worlds: survival`) is read as a one-e
 
 Colours for all language files: `<primary>text</primary>` is a gradient, `<hl>` `<ok>` `<err>` `<muted>` switch the
 colour. See [translations.md](translations.md). A value is a hex colour (`#ffd94d`) or a colour name (`gray`,
-`dark_gray`, `gold`, ...); an invalid colour falls back to the default with a warning.
+`dark_gray`, `gold`, ...; `grey` and `dark_grey` work too); an invalid colour falls back to the default with a warning.
 
 | key | default | meaning |
 |---|---|---|

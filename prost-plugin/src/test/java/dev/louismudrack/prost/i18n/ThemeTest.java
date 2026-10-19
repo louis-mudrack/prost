@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ThemeTest {
     @Test
@@ -33,5 +34,16 @@ class ThemeTest {
         assertEquals("<#ff0000>", t.apply("<err>"));
         assertEquals("<dark_gray>", t.apply("<muted>"));
         assertEquals(3, warnings.size());
+    }
+
+    /** MiniMessage takes grey and dark_grey as names of gray and dark_gray */
+    @Test
+    void greyIsAColourName() {
+        List<String> warnings = new ArrayList<>();
+        Theme t = Theme.of(new ThemeColors("#ffd94d:#ff8f3f", "grey", "Dark_Grey", "#ff5555", " dark_grey "), warnings::add);
+        assertEquals("<gray>", t.apply("<hl>"));
+        assertEquals("<dark_gray>", t.apply("<ok>"));
+        assertEquals("<dark_gray>", t.apply("<muted>"));
+        assertTrue(warnings.isEmpty(), warnings.toString());
     }
 }
