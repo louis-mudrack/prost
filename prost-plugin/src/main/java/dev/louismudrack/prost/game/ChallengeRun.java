@@ -231,7 +231,8 @@ public final class ChallengeRun {
 
     private String rewardText(UUID viewer) {
         List<Reward> rewards = kind == Kind.TEAM ? RewardRules.teamOptions(def.rewards()) : def.rewards();
-        StringJoiner j = new StringJoiner(Msg.str(viewer, "challenge.reward_or"));
+        // trimmed: language files from 0.3.0 carry the spaces inside the value (" or ")
+        StringJoiner j = new StringJoiner(" " + Msg.str(viewer, "challenge.reward_or").trim() + " ");
         for (Reward r : rewards) j.add(switch (r) {
             case HANDOUT -> Msg.str(viewer, "challenge.reward.handout", V.mm("sips", Msg.sips(viewer, def.give())));
             case RULE -> Msg.str(viewer, "challenge.reward.rule");

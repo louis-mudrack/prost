@@ -138,7 +138,7 @@ challenge:
     joker: "Joker"
     joker_each: "ein Joker für jeden"
     next: "die nächste Herausforderung wählen"
-  reward_or: " oder "
+  reward_or: "oder"
   versus: " gegen "
   bar_watching: "<dark_gray>(zuschauen)"
   hint:

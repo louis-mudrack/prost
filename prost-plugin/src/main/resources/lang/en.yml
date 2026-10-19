@@ -138,7 +138,7 @@ challenge:
     joker: "Joker"
     joker_each: "a joker each"
     next: "pick the next challenge"
-  reward_or: " or "
+  reward_or: "or"
   versus: " vs "
   bar_watching: "<dark_gray>(watching)"
   hint:
