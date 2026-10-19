@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletionException;
 import java.util.logging.Level;
 
 /** One asynchronous look at Modrinth at startup; a newer release is told to the console and to admins on join. */
@@ -39,7 +40,8 @@ public final class UpdateChecker implements Listener {
         String query = "?loaders=" + enc("[\"paper\"]");
         HttpRequest request = HttpRequest.newBuilder(URI.create(API + query)).timeout(TIMEOUT)
                 .header("User-Agent", "Kasheyy/Prost/" + current + " (" + PAGE + ")").GET().build();
-        HttpClient.newHttpClient().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
+        HttpClient http = client();
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
             if (response.statusCode() != 200) {
                 plugin.getLogger().log(failureLevel(response.statusCode()), "update check failed: HTTP " + response.statusCode());
                 return;
@@ -50,9 +52,18 @@ public final class UpdateChecker implements Listener {
                 plugin.getLogger().info("Prost " + latest + " is available: " + PAGE + " (this server runs " + current + ")");
             }
         }).exceptionally(e -> {
-            plugin.getLogger().info("update check failed: " + e.getMessage());
+            plugin.getLogger().info("update check failed: " + reason(e));
             return null;
-        });
+        }).whenComplete((done, e) -> http.shutdown());   // one check per start: its threads need not stay
+    }
+
+    static HttpClient client() { return HttpClient.newBuilder().connectTimeout(TIMEOUT).build(); }
+
+    /** the cause's own message, or its class name when it has none ("update check failed: null" said nothing) */
+    static String reason(Throwable e) {
+        Throwable cause = e instanceof CompletionException && e.getCause() != null ? e.getCause() : e;
+        String message = cause.getMessage();
+        return message == null || message.isBlank() ? cause.getClass().getSimpleName() : message;
     }
 
     /** a draft project answers 404 until Modrinth approves it: not worth a line in the console */
