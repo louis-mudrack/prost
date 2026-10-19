@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -57,13 +58,16 @@ public final class TestServer {
     }
 
     private static final class MenuServer extends ServerMock {
+        /** under the module's build folder: gradle clean removes what the tests leave there */
+        private static final Path WORLD_CONTAINERS = Path.of("build", "tmp", "test-worlds");
         private File worldContainer;
 
         /** MockBukkit has none (it throws); Returns looks here for the folder of a world that is not loaded */
         @Override
         public File getWorldContainer() {
             try {
-                if (worldContainer == null) worldContainer = Files.createTempDirectory("prost-worlds").toFile();
+                if (worldContainer == null)
+                    worldContainer = Files.createTempDirectory(Files.createDirectories(WORLD_CONTAINERS), "prost-worlds").toFile();
                 return worldContainer;
             } catch (IOException e) {
                 throw new UncheckedIOException(e);

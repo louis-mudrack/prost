@@ -152,7 +152,10 @@ public final class ChallengeRun {
         plugin.director().ended(round, false);
     }
 
-    /** onDisable / round gone: stop listening and hide the bars, no messages, no scheduling */
+    /**
+     * onDisable / round gone: stop listening and hide the bars, no scheduling; no messages of its own, but a vote tour it
+     * stops brings its players back and tells them so (game.vote.returned)
+     */
     void stopQuietly() {
         if (over) return;
         over = true;

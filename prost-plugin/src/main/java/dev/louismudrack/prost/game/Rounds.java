@@ -14,11 +14,8 @@ import org.bukkit.entity.Player;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -175,11 +172,8 @@ public final class Rounds {
         for (Round r : byCode.values()) list.add(RoundCodec.encode(r));
         DumperOptions o = new DumperOptions();
         o.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        Path file = new File(plugin.getDataFolder(), FILE).toPath(), tmp = file.resolveSibling(FILE + ".tmp");
         try {
-            java.nio.file.Files.createDirectories(file.getParent());
-            java.nio.file.Files.writeString(tmp, new Yaml(o).dump(list), StandardCharsets.UTF_8);
-            java.nio.file.Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            plugin.files().writeAtomically(FILE, new Yaml(o).dump(list).getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             plugin.getLogger().warning(FILE + " not saved: " + e.getMessage());
         }

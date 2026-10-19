@@ -299,7 +299,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
             if (stand == null) {
                 V who = V.of("name", name(builder));
                 if (spot == null) Msg.tell(p, "game.vote.show_missing", who);
-                else Msg.tell(p, "game.vote.unvisitable", who);
+                else Msg.tell(p, "game.vote.unvisitable", who, V.of("blocks", MAX_RAISE));
                 continue;
             }
             String title = "<primary>" + Msg.str(id, "game.vote.show_title", V.of("name", name(builder))) + "</primary>";

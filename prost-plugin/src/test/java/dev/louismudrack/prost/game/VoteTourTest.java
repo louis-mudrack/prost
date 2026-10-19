@@ -12,19 +12,39 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
+import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Item;
+import org.bukkit.entity.ItemFrame;
+import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerBucketFillEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.Vector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PigMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation;
 import org.mockbukkit.mockbukkit.simulate.entity.PlayerSimulation;
@@ -194,7 +214,7 @@ class VoteTourTest {
         told.addAll(TestServer.messages(host));
         assertEquals(List.of(at(10, 65, 10), at(20, 66, 20)), visited.stream().sorted((a, b) -> Double.compare(a.getX(), b.getX())).toList(),
                 "one block up out of the stone, two to get the head free");
-        assertTrue(told(told, "Build by Ben: can't be visited (no room"), told.toString());
+        assertTrue(told(told, "Build by Ben: can't be visited (no room to stand within 16 blocks above the spot)"), told.toString());
         assertEquals(2 * viewMs(), now.get() - tourStart, "no viewing time for a build that cannot be visited");
         assertInstanceOf(GameMenu.class, holder(host));
         assertTrue(told(told, "Build by Host: world 10 64 10"), "the spot itself is announced: " + told);
@@ -206,6 +226,10 @@ class VoteTourTest {
         tour();
         assertSheltered(anna, true, "on the tour");
         assertSheltered(outsider, false, "not in the contest");
+        later(viewMs());
+        tick();
+        assertTrue(builds.containsValue(anna.getLocation()), "at the second build: " + anna.getLocation());
+        assertSheltered(anna, true, "at the second build, long after the tour began");
         toVote(host);
         later(2000L);
         assertSheltered(anna, true, "2 s after the return");
@@ -225,6 +249,64 @@ class VoteTourTest {
                 Material.WATER_BUCKET, new ItemStack(Material.WATER_BUCKET), EquipmentSlot.HAND);
         server.getPluginManager().callEvent(bucket);
         assertEquals(sheltered, bucket.isCancelled(), when + ": emptying a bucket");
+    }
+
+    /** the shelter cancels the burning, not the fire ticks: at home they would burn once the grace is over */
+    @Test
+    void fireAndFrostFromABuildDoNotFollowThemHome() {
+        tour();
+        anna.setFireTicks(200);
+        anna.setFreezeTicks(100);
+        toVote(host);
+        assertHome(anna, "back");
+        assertEquals(0, anna.getFireTicks(), "not burning at home");
+        assertEquals(0, anna.getFreezeTicks(), "not freezing at home");
+    }
+
+    /** nothing at a build may be used, hit, broken, taken or left there */
+    @Test
+    void touringPlayersCannotUseOrTakeAnything() {
+        tour();
+        assertNothingTouched(anna, true, "on the tour");
+        toVote(host);
+        later(4000L);
+        assertNothingTouched(anna, false, "4 s after the return");
+    }
+
+    private void assertNothingTouched(PlayerMock p, boolean sheltered, String when) {
+        Location at = p.getLocation();
+        World w = at.getWorld();
+        Block chest = at.getBlock().getRelative(BlockFace.NORTH);
+        chest.setType(Material.CHEST);
+        PlayerInteractEvent use = new PlayerInteractEvent(p, Action.RIGHT_CLICK_BLOCK, new ItemStack(Material.FLINT_AND_STEEL), chest,
+                BlockFace.UP, EquipmentSlot.HAND);
+        server.getPluginManager().callEvent(use);
+        assertEquals(sheltered, use.useInteractedBlock() == Event.Result.DENY && use.useItemInHand() == Event.Result.DENY,
+                when + ": a chest, flint and steel");
+        PlayerInteractEvent air = new PlayerInteractEvent(p, Action.RIGHT_CLICK_AIR, new ItemStack(Material.ENDER_PEARL), null, BlockFace.UP,
+                EquipmentSlot.HAND);
+        server.getPluginManager().callEvent(air);
+        assertEquals(sheltered, air.useItemInHand() == Event.Result.DENY, when + ": a pearl thrown into the air");
+        PigMock pig = (PigMock) w.spawnEntity(at, EntityType.PIG);
+        ItemFrame frame = w.spawn(at, ItemFrame.class);
+        Arrow arrow = w.spawn(at, Arrow.class);
+        arrow.setShooter(p);
+        Item dirt = w.dropItem(at, new ItemStack(Material.DIRT));
+        LivingEntitySimulation hurt = new LivingEntitySimulation(pig);
+        assertEquals(sheltered, hurt.simulateDamage(2, p).isCancelled(), when + ": hitting an animal");
+        assertEquals(sheltered, hurt.simulateDamage(2, arrow).isCancelled(), when + ": shooting an animal");
+        Map<String, Event> touches = new LinkedHashMap<>();
+        touches.put("using an animal", new PlayerInteractEntityEvent(p, pig, EquipmentSlot.HAND));
+        touches.put("using an item frame", new PlayerInteractAtEntityEvent(p, frame, new Vector(), EquipmentSlot.HAND));
+        touches.put("breaking an item frame", new HangingBreakByEntityEvent(frame, p, HangingBreakEvent.RemoveCause.ENTITY));
+        touches.put("filling a bucket", new PlayerBucketFillEvent(p, chest, chest, BlockFace.UP, Material.BUCKET, new ItemStack(Material.BUCKET),
+                EquipmentSlot.HAND));
+        touches.put("dropping an item", new PlayerDropItemEvent(p, dirt));
+        touches.put("picking up an item", new EntityPickupItemEvent(p, dirt, 0));
+        touches.forEach((what, e) -> {
+            server.getPluginManager().callEvent(e);
+            assertEquals(sheltered, ((Cancellable) e).isCancelled(), when + ": " + what);
+        });
     }
 
     @Test
@@ -317,10 +399,12 @@ class VoteTourTest {
     @Test
     void aPlayerWhoDiesOnTheTourRespawnsWhereTheyStood() {
         tour();
+        anna.setFireTicks(200);
         anna.setHealth(0);
         assertTrue(anna.isDead());
         anna.respawn();
         assertHome(anna, "respawned where she stood");
+        assertEquals(0, anna.getFireTicks(), "not burning");
         later(viewMs());
         tick();
         assertHome(anna, "Prost holds no way back for her any more, so the tour does not take her along");
@@ -366,10 +450,12 @@ class VoteTourTest {
     void aWayBackIntoAnUnloadedWorldWaitsForTheNextJoin() throws Exception {
         tourFromAnotherWorld(true);
         Location home = homes.get(anna);
+        TestServer.messages(anna);
         try (LogCapture log = LogCapture.root()) {
             toVote(host);
             assertEquals(1, log.messages().stream().filter(m -> m.contains("Anna") && m.contains("not loaded")).count(), log.messages().toString());
         }
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"), "she is told too");
         assertTrue(builds.containsValue(anna.getLocation()), "no other place instead: " + anna.getLocation());
         assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept");
         server.addSimpleWorld("other");
@@ -382,14 +468,56 @@ class VoteTourTest {
     @Test
     void aWayBackIntoAWorldThatIsGoneIsDropped() throws Exception {
         tourFromAnotherWorld(false);
+        TestServer.messages(anna);
         try (LogCapture log = LogCapture.root()) {
             toVote(host);
             assertEquals(1, log.messages().stream().filter(m -> m.contains("Anna") && m.contains("no longer exists")).count(), log.messages().toString());
         }
+        assertTrue(told(TestServer.messages(anna), "no longer exists - you stay here"), "she is told too");
         assertFalse(saved().containsKey(anna.getUniqueId().toString()), "dropped");
+        assertSheltered(anna, false, "no way back, no tour: no shelter");
         Location stays = anna.getLocation();
         anna.disconnect();
         anna.reconnect();
         assertEquals(stays, anna.getLocation(), "nothing left to apply on joining");
+    }
+
+    /** dropped on the respawn while the tour still runs: the shelter ends with the way back, it does not last forever */
+    @Test
+    void aWayBackDroppedOnRespawnEndsTheShelter() {
+        tourFromAnotherWorld(false);
+        anna.setHealth(0);
+        anna.respawn();
+        assertSheltered(anna, false, "her way back is gone");
+        toVote(host);
+        later(4000L);
+        assertSheltered(anna, false, "after the tour");
+    }
+
+    /** another plugin refuses the teleport home */
+    public static final class HomeBlocker implements Listener {
+        private final Location home;
+
+        HomeBlocker(Location home) { this.home = home; }
+
+        @EventHandler
+        public void on(PlayerTeleportEvent e) { if (home.equals(e.getTo())) e.setCancelled(true); }
+    }
+
+    @Test
+    void aRefusedReturnIsToldAndTriedAgainOnJoin() throws Exception {
+        tour();
+        HomeBlocker blocker = new HomeBlocker(homes.get(anna));
+        server.getPluginManager().registerEvents(blocker, plugin);
+        TestServer.messages(anna);
+        toVote(host);
+        assertTrue(builds.containsValue(anna.getLocation()), "still at a build: " + anna.getLocation());
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"));
+        assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept");
+        assertSheltered(anna, false, "the tour is over for her");
+        HandlerList.unregisterAll(blocker);
+        anna.disconnect();
+        anna.reconnect();
+        assertHome(anna, "back on joining");
     }
 }

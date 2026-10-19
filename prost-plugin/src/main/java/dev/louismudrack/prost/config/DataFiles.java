@@ -10,12 +10,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -122,20 +124,48 @@ public final class DataFiles {
 
     private Path lastGoodCopy() { return dataFile(LAST_GOOD_CONFIG); }
 
-    /** through a temp file: a stop halfway through writing must not leave a broken copy */
     private void keepAsLastGood(byte[] content) {
-        Path copy = lastGoodCopy(), tmp = copy.resolveSibling(LAST_GOOD_CONFIG + ".tmp");
         try {
-            Files.write(tmp, content);
-            try {
-                Files.move(tmp, copy, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {   // some file systems cannot: a plain replace is still better than none
-                Files.move(tmp, copy, StandardCopyOption.REPLACE_EXISTING);
-            }
+            writeAtomically(LAST_GOOD_CONFIG, content);
         } catch (IOException e) {
             plugin.getLogger().warning(LAST_GOOD_CONFIG + " not saved (" + YamlErrors.describe(e) + ") - a broken " + CONFIG
-                    + " would fall back to an older copy or the shipped defaults" + removed(tmp));
+                    + " would fall back to an older copy or the shipped defaults");
         }
+    }
+
+    /**
+     * A file of the data folder replaced through a temp file that is forced to disk first: a stop, a crash or a power
+     * loss halfway through leaves the old content or the new, never a broken or empty file. Synchronous, so it works
+     * while the plugin is disabling. On failure the temp file is removed; the exception's message says if it is left.
+     */
+    public void writeAtomically(String name, byte[] content) throws IOException {
+        Path file = dataFile(name), tmp = file.resolveSibling(name + ".tmp");
+        try {
+            Files.createDirectories(file.getParent());
+            try (FileChannel out = FileChannel.open(tmp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE)) {
+                ByteBuffer data = ByteBuffer.wrap(content);
+                while (data.hasRemaining()) out.write(data);
+                out.force(true);
+            }
+            try {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {   // some file systems cannot: a plain replace is still better than none
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            throw new IOException(YamlErrors.describe(e) + removed(tmp), e);
+        }
+    }
+
+    /**
+     * A data file as written, strictly (UTF-8, no duplicate keys); null when it is absent or holds nothing. Unlike load
+     * and loadIfPresent it throws on a file it cannot read or parse (SnakeYAML's YAMLException is a RuntimeException):
+     * the caller decides what that means.
+     */
+    public Object read(String name) throws IOException {
+        Path f = dataFile(name);
+        return Files.exists(f) ? parse(Files.readAllBytes(f)) : null;
     }
 
     /** "" once the temp file is gone, else what is left behind */

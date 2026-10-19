@@ -6,26 +6,37 @@ import dev.louismudrack.prost.i18n.Msg;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerBucketFillEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -34,13 +45,15 @@ import java.util.UUID;
 /**
  * The way back from a build contest tour: where each touring player stood when it started, written to returns.yml before
  * anyone moves, so a quit, a stop or a crash still gets them back - inline on a stop, on the next join or respawn
- * otherwise. From the start of the tour until they are back, and RETURN_GRACE_MS after that, they take no damage and
- * cannot break or place blocks or empty buckets.
+ * otherwise. From the start of the tour until it is over for them, and RETURN_GRACE_MS after a return, they take no
+ * damage and cannot change or take anything at a build: no blocks, buckets or block and item use, no using, hitting or
+ * breaking entities, no dropping or picking up items.
  */
 public final class Returns implements Listener {
     private static final String FILE = "returns.yml";
     /** spec §7: the arrival may need a moment (chunks loading) before the player is on their own again */
     private static final long RETURN_GRACE_MS = 3000L;
+    /** the shelter of a player on the tour: it lasts until the tour is over for them */
     private static final long UNTIL_BACK = Long.MAX_VALUE;
     private static final String HEADER = "# Prost: where each player of a build contest tour goes back to - written by the plugin\n";
 
@@ -80,15 +93,40 @@ public final class Returns implements Listener {
 
     public Returns(ProstPlugin plugin) { this.plugin = plugin; }
 
-    /** what a crash left behind */
+    /** what a crash left behind; an empty file is nobody to bring back, an unreadable one is set aside */
     public void load() {
-        if (!(plugin.files().loadIfPresent(FILE) instanceof Map<?, ?> saved)) return;
+        Object parsed;
+        try {
+            parsed = plugin.files().read(FILE);
+        } catch (IOException | RuntimeException e) {   // SnakeYAML's YAMLException is a RuntimeException
+            setAside(YamlErrors.describe(e));
+            return;
+        }
+        if (parsed == null) return;
+        if (!(parsed instanceof Map<?, ?> saved)) {
+            setAside("the top level is not a map of players");
+            return;
+        }
         saved.forEach((key, value) -> {
             Home home = Home.decode(value);
             UUID id = uuid(String.valueOf(key));
             if (id == null || home == null) plugin.getLogger().warning(FILE + ": the entry " + key + " is incomplete - skipped");
             else homes.put(id, home);
         });
+    }
+
+    /** the next save would overwrite it: moved next to it under a name no save uses, for the admin to repair */
+    private void setAside(String problem) {
+        Path file = new File(plugin.getDataFolder(), FILE).toPath(), aside = file.resolveSibling(FILE + ".broken");
+        for (int n = 2; Files.exists(aside); n++) aside = file.resolveSibling(FILE + ".broken." + n);
+        try {
+            Files.move(file, aside);
+            plugin.getLogger().warning(FILE + " is unreadable (" + problem + ") - moved to " + aside.getFileName()
+                    + ", nobody is brought back from it; to use it, stop the server, fix it, rename it to " + FILE + " and start again");
+        } catch (IOException e) {
+            plugin.getLogger().warning(FILE + " is unreadable (" + problem + ") and could not be moved aside (" + YamlErrors.describe(e)
+                    + ") - copy it somewhere else now, the next build contest tour replaces it");
+        }
     }
 
     private static UUID uuid(String s) {
@@ -100,8 +138,8 @@ public final class Returns implements Listener {
     }
 
     /**
-     * Before anyone moves: each player's way back, on disk at once; they are sheltered until they are back. False (one
-     * warning) when returns.yml cannot be written - then nothing is kept and nobody may be moved.
+     * Before anyone moves: each player's way back, on disk at once; they are sheltered until the tour is over for them.
+     * False (one warning) when returns.yml cannot be written - then nothing is kept and nobody may be moved.
      */
     public boolean remember(Map<UUID, Location> where) {
         Map<UUID, Home> before = new LinkedHashMap<>(homes);
@@ -119,27 +157,31 @@ public final class Returns implements Listener {
     public boolean remembers(UUID id) { return homes.containsKey(id); }
 
     /**
-     * Back to where they stood when the tour started, out of any vehicle; true if it moved them. Sheltered for
-     * RETURN_GRACE_MS from now either way: the tour is over for them. Dead: the respawn brings them back.
+     * Back to where they stood when the tour started, out of any vehicle, no longer burning or freezing; true if it moved
+     * them. The tour is over for them either way: the shelter ends, with the grace only after a return. Dead: the respawn
+     * brings them back. A return that cannot be made yet is told to them and tried again when they join.
      */
     public boolean bringBack(Player p) {
         UUID id = p.getUniqueId();
+        endShelter(id);
         Home home = homes.get(id);
-        if (home == null) return false;
-        sheltered.put(id, plugin.now() + RETURN_GRACE_MS);
-        if (p.isDead()) return false;
+        if (home == null || p.isDead()) return false;
+        extinguish(p);
         World world = worldOf(p, home);
         if (world == null) return false;
         p.leaveVehicle();
         if (!p.teleport(home.in(world))) {
             plugin.getLogger().warning(p.getName() + " could not be moved back to " + home + " - tried again when they join");
+            Msg.tell(p, "game.vote.return_later");
             return false;
         }
         returned(p);
         return true;
     }
 
+    /** the way back is gone, and with it the shelter that lasts until they are back */
     public void forget(UUID id) {
+        endShelter(id);
         if (homes.remove(id) != null) save(" - a player who is back may be moved there again on joining after a restart");
     }
 
@@ -149,6 +191,15 @@ public final class Returns implements Listener {
         Msg.tell(p, "game.vote.returned");
     }
 
+    /** a running grace stays */
+    private void endShelter(UUID id) { sheltered.remove(id, UNTIL_BACK); }
+
+    /** fire or frost picked up at a build while sheltered must not hurt them at home */
+    private static void extinguish(Player p) {
+        p.setFireTicks(0);
+        p.setFreezeTicks(0);
+    }
+
     /** loaded: the world; unloaded: null, the way back waits for the next join; no folder either: gone, dropped */
     private World worldOf(Player p, Home home) {
         World world = Bukkit.getWorld(home.world());
@@ -156,10 +207,12 @@ public final class Returns implements Listener {
         if (new File(Bukkit.getWorldContainer(), home.world()).isDirectory()) {
             plugin.getLogger().warning(p.getName() + "'s way back leads to " + home + ", but the world " + home.world()
                     + " is not loaded - tried again when they join");
+            Msg.tell(p, "game.vote.return_later");
         } else {
             forget(p.getUniqueId());
             plugin.getLogger().warning(p.getName() + "'s way back leads to " + home + ", but the world " + home.world()
                     + " no longer exists - dropped");
+            Msg.tell(p, "game.vote.return_gone");
         }
         return null;
     }
@@ -172,7 +225,13 @@ public final class Returns implements Listener {
         return false;
     }
 
-    // ---------------------------------------------------------------------------------------------- events
+    /** a hit or a removal by a sheltered player: by themselves, or by a projectile they shot */
+    private boolean sheltersCause(Entity cause) {
+        if (cause instanceof Projectile shot && shot.getShooter() instanceof Player shooter) return shelters(shooter.getUniqueId());
+        return cause instanceof Player p && shelters(p.getUniqueId());
+    }
+
+    // ---------------------------------------------------------------------------------------------- the way back
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) { bringBack(e.getPlayer()); }
@@ -184,12 +243,25 @@ public final class Returns implements Listener {
         Home home = homes.get(p.getUniqueId());
         World world = home == null ? null : worldOf(p, home);
         if (world == null) return;
+        extinguish(p);
         e.setRespawnLocation(home.in(world));
         returned(p);
     }
 
+    // ---------------------------------------------------------------------------------------------- the shelter
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDamage(EntityDamageEvent e) { if (e.getEntity() instanceof Player p && shelters(p.getUniqueId())) e.setCancelled(true); }
+
+    /** animals, armor stands, item frames - also with an arrow */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onHit(EntityDamageByEntityEvent e) { if (sheltersCause(e.getDamager())) e.setCancelled(true); }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onHangingBreak(HangingBreakByEntityEvent e) { if (sheltersCause(e.getRemover())) e.setCancelled(true); }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onVehicleDamage(VehicleDamageEvent e) { if (sheltersCause(e.getAttacker())) e.setCancelled(true); }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent e) { if (shelters(e.getPlayer().getUniqueId())) e.setCancelled(true); }
@@ -200,40 +272,48 @@ public final class Returns implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBucket(PlayerBucketEmptyEvent e) { if (shelters(e.getPlayer().getUniqueId())) e.setCancelled(true); }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onBucketFill(PlayerBucketFillEvent e) { if (shelters(e.getPlayer().getUniqueId())) e.setCancelled(true); }
+
+    /** doors, buttons, containers, flint and steel, pearls; not ignoreCancelled: a click into the air arrives as cancelled */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onUse(PlayerInteractEvent e) {
+        if (!shelters(e.getPlayer().getUniqueId())) return;
+        e.setUseInteractedBlock(Event.Result.DENY);
+        e.setUseItemInHand(Event.Result.DENY);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onUseEntity(PlayerInteractEntityEvent e) { if (shelters(e.getPlayer().getUniqueId())) e.setCancelled(true); }
+
+    /** its own handler list: the click armor stands get */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onUseEntityAt(PlayerInteractAtEntityEvent e) { if (shelters(e.getPlayer().getUniqueId())) e.setCancelled(true); }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onArmorStand(PlayerArmorStandManipulateEvent e) { if (shelters(e.getPlayer().getUniqueId())) e.setCancelled(true); }
+
+    /** their own item would stay at the stranger's build */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onDrop(PlayerDropItemEvent e) { if (shelters(e.getPlayer().getUniqueId())) e.setCancelled(true); }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPickup(EntityPickupItemEvent e) { if (e.getEntity() instanceof Player p && shelters(p.getUniqueId())) e.setCancelled(true); }
+
     // ---------------------------------------------------------------------------------------------- the file
 
-    /**
-     * Synchronously, through a temp file: it has to work while the plugin is disabling, and a stop halfway through
-     * writing must not leave a broken file. False (one warning ending in {@code consequence}) when it failed.
-     */
+    /** false (one warning ending in {@code consequence}) when it could not be written */
     private boolean save(String consequence) {
         Map<String, Object> out = new LinkedHashMap<>();
         homes.forEach((id, home) -> out.put(id.toString(), home.encode()));
         DumperOptions o = new DumperOptions();
         o.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        Path file = new File(plugin.getDataFolder(), FILE).toPath(), tmp = file.resolveSibling(FILE + ".tmp");
         try {
-            Files.createDirectories(file.getParent());
-            Files.writeString(tmp, HEADER + new Yaml(o).dump(out), StandardCharsets.UTF_8);
-            try {
-                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {   // some file systems cannot: a plain replace is still better than none
-                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
-            }
+            plugin.files().writeAtomically(FILE, (HEADER + new Yaml(o).dump(out)).getBytes(StandardCharsets.UTF_8));
             return true;
         } catch (IOException e) {
-            plugin.getLogger().warning(FILE + " not saved (" + YamlErrors.describe(e) + ")" + consequence + removed(tmp));
+            plugin.getLogger().warning(FILE + " not saved (" + YamlErrors.describe(e) + ")" + consequence);
             return false;
-        }
-    }
-
-    /** "" once the temp file is gone, else what is left behind */
-    private static String removed(Path tmp) {
-        try {
-            Files.deleteIfExists(tmp);
-            return "";
-        } catch (IOException e) {
-            return "; " + tmp.getFileName() + " is left behind (" + YamlErrors.describe(e) + ")";
         }
     }
 }
