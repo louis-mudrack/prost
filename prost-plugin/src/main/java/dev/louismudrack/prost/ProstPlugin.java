@@ -98,8 +98,8 @@ public class ProstPlugin extends JavaPlugin {
             return;
         }
         files = new DataFiles(this);
-        // a config.yml that does not parse is reported once, by reloadData() below
-        if (!YamlMerge.unparseable(new File(getDataFolder(), DataFiles.CONFIG))) YamlMerge.ensure(this, DataFiles.CONFIG);
+        // a broken or empty config.yml is reported once, by reloadData() below
+        if (files.configMayGrow()) YamlMerge.ensure(this, DataFiles.CONFIG);
         // silent here: reloadData() below parses the file again and logs its warnings once
         pluginConfig = PluginConfig.parse(files.config(problem -> { }), warning -> { });
         openStorage();

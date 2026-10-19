@@ -60,6 +60,7 @@ public final class DataFiles {
      * config.yml. Each version that parses is kept as .config.last-good.yml, and a broken one falls back to that copy with
      * all its settings: the shipped copy's storage would move a MySQL server's stats into a local SQLite file. The shipped
      * defaults apply only without a copy. A broken file is reported to problem in one line: its error's kind and position.
+     * An empty file (a crash or a full disk while saving) counts as broken while there is a copy.
      */
     public Map<?, ?> config(Consumer<String> problem) {
         File f = new File(plugin.getDataFolder(), CONFIG);
@@ -70,37 +71,56 @@ public final class DataFiles {
             content = Files.readAllBytes(f.toPath());
             parsed = parse(content);
         } catch (IOException | RuntimeException e) {
-            return lastGood(YamlErrors.describe(e), problem);
+            return lastGood(CONFIG + " is unreadable (" + YamlErrors.describe(e) + ")", problem);
         }
-        if (parsed == null) return Map.of();   // empty: every default
-        if (!(parsed instanceof Map<?, ?> settings)) return lastGood(NOT_A_MAP, problem);
+        if (empty(parsed)) return Files.exists(lastGoodCopy()) ? lastGood(CONFIG + " is empty", problem) : Map.of();
+        if (!(parsed instanceof Map<?, ?> settings)) return lastGood(CONFIG + " is unreadable (" + NOT_A_MAP + ")", problem);
         keepAsLastGood(content);
         return settings;
     }
 
-    private Map<?, ?> lastGood(String error, Consumer<String> problem) {
-        String unreadable = CONFIG + " is unreadable (" + error + ")";
-        Path copy = dataFile(LAST_GOOD_CONFIG);
+    /**
+     * whether YamlMerge may add the missing keys to config.yml: not to a file that does not parse (reported by config()),
+     * nor to an empty one the copy stands in for - the shipped defaults it would get are no settings anyone chose
+     */
+    public boolean configMayGrow() {
+        File f = new File(plugin.getDataFolder(), CONFIG);
+        if (!f.exists()) return true;
+        if (YamlMerge.unparseable(f)) return false;
+        try {
+            return !(empty(parse(Files.readAllBytes(f.toPath()))) && Files.exists(lastGoodCopy()));
+        } catch (IOException | RuntimeException e) {   // config() reports it
+            return false;
+        }
+    }
+
+    private static boolean empty(Object parsed) { return parsed == null || parsed instanceof Map<?, ?> m && m.isEmpty(); }
+
+    private Map<?, ?> lastGood(String what, Consumer<String> problem) {
+        String trouble = what;
+        Path copy = lastGoodCopy();
         if (Files.exists(copy)) {
             String copyError;
             try {
                 if (parse(Files.readAllBytes(copy)) instanceof Map<?, ?> settings) {
-                    problem.accept(unreadable + " - the last good settings from " + LAST_GOOD_CONFIG + " are in use until it is fixed");
+                    problem.accept(trouble + " - the last good settings from " + LAST_GOOD_CONFIG + " are in use until it is fixed");
                     return settings;
                 }
                 copyError = NOT_A_MAP;
             } catch (IOException | RuntimeException e) {
                 copyError = YamlErrors.describe(e);
             }
-            unreadable += ", and so is " + LAST_GOOD_CONFIG + " (" + copyError + ")";
+            trouble += ", and " + LAST_GOOD_CONFIG + " is unreadable (" + copyError + ")";
         }
-        problem.accept(unreadable + " - using the shipped defaults until it is fixed");
+        problem.accept(trouble + " - using the shipped defaults until it is fixed");
         return shipped(CONFIG) instanceof Map<?, ?> settings ? settings : Map.of();
     }
 
+    private Path lastGoodCopy() { return dataFile(LAST_GOOD_CONFIG); }
+
     /** through a temp file: a stop halfway through writing must not leave a broken copy */
     private void keepAsLastGood(byte[] content) {
-        Path copy = dataFile(LAST_GOOD_CONFIG), tmp = copy.resolveSibling(LAST_GOOD_CONFIG + ".tmp");
+        Path copy = lastGoodCopy(), tmp = copy.resolveSibling(LAST_GOOD_CONFIG + ".tmp");
         try {
             Files.write(tmp, content);
             Files.move(tmp, copy, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

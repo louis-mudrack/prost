@@ -187,4 +187,44 @@ class BrokenConfigTest {
             for (String value : List.of(SECRET, LAST_GOOD_PASSWORD, LAST_GOOD_HOST)) assertFalse(LogCapture.text(r).contains(value), LogCapture.text(r));
         assertTrue(plugin.isEnabled());
     }
+
+    /**
+     * a crash or a full disk can leave config.yml empty: the copy answers and stays, and the file is not filled with the
+     * shipped defaults (storage: sqlite) - which the next parse would have taken as the new last good settings
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"", "# nothing but a comment\n", "{}\n"})
+    void anEmptyConfigKeepsTheLastGoodCopy(String empty) {
+        ProstPlugin plugin = TestServer.start(server, folder -> {
+            write(folder, LAST_GOOD, afkMinutes(7));
+            write(folder, "config.yml", empty);
+        });
+        Path folder = plugin.getDataFolder().toPath();
+        assertEquals(7, plugin.pluginConfig().afkMinutes());
+        assertEquals(empty, read(folder.resolve("config.yml")), "not filled with the shipped defaults");
+        assertEquals(afkMinutes(7), read(folder.resolve(LAST_GOOD)), "the copy stays");
+        List<LogRecord> records = configRecords();
+        assertEquals(1, records.size(), all(records));
+        assertEquals(Level.SEVERE, records.get(0).getLevel());
+        assertTrue(records.get(0).getMessage().startsWith("config.yml is empty - the last good settings"), records.get(0).getMessage());
+    }
+
+    @Test
+    void anEmptyConfigReadsTheMysqlCopy() {
+        ProstPlugin plugin = TestServer.start(server);
+        write(plugin.getDataFolder(), LAST_GOOD, mysql());
+        write(plugin.getDataFolder(), "config.yml", "");
+        PluginConfig parsed = PluginConfig.parse(plugin.files().config(problem -> { }), warning -> { });
+        assertEquals("mysql", parsed.storage().type());
+        assertEquals(mysql(), read(plugin.getDataFolder().toPath().resolve(LAST_GOOD)), "the copy stays");
+    }
+
+    /** a first start with an empty file: nothing to fall back to, so the shipped defaults fill it as before */
+    @Test
+    void anEmptyConfigWithoutACopyGetsTheDefaults() {
+        ProstPlugin plugin = TestServer.start(server, folder -> write(folder, "config.yml", ""));
+        assertEquals(PluginConfig.DEFAULTS.storage().type(), plugin.pluginConfig().storage().type());
+        assertTrue(read(plugin.getDataFolder().toPath().resolve("config.yml")).contains("storage:"), "the defaults were added");
+        assertTrue(configRecords().stream().noneMatch(r -> r.getLevel() == Level.SEVERE), all(configRecords()));
+    }
 }
