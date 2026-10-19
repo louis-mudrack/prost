@@ -7,8 +7,11 @@ start; your values are never changed. Catalogues are covered in [challenges.md](
 
 `/prost reload` (or `/prost admin reload`) reads the files again. (`/prost admin` without an argument runs `/prost admin list`.) Keys marked **(restart)** are read once at start and
 need a server restart. A file that is not valid YAML is ignored with a warning naming the line (the shipped copy is used
-until you fix it). For `config.yml` that includes `storage:`: a MySQL server whose `config.yml` breaks writes its stats to
-the local SQLite `stats.db` after the next restart, until the file is fixed. Check the console after editing it.
+until you fix it). `config.yml` is different: each version of it that parses is saved as `.config.last-good.yml` next to
+it, and a broken `config.yml` falls back to that copy with all its settings, `storage:` included, so a MySQL server keeps
+its stats in MySQL. The console names the error's line in one error line; `/prost reload` with a broken `config.yml` keeps
+the settings in use. Only without a copy (a broken file on the very first start) do the shipped defaults apply. The copy
+holds the same values as `config.yml`, the database password included. Check the console after editing it.
 
 YAML 1.1 turns a bare `on`, `off`, `yes` or `no` into a boolean. Prost treats those as you mean them: `nether: off` is
 OFF, `end: on` is ON.

@@ -97,9 +97,10 @@ public class ProstPlugin extends JavaPlugin {
             return;
         }
         files = new DataFiles(this);
-        YamlMerge.ensure(this, "config.yml");
+        // a config.yml that does not parse is reported once, by reloadData() below
+        if (!YamlMerge.unparseable(new File(getDataFolder(), DataFiles.CONFIG))) YamlMerge.ensure(this, DataFiles.CONFIG);
         // silent here: reloadData() below parses the file again and logs its warnings once
-        pluginConfig = PluginConfig.parse(files.map("config.yml"), warning -> { });
+        pluginConfig = PluginConfig.parse(files.config(problem -> { }), warning -> { });
         openStorage();
         migrateOnStart();   // before game.yml, the catalogue and rounds.yml are read, so AniDrinks' copies are what loads
         hooks = createHooks();
@@ -253,7 +254,7 @@ public class ProstPlugin extends JavaPlugin {
     }
 
     public void reloadData() {
-        pluginConfig = PluginConfig.parse(files.map("config.yml"), getLogger()::warning);
+        pluginConfig = PluginConfig.parse(files.config(getLogger()::severe), getLogger()::warning);
         cfg = GameConfig.parse(files.map("game.yml"));
         challenges = Catalogue.load(files.load("challenges.yml"), getLogger());
         preparedRules = RulesFile.parse(files.load("rules.yml"));

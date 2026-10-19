@@ -17,6 +17,17 @@ import java.nio.charset.StandardCharsets;
 public final class YamlMerge {
     private YamlMerge() {}
 
+    /** a file that exists and does not parse: its reader reports it, so ensure() is skipped instead of warning twice */
+    public static boolean unparseable(File f) {
+        if (!f.exists()) return false;
+        try {
+            new YamlConfiguration().load(f);
+            return false;
+        } catch (IOException | InvalidConfigurationException | RuntimeException e) {   // an unknown tag comes through bare
+            return true;
+        }
+    }
+
     /** true when the file was written or extended */
     public static boolean ensure(JavaPlugin plugin, String path) {
         File file = new File(plugin.getDataFolder(), path);

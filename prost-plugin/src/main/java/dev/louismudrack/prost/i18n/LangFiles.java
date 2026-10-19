@@ -41,19 +41,9 @@ public final class LangFiles {
         for (String code : SHIPPED) {
             String path = FOLDER + "/" + code + SUFFIX;
             // read() reports a file that does not parse; YamlMerge would warn about it a second time
-            if (!unparseable(new File(plugin.getDataFolder(), path))) YamlMerge.ensure(plugin, path);
+            if (!YamlMerge.unparseable(new File(plugin.getDataFolder(), path))) YamlMerge.ensure(plugin, path);
         }
         return read(new File(plugin.getDataFolder(), FOLDER), defaultLanguage, shippedEnglish(plugin), plugin.getLogger()::warning);
-    }
-
-    private static boolean unparseable(File f) {
-        if (!f.exists()) return false;
-        try {
-            new YamlConfiguration().load(f);
-            return false;
-        } catch (IOException | InvalidConfigurationException | RuntimeException e) {   // an unknown tag comes through bare
-            return true;
-        }
     }
 
     static Lang read(File dir, String defaultLanguage, Consumer<String> warn) { return read(dir, defaultLanguage, Map.of(), warn); }
