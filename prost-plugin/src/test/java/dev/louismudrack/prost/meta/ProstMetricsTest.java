@@ -6,6 +6,9 @@ import dev.louismudrack.prost.TestServer;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -25,10 +28,16 @@ class ProstMetricsTest {
     @Test
     void registeredOnBstats() { assertEquals(34824, ProstMetrics.BSTATS_ID); }
 
-    /** the test classes keep bStats unrelocated, which bStats refuses with an exception: it must not stop Prost */
+    /**
+     * the test classes keep bStats unrelocated, which bStats refuses with an exception: it must not stop Prost. bStats is
+     * switched off server-wide first, so even a bStats that started could not count this run as an install
+     */
     @Test
-    void aBstatsFailureCostsOneWarning() {
+    void aBstatsFailureCostsOneWarning() throws IOException {
         ProstPlugin plugin = TestServer.start(TestServer.mock());
+        Path bStats = plugin.getDataFolder().toPath().resolveSibling("bStats");
+        Files.createDirectories(bStats);
+        Files.writeString(bStats.resolve("config.yml"), "enabled: false\n");
         try (LogCapture log = LogCapture.root()) {
             assertDoesNotThrow(() -> ProstMetrics.start(plugin));
             List<LogRecord> warnings = log.records().stream().filter(r -> r.getLevel() == Level.WARNING).toList();
