@@ -262,6 +262,10 @@ game:
     show_place: "<white><world> <x> <y> <z>"
     show_at: "<hl>Build by <name><gray>: <white><world> <x> <y> <z>"
     show_missing: "<hl>Build by <name><gray>: can't be visited (no spot), it still gets votes"
+    unvisitable: "<hl>Build by <name><gray>: can't be visited (no room to stand within 16 blocks above the spot), it still gets votes"
+    # vote.teleport: when the tour starts, and back where the player stood
+    visiting: "The tour takes you to every build and then back here. Meanwhile you take no damage and cannot build."
+    returned: "You are back where you stood before the tour."
     title: "Vote for your favourite build"
     your_vote: "<ok>Your vote"
     click: "<gray>Click to vote"

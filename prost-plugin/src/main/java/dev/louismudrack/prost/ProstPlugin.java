@@ -16,6 +16,7 @@ import dev.louismudrack.prost.api.AfkProvider;
 import dev.louismudrack.prost.api.ProstApi;
 import dev.louismudrack.prost.game.Director;
 import dev.louismudrack.prost.game.PlacedBlocks;
+import dev.louismudrack.prost.game.Returns;
 import dev.louismudrack.prost.game.Rounds;
 import dev.louismudrack.prost.hook.AfkDetector;
 import dev.louismudrack.prost.hook.ConfigAreas;
@@ -89,6 +90,7 @@ public class ProstPlugin extends JavaPlugin {
     private Roulette roulette;
     private Hooks hooks;
     private Potatoes potatoes;
+    private Returns returns;
     private Lang lang = Lang.empty();
     private ProstCommand command;
     private BukkitTask snapshotTask;
@@ -123,6 +125,11 @@ public class ProstPlugin extends JavaPlugin {
         // a crash leaves the potatoes of a running hot potato behind
         potatoes.sweepWorlds();
         getServer().getOnlinePlayers().forEach(p -> potatoes.removeFrom(p));
+        returns = new Returns(this);
+        returns.load();
+        getServer().getPluginManager().registerEvents(returns, this);
+        // a crash leaves players at the builds of a vote tour: they go back on joining, who is already online now
+        getServer().getOnlinePlayers().forEach(p -> returns.bringBack(p));
         director = new Director(this);
         getServer().getScheduler().runTaskTimer(this, () -> director.tick(), 10L, 10L);
         command = new ProstCommand(this);
@@ -314,6 +321,7 @@ public class ProstPlugin extends JavaPlugin {
     public Roulette roulette() { return roulette; }
     public Hooks hooks() { return hooks; }
     public Potatoes potatoes() { return potatoes; }
+    public Returns returns() { return returns; }
     public Lang lang() { return lang; }
     public ProstCommand command() { return command; }
 

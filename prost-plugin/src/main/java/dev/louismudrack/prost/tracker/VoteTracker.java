@@ -2,6 +2,7 @@ package dev.louismudrack.prost.tracker;
 
 import dev.louismudrack.prost.command.ProstCommand;
 import dev.louismudrack.prost.config.GameConfig;
+import dev.louismudrack.prost.game.Returns;
 import dev.louismudrack.prost.i18n.Msg;
 import dev.louismudrack.prost.i18n.V;
 import dev.louismudrack.prost.menu.GameMenu;
@@ -10,6 +11,8 @@ import dev.louismudrack.prost.ui.Hud;
 import dev.louismudrack.prost.ui.Sounds;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -17,19 +20,24 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
+import java.util.logging.Level;
 
 /**
  * A build contest in three phases. BUILD: every participant builds for the entry's seconds; /prost here marks the spot
  * (only in a game world and outside the excluded areas), otherwise it is where the builder stands when the time is up.
  * SHOW: the builds in a random order, vote.view-seconds each; a build without a spot is announced as not visitable and
- * stays votable. VOTE: a menu with the other builders' heads for vote.vote-seconds, one vote that may change until the
- * deadline. mode portrait: each builder is told privately whom to portray. Who drops out is no longer votable and their
- * vote is gone. VoteRules judges; every draw comes from ProstPlugin#random, every time from ProstPlugin#now.
+ * stays votable. With vote.teleport the tour takes every participant to each build (the spot raised out of blocks, a
+ * buried one not visited) and back afterwards: Returns saves the way back before anyone moves and shelters them.
+ * VOTE: a menu with the other builders' heads for vote.vote-seconds, one vote that may change until the deadline.
+ * mode portrait: each builder is told privately whom to portray. Who drops out is no longer votable and their vote is
+ * gone. VoteRules judges; every draw comes from ProstPlugin#random, every time from ProstPlugin#now.
  */
 public final class VoteTracker extends BaseTracker implements GameTracker {
     private enum Phase { BUILD, SHOW, VOTE }
@@ -40,6 +48,8 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
     /** after the building: somebody to vote for */
     private static final int MIN_VOTERS = 2;
     private static final String PORTRAIT = "portrait";
+    /** spec §7: a spot in blocks is raised to the first two free blocks at most this far above it */
+    private static final int MAX_RAISE = 16;
 
     /** participants in the run's order: the verdict keeps it */
     private final List<UUID> order = new ArrayList<>();
@@ -49,6 +59,10 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
     private final Map<UUID, GameMenu> menus = new HashMap<>();
     /** the builds in the order they are shown */
     private final List<UUID> tour = new ArrayList<>();
+    /** the participants the tour moves and brings back */
+    private final Set<UUID> touring = new LinkedHashSet<>();
+    /** decided when the tour starts: vote.teleport and every way back saved */
+    private boolean teleporting;
     /** portrait: builder -> whom they portray */
     private Map<UUID, UUID> models = Map.of();
     private Phase phase = Phase.BUILD;
@@ -156,6 +170,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
     @Override
     public void dropped(UUID id) {
         boolean onShow = phase == Phase.SHOW && id.equals(tour.get(shown));
+        if (touring.remove(id)) bringBack(id);
         order.remove(id);
         spots.remove(id);
         votes.remove(id);
@@ -191,6 +206,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
     /** inline: onDisable stops the run through here */
     @Override
     public void stop() {
+        endTour();
         super.stop();
         menus.forEach((id, menu) -> close(id, menu));
         menus.clear();
@@ -222,7 +238,23 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         tour.addAll(order);
         Collections.shuffle(tour, rnd());
         phase = Phase.SHOW;
+        startTour();
         showNext();
+    }
+
+    /** vote.teleport: everyone's way back is saved before anyone moves; when that fails the tour only names the builds */
+    private void startTour() {
+        if (!games().voteTeleport()) return;
+        Map<UUID, Location> where = new LinkedHashMap<>();
+        for (UUID id : order) {
+            Player p = Bukkit.getPlayer(id);
+            // a dead player's place is where they died: they respawn as usual and stay off the tour
+            if (p != null && !p.isDead()) where.put(id, p.getLocation());
+        }
+        teleporting = returns().remember(where);
+        if (!teleporting) return;
+        touring.addAll(where.keySet());
+        for (UUID id : touring) Msg.tell(Bukkit.getPlayer(id), "game.vote.visiting");
     }
 
     /** the next build still in the contest; one without a spot is announced and passed; after the last the vote starts */
@@ -230,9 +262,9 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         while (++shown < tour.size()) {
             UUID builder = tour.get(shown);
             if (!order.contains(builder)) continue;
-            Location spot = spotOf(builder);
-            present(builder, spot);
-            if (spot != null) {
+            Location spot = spotOf(builder), stand = standing(spot);
+            present(builder, spot, stand);
+            if (stand != null) {
                 viewEndsAt = ctx.plugin().now() + games().voteViewSeconds() * SECOND_MS;
                 return;
             }
@@ -240,13 +272,34 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         startVote();
     }
 
-    /** a build's turn: every round member hears whose it is and where it stands; one without a spot is only named in chat */
-    private void present(UUID builder, Location spot) {
+    /** where the tour stands at a build: the spot, raised out of blocks when the tour teleports; null = not visited */
+    private Location standing(Location spot) {
+        if (spot == null || !teleporting) return spot;
+        Block feet = spot.getBlock();
+        for (int up = 0; up <= MAX_RAISE; up++) {
+            Block b = feet.getRelative(BlockFace.UP, up);
+            if (b.isSolid() || b.getRelative(BlockFace.UP).isSolid()) continue;
+            if (up == 0) return spot;
+            Location raised = spot.clone();
+            raised.setY(feet.getY() + up);
+            return raised;
+        }
+        return null;
+    }
+
+    /**
+     * a build's turn: the tour moves there, then every round member hears whose it is and where it stands; one without a
+     * spot, or one with no room to stand, is only named in chat
+     */
+    private void present(UUID builder, Location spot, Location stand) {
+        if (stand != null && teleporting) visit(stand);
         for (UUID id : ctx.round().members.keySet()) {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
-            if (spot == null) {
-                Msg.tell(p, "game.vote.show_missing", V.of("name", name(builder)));
+            if (stand == null) {
+                V who = V.of("name", name(builder));
+                if (spot == null) Msg.tell(p, "game.vote.show_missing", who);
+                else Msg.tell(p, "game.vote.unvisitable", who);
                 continue;
             }
             String title = "<primary>" + Msg.str(id, "game.vote.show_title", V.of("name", name(builder))) + "</primary>";
@@ -256,7 +309,35 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         }
     }
 
+    /** only who has a way back: one back early (dropped, rejoined, respawned) stays where they are */
+    private void visit(Location stand) {
+        for (UUID id : touring) {
+            Player p = Bukkit.getPlayer(id);
+            if (p == null || !returns().remembers(id)) continue;
+            p.leaveVehicle();
+            p.teleport(stand);
+        }
+    }
+
+    /** everyone the tour moved goes back; who is offline finds the way back on joining */
+    private void endTour() {
+        for (UUID id : touring) bringBack(id);
+        touring.clear();
+    }
+
+    private void bringBack(UUID id) {
+        Player p = Bukkit.getPlayer(id);
+        if (p == null) return;
+        try {
+            returns().bringBack(p);
+        } catch (RuntimeException e) {   // one failed return must not keep the others at a build
+            String what = name(id) + " could not be brought back from the tour - tried again when they join";
+            ctx.plugin().getLogger().log(Level.WARNING, what, e);
+        }
+    }
+
     private void startVote() {
+        endTour();
         phase = Phase.VOTE;
         voteEndsAt = ctx.plugin().now() + games().voteVoteSeconds() * SECOND_MS;
         for (UUID id : order) {
@@ -317,6 +398,8 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
     }
 
     private GameConfig.Games games() { return ctx.plugin().cfg().games(); }
+
+    private Returns returns() { return ctx.plugin().returns(); }
 
     private Random rnd() { return ctx.plugin().random(); }
 }

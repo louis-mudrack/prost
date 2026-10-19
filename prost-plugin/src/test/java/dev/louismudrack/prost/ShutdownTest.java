@@ -8,6 +8,8 @@ import dev.louismudrack.prost.reward.Reward;
 import dev.louismudrack.prost.storage.SqlStatsStore;
 import dev.louismudrack.prost.storage.StatsRow;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.plugin.Plugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,9 +20,12 @@ import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -99,6 +104,38 @@ class ShutdownTest {
         server.getPluginManager().disablePlugin(plugin);
         assertEquals(before + 1, nextTaskId(other), "onDisable scheduled a task");
         assertSettledAndStored(o);
+    }
+
+    /** each player marks a build, goes home, and the building time runs out: everyone is at somebody's build */
+    @Test
+    void aStopDuringTheTourBringsEveryoneBack() throws Exception {
+        AtomicLong now = new AtomicLong(1_000_000L);
+        plugin.clock(() -> now.get());
+        List<PlayerMock> everyone = List.of(server.addPlayer("Host"), server.addPlayer("Anna"), server.addPlayer("Ben"));
+        everyone.get(0).performCommand("prost start");
+        Round r = plugin.rounds().of(everyone.get(0).getUniqueId());
+        for (PlayerMock p : everyone.subList(1, 3)) p.performCommand("prost join " + r.code);
+        server.dispatchCommand(server.getConsoleSender(), "prost admin force " + r.code + " vote_statue vote");
+        plugin.director().tick();
+        World world = server.getWorld("world");
+        Map<PlayerMock, Location> homes = new HashMap<>();
+        for (int i = 0; i < everyone.size(); i++) {
+            PlayerMock p = everyone.get(i);
+            p.teleport(new Location(world, 10 * (i + 1), 64, 0));
+            p.performCommand("prost here");
+            homes.put(p, new Location(world, -5.5 * (i + 1), 70, 3, 90f, 0f));
+            p.teleport(homes.get(p));
+        }
+        now.addAndGet(plugin.director().running(r).def.seconds() * 1000L);
+        plugin.director().tick();
+        for (PlayerMock p : everyone) assertNotEquals(homes.get(p), p.getLocation(), p.getName() + " is on the tour");
+        Plugin other = MockBukkit.createMockPlugin("Other");
+        int before = nextTaskId(other);
+        server.getPluginManager().disablePlugin(plugin);
+        assertEquals(before + 1, nextTaskId(other), "onDisable scheduled a task");
+        for (PlayerMock p : everyone) assertEquals(homes.get(p), p.getLocation(), p.getName() + " is back where they stood");
+        String saved = Files.readString(new File(plugin.getDataFolder(), "returns.yml").toPath());
+        for (PlayerMock p : everyone) assertFalse(saved.contains(p.getUniqueId().toString()), "nothing left to return: " + saved);
     }
 
     @Test

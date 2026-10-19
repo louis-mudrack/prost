@@ -145,7 +145,7 @@ zero or more; a negative or non-numeric value is replaced by the default. Unlike
 | `luck.reveal-seconds` | `2` | Luck games: how long the result is revealed before the challenge ends. |
 | `vote.view-seconds` | `15` | Build contests: seconds at each build on the tour. |
 | `vote.vote-seconds` | `20` | Build contests: seconds to vote. |
-| `vote.teleport` | `true` | Build contests: the tour teleports every player to each build and back. `false`: the builds' coordinates are announced instead, nobody is moved. Anything but `true` or `false` uses the default. |
+| `vote.teleport` | `true` | Build contests: the tour teleports every player to each build and back to where they stood (kept in `returns.yml` until they are back, so a quit, a stop or a crash still gets them there; details in [challenges.md](challenges.md)). Meanwhile and for 3 seconds after, they take no damage and cannot build. `false`: the builds' coordinates are announced instead, nobody is moved. Anything but `true` or `false` uses the default. |
 
 Roulette chances, per action (default): `block: 0.003` (breaking or placing a block), `craft: 0.01`, `kill: 0.02`,
 `eat: 0.02`, `fish: 0.02`, `breed: 0.02`, `trade: 0.02`, `enchant: 0.02`, `advancement: 0.10`, `death: 0.10`,

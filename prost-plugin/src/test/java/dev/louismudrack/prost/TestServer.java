@@ -10,6 +10,9 @@ import org.mockbukkit.mockbukkit.inventory.ChestInventoryMock;
 import org.mockbukkit.mockbukkit.inventory.InventoryMock;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -54,6 +57,19 @@ public final class TestServer {
     }
 
     private static final class MenuServer extends ServerMock {
+        private File worldContainer;
+
+        /** MockBukkit has none (it throws); Returns looks here for the folder of a world that is not loaded */
+        @Override
+        public File getWorldContainer() {
+            try {
+                if (worldContainer == null) worldContainer = Files.createTempDirectory("prost-worlds").toFile();
+                return worldContainer;
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
         @Override
         public InventoryMock createInventory(InventoryHolder owner, int size, Component title) {
             return new ChestInventoryMock(owner, size) {
