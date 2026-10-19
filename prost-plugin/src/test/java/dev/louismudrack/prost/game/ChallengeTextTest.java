@@ -38,6 +38,8 @@ class ChallengeTextTest {
 
     @Test
     void aDuelNamesBothWithTheViewersWordAndTheNamesStayText() {
+        assertEquals("vs", plugin.lang().template("en", "challenge.versus"), "the bare word: the code adds the spaces");
+        assertEquals("gegen", plugin.lang().template("de", "challenge.versus"));
         PlayerMock host = server.addPlayer("Ho<i>st"), guest = server.addPlayer("Guest");
         guest.setLocale(Locale.GERMANY);
         host.performCommand("prost start");

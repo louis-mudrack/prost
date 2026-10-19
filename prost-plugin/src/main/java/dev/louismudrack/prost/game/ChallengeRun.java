@@ -270,7 +270,8 @@ public final class ChallengeRun {
         return j.toString();
     }
 
-    private static String versus(UUID viewer) { return Msg.str(viewer, "challenge.versus"); }
+    /** trimmed: language files from 0.3.0 carry the spaces inside the value (" vs ") */
+    private static String versus(UUID viewer) { return " " + Msg.str(viewer, "challenge.versus").trim() + " "; }
 
     // ---------------------------------------------------------------------------------------------- HUD
 
