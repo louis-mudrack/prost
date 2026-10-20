@@ -82,8 +82,8 @@ public final class Returns implements Listener {
     /** id -> the return that failed, tried again by tick */
     private final Map<UUID, Retry> retries = new HashMap<>();
 
-    /** plugin times: the next try, and when the tries are over */
-    private record Retry(long nextAt, long endsAt) {}
+    /** plugin times: the next try, and when the tries are over; whether an error of this return has been logged */
+    private record Retry(long nextAt, long endsAt, boolean errorLogged) {}
 
     /** a place by its world's name: the world may be unloaded when the place is read */
     record Home(String world, double x, double y, double z, float yaw, float pitch) {
@@ -201,17 +201,24 @@ public final class Returns implements Listener {
         }
     }
 
-    /** online and alive, every RETRY_MS until the tries are over; offline the join, dead the respawn brings them back */
+    /**
+     * online and alive, every RETRY_MS until the tries are over; offline the join, dead the respawn brings them back. A
+     * rider is left on their mount (the try waits until they are off); one player's error does not stop the others.
+     */
     private void retryReturns() {
         long now = plugin.now();
         Map.copyOf(retries).forEach((id, retry) -> {
             Player p = Bukkit.getPlayer(id);
             if (p == null || p.isDead()) return;
-            if (now >= retry.endsAt()) {
-                giveUp(p);
-            } else if (now >= retry.nextAt()) {
-                retries.put(id, new Retry(now + RETRY_MS, retry.endsAt()));
-                bringBack(p);
+            try {
+                if (now >= retry.endsAt()) {
+                    giveUp(p);
+                } else if (now >= retry.nextAt() && !p.isInsideVehicle()) {
+                    retries.put(id, new Retry(now + RETRY_MS, retry.endsAt(), retry.errorLogged()));
+                    bringBack(p);
+                }
+            } catch (RuntimeException e) {
+                plugin.getLogger().log(Level.WARNING, p.getName() + "'s return could not be tried again", e);
             }
         });
     }
@@ -227,7 +234,7 @@ public final class Returns implements Listener {
      */
     public boolean bringBack(Player p) {
         int before = homes.size();
-        boolean moved = moveBack(p);
+        boolean moved = moveBackOrRetry(p);
         saveIfFewer(before);
         return moved;
     }
@@ -235,15 +242,18 @@ public final class Returns implements Listener {
     /** the end of a tour: each of them back as bringBack does, with one save for all; one failed return keeps nobody else away */
     public void bringBackAll(Collection<Player> ps) {
         int before = homes.size();
-        for (Player p : ps) {
-            try {
-                moveBack(p);
-            } catch (RuntimeException e) {
-                String what = p.getName() + " could not be brought back from the tour - tried again when they join";
-                plugin.getLogger().log(Level.WARNING, what, e);
-            }
-        }
+        for (Player p : ps) moveBackOrRetry(p);
         saveIfFewer(before);
+    }
+
+    /** an error in a return is a failed return like a refused one: told, and the shelter bounded by the minute of tries */
+    private boolean moveBackOrRetry(Player p) {
+        try {
+            return moveBack(p);
+        } catch (RuntimeException e) {
+            retry(p, p.getName() + " could not be brought back from the tour", e);
+            return false;
+        }
     }
 
     /** bringBack without saving: the caller saves once for everybody it brings back */
@@ -270,25 +280,35 @@ public final class Returns implements Listener {
         return true;
     }
 
+    private void retry(Player p, String failure) { retry(p, failure, null); }
+
     /**
-     * a return another plugin refused or into a world that is not loaded: the shelter holds while tick tries again; the
-     * first failure of this return is logged and told, and the minute of tries starts with it. On a stop no tick runs any
-     * more: the next join tries.
+     * a return another plugin refused, into a world that is not loaded or that threw {@code error}: the shelter holds while
+     * tick tries again; the first failure of this return is logged and told, and the minute of tries starts with it; of
+     * the later ones only a first error is logged. On a stop no tick runs any more: the next join tries.
      */
-    private void retry(Player p, String failure) {
+    private void retry(Player p, String failure, RuntimeException error) {
         if (!plugin.isEnabled()) {
-            plugin.getLogger().warning(failure + " - tried again when they join");
+            warn(failure + " - tried again when they join", error);
             Msg.tell(p, "game.vote.return_later");
             return;
         }
         UUID id = p.getUniqueId();
         sheltered.put(id, UNTIL_BACK);
-        if (retries.containsKey(id)) return;
-        long now = plugin.now();
-        retries.put(id, new Retry(now + RETRY_MS, now + RETRY_WINDOW_MS));
-        plugin.getLogger().warning(failure + " - tried again for a minute, then when they join");
-        Msg.tell(p, "game.vote.return_retry");
+        Retry pending = retries.get(id);
+        if (pending == null) {
+            long now = plugin.now();
+            retries.put(id, new Retry(now + RETRY_MS, now + RETRY_WINDOW_MS, error != null));
+            warn(failure + " - tried again for a minute, then when they join", error);
+            Msg.tell(p, "game.vote.return_retry");
+        } else if (error != null && !pending.errorLogged()) {
+            retries.put(id, new Retry(pending.nextAt(), pending.endsAt(), true));
+            warn(failure + " - tried again until the minute is over, then when they join", error);
+        }
     }
+
+    /** with the stack trace when there is an error */
+    private void warn(String what, RuntimeException error) { plugin.getLogger().log(Level.WARNING, what, error); }
 
     /** the tries are over: so is the shelter, the way back waits in returns.yml for the next join */
     private void giveUp(Player p) {
@@ -330,11 +350,11 @@ public final class Returns implements Listener {
 
     /**
      * read live from where they are, not from the client's isOnGround or isInWater (both stale right after a teleport):
-     * climbing, riding, water at the feet, or a solid block just below them. Anything unclear (lava, a fence top, seagrass,
-     * an unloaded chunk) is no: the shelter holds.
+     * flying (they choose when to come down), climbing, riding, water at the feet, or a solid block just below them.
+     * Anything unclear (lava, a fence top, seagrass, an unloaded chunk) is no: the shelter holds.
      */
     private static boolean standsOnSomething(Player p) {
-        if (p.isClimbing() || p.isInsideVehicle()) return true;
+        if (p.isFlying() || p.isClimbing() || p.isInsideVehicle()) return true;
         Location feet = p.getLocation();
         if (!feet.isChunkLoaded()) return false;
         return isWater(feet.getBlock()) || feet.clone().subtract(0, 0.1, 0).getBlock().getType().isSolid();

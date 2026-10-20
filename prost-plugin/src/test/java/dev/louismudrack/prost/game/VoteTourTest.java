@@ -689,6 +689,71 @@ class VoteTourTest {
         assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept for the join");
     }
 
+    /** another plugin's listener throws on the teleport home: MockBukkit passes it on, as an error inside Prost would come */
+    public static final class HomeBreaker implements Listener {
+        private final Location home;
+
+        HomeBreaker(Location home) { this.home = home; }
+
+        @EventHandler
+        public void on(PlayerTeleportEvent e) { if (home.equals(e.getTo())) throw new IllegalStateException("a broken listener"); }
+    }
+
+    @Test
+    void aReturnThatThrowsIsRetriedLikeARefusedOne() throws Exception {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBreaker(homes.get(anna)), plugin);
+        HomeBlocker bensBlocker = new HomeBlocker(homes.get(ben));
+        server.getPluginManager().registerEvents(bensBlocker, plugin);
+        TestServer.messages(anna);
+        try (LogCapture log = LogCapture.root()) {
+            toVote(host);
+            HandlerList.unregisterAll(bensBlocker);
+            later(5000L);
+            plugin.returns().tick();
+            assertEquals(1, log.messages().stream().filter(m -> m.contains("Anna could not be brought back")).count(),
+                    "logged once: " + log.messages());
+        }
+        assertHome(ben, "his try is not stopped by her error");
+        assertHome(host, "the others are back");
+        assertTrue(told(TestServer.messages(anna), "Prost tries again for a minute"));
+        assertSheltered(anna, true, "while her return is tried again");
+        later(55_001L);
+        plugin.returns().tick();
+        assertSheltered(anna, false, "the minute is over");
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"));
+        assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept for the join");
+    }
+
+    /** she mounted something to ride home herself: the tries leave her on it, the minute runs on */
+    @Test
+    void aRetryDoesNotThrowAStrandedRiderOff() {
+        tour();
+        HomeBlocker blocker = new HomeBlocker(homes.get(anna));
+        server.getPluginManager().registerEvents(blocker, plugin);
+        toVote(host);
+        world().spawnEntity(anna.getLocation(), EntityType.PIG).addPassenger(anna);
+        HandlerList.unregisterAll(blocker);
+        later(5000L);
+        plugin.returns().tick();
+        assertTrue(anna.isInsideVehicle(), "still riding");
+        anna.leaveVehicle();
+        plugin.returns().tick();
+        assertHome(anna, "the next try, once she is off");
+    }
+
+    /** the scheduler runs Returns#tick: every other test calls it by hand */
+    @Test
+    void theSchedulerEndsALanding() {
+        midAir(anna);
+        tour();
+        toVote(host);
+        land(anna);
+        server.getScheduler().performTicks(10);
+        later(3001L);
+        assertSheltered(anna, false, "the grace after landing is over");
+    }
+
     // ---------------------------------------------------------------------------------------------- a return into mid-air
 
     /** nothing under {@code p}'s home: they were flying or falling there when the tour started */
@@ -781,6 +846,19 @@ class VoteTourTest {
         assertSheltered(anna, false, "the grace after landing is over");
     }
 
+    /** a flyer (creative, /fly) chooses when to come down */
+    @Test
+    void aFlyerIsNotHeldForTheLanding() {
+        midAir(anna);
+        anna.setAllowFlight(true);
+        anna.setFlying(true);
+        tour();
+        toVote(host);
+        assertHome(anna, "back in the air");
+        later(3001L);
+        assertSheltered(anna, false, "the grace only");
+    }
+
     /** a floor Prost cannot read counts as none */
     @Test
     void aReturnWhereTheGroundCannotBeReadKeepsTheShelter() {
@@ -850,5 +928,17 @@ class VoteTourTest {
         assertTrue(told(told, "You could not be taken to the build by Ben - another plugin refused it"), told.toString());
         assertInstanceOf(GameMenu.class, holder(anna), "the vote follows the tour");
         for (PlayerMock p : everyone) assertHome(p, "back after the tour");
+    }
+
+    /** on the death screen: Paper refuses to move a dead player, which is no other plugin's doing */
+    @Test
+    void aDeadPlayerIsNotTakenAlong() {
+        tour();
+        anna.setHealth(0);
+        TestServer.messages(anna);
+        later(viewMs());
+        tick();
+        assertTrue(builds.containsValue(host.getLocation()), "the tour moved on: " + host.getLocation());
+        assertFalse(told(TestServer.messages(anna), "another plugin refused it"));
     }
 }

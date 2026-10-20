@@ -321,11 +321,14 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         }
     }
 
-    /** only who has a way back: one back early (dropped, rejoined, respawned) stays where they are; a refused move is told */
+    /**
+     * only who has a way back: one back early (dropped, rejoined, respawned) stays where they are, one on the death screen
+     * waits for the respawn; a refused move is told
+     */
     private void visit(UUID builder, Location stand) {
         for (UUID id : touring) {
             Player p = Bukkit.getPlayer(id);
-            if (p == null || !returns().remembers(id)) continue;
+            if (p == null || p.isDead() || !returns().remembers(id)) continue;
             p.leaveVehicle();
             p.eject();
             if (!p.teleport(stand)) Msg.tell(p, "game.vote.visit_refused", V.of("name", name(builder)));
