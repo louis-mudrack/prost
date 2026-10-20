@@ -1,5 +1,6 @@
 package dev.louismudrack.prost.game;
 
+import dev.louismudrack.prost.LogCapture;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import dev.louismudrack.prost.api.event.ChallengeEndEvent;
@@ -11,9 +12,12 @@ import dev.louismudrack.prost.tracker.GameTracker;
 import dev.louismudrack.prost.tracker.Verdict;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.junit.jupiter.api.AfterEach;
@@ -36,26 +40,34 @@ import static org.junit.jupiter.api.Assertions.*;
 class GameRunTest {
     private static final long MINUTE_MS = 60_000L;
 
-    /** a game whose every answer the test sets */
-    static final class ScriptedGame implements GameTracker {
+    /** a game whose every answer the test sets; it listens while it runs, as the real games do */
+    static final class ScriptedGame implements GameTracker, Listener {
         long deadline;
         boolean decided, hidden, stopped;
         String cancelKey, result;
         Verdict verdict = Verdict.of(Map.of(), List.of());
+        /** non-null: verdict() throws it */
+        RuntimeException verdictFails;
         final List<UUID> dropped = new ArrayList<>();
         int verdicts;
 
-        @Override public void start(List<Player> players) { }
+        @Override public void start(List<Player> players) { Bukkit.getPluginManager().registerEvents(this, Bukkit.getPluginManager().getPlugin("Prost")); }
         @Override public int progress(UUID id) { return 0; }
-        @Override public void stop() { stopped = true; }
+        @Override public void stop() { HandlerList.unregisterAll(this); stopped = true; }
         @Override public long deadline() { return deadline; }
         @Override public boolean decided() { return decided; }
-        @Override public Verdict verdict() { verdicts++; return verdict; }
+        @Override public Verdict verdict() {
+            verdicts++;
+            if (verdictFails != null) throw verdictFails;
+            return verdict;
+        }
         @Override public String status(UUID viewer, UUID who) { return "<white>playing"; }
         @Override public String result(UUID viewer) { return result; }
         @Override public boolean hiddenClock() { return hidden; }
         @Override public void dropped(UUID id) { dropped.add(id); }
         @Override public String cancelKey() { return cancelKey; }
+
+        @EventHandler public void onQuit(PlayerQuitEvent e) { }
     }
 
     private final AtomicLong now = new AtomicLong(1_000_000L);
@@ -248,6 +260,33 @@ class GameRunTest {
         assertFalse(bar.contains("1:00") || bar.contains("1:30"), bar);
         assertEquals(1f, new ArrayList<>(host.getBossBars()).get(0).progress(), "a full bar does not tell the time either");
         assertEquals("??", run.clock());
+    }
+
+    private boolean listens(Listener l) { return HandlerList.getRegisteredListeners(plugin).stream().anyMatch(r -> r.getListener() == l); }
+
+    /** a throw while judging must not hold the round: it is cancelled as an error and the next challenge comes */
+    @Test
+    void aGameWhoseVerdictFailsFreesTheRound() {
+        game.verdictFails = new IllegalStateException("scripted verdict failure");
+        List<UUID> ids = List.of(id(host), id(anna), id(ben));
+        plugin.director().launch(new ChallengeRun(plugin, round, def(), Kind.REACTION, ids, ctx -> game));
+        assertTrue(listens(game), "the game listens while it runs");
+        game.decided = true;
+        TestServer.messages(host);
+        try (LogCapture log = LogCapture.root()) {
+            plugin.director().tick();
+            assertEquals(1, log.records().stream().filter(r -> r.getThrown() == game.verdictFails).count(), "logged once: " + log.messages());
+        }
+        assertNull(plugin.director().running(round), "the broken run is gone");
+        assertFalse(listens(game), "no listener left");
+        assertTrue(host.getBossBars().isEmpty(), "no bar left");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("hit an error")), "the round is told");
+        assertEquals(1, ended.size(), "API listeners see it end");
+        assertFalse(ended.get(0).resolved());
+        assertTrue(ended.get(0).drinks().isEmpty());
+        assertTrue(plugin.director().next(round), "the next challenge may be drawn");
+        plugin.director().tick();
+        assertNotNull(plugin.director().running(round), "and is drawn");
     }
 
     @Test

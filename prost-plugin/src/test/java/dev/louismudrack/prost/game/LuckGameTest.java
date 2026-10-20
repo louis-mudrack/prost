@@ -267,6 +267,24 @@ class LuckGameTest {
         assertEquals(List.of(duel.stream().filter(id -> !drinks.containsKey(id)).findFirst().orElseThrow()), end().winners());
     }
 
+    /** the coin's line tells a call that was played out: a walkover keeps the default line */
+    @Test
+    void aWalkoverDuringTheRevealKeepsTheDefaultResultLine() {
+        List<UUID> duel = force("coin_flip", "duel").participants();
+        PlayerMock caller = player(duel.get(0)), other = player(duel.get(1));
+        click(caller, LEFT);
+        tick();
+        assertTrue(running(), "the reveal runs");
+        TestServer.messages(caller);
+        other.performCommand("prost pause");
+        tick();
+        assertEquals(List.of(id(caller)), end().winners(), "a walkover");
+        assertTrue(end().drinks().isEmpty());
+        List<String> told = TestServer.messages(caller);
+        assertTrue(told.stream().anyMatch(m -> m.contains("Made it: " + caller.getName())), told.toString());
+        assertTrue(told.stream().noneMatch(m -> m.contains(" called ")), "no coin line for a call nobody lost: " + told);
+    }
+
     @Test
     void whoDropsOutDuringTheRevealKeepsNothing() {
         force("wheel", "luck");

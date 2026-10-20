@@ -59,7 +59,7 @@ public final class ChallengeRun {
     private long endsAt;
     private final Map<UUID, Long> doneAt = new HashMap<>();
     private final Map<UUID, BossBar> bars = new HashMap<>();
-    private boolean over;
+    private boolean over, released;
 
     ChallengeRun(ProstPlugin plugin, Round round, ChallengeDef def, Kind kind, List<UUID> participants) {
         this(plugin, round, def, kind, participants, Trackers::create);
@@ -145,11 +145,18 @@ public final class ChallengeRun {
     void cancel(String key) {
         if (over) return;
         over = true;
-        tracker.stop();
-        hideBars();
-        if (key != null) Msg.round(round, key);
-        Bukkit.getPluginManager().callEvent(new ChallengeEndEvent(Views.round(round, this), Views.challenge(this), false, List.of(), Map.of()));
-        plugin.director().ended(round, false);
+        end(key);
+    }
+
+    /** cancelled or broken: nobody drinks, and the round is free for the next challenge whatever throws on the way */
+    private void end(String key) {
+        try {
+            release();
+            if (key != null) Msg.round(round, key);
+            Bukkit.getPluginManager().callEvent(new ChallengeEndEvent(Views.round(round, this), Views.challenge(this), false, List.of(), Map.of()));
+        } finally {
+            plugin.director().ended(round, false);
+        }
     }
 
     /**
@@ -159,8 +166,18 @@ public final class ChallengeRun {
     void stopQuietly() {
         if (over) return;
         over = true;
-        tracker.stop();
-        hideBars();
+        release();
+    }
+
+    /** once: listeners, menus and a tour end with the tracker, the bars with the run - also when stopping the tracker throws */
+    private void release() {
+        if (released) return;
+        released = true;
+        try {
+            tracker.stop();
+        } finally {
+            hideBars();
+        }
     }
 
     private boolean gateClosed() {
@@ -189,30 +206,55 @@ public final class ChallengeRun {
         };
     }
 
+    /**
+     * Judges, then pays out. A throw while judging (a game's verdict) cancels the run as an error - nobody drinks - and is
+     * thrown on for the Director to log; the round draws its next challenge either way.
+     */
     void finish() {
         if (over) return;
         over = true;
+        Judged judged;
+        try {
+            judged = judge();
+        } catch (RuntimeException e) {
+            try {
+                end("challenge.error");
+            } catch (RuntimeException again) {
+                e.addSuppressed(again);
+            }
+            throw e;
+        }
+        try {
+            release();
+            payOut(judged);
+        } finally {
+            plugin.director().ended(round, true);
+        }
+    }
+
+    /** walkover: a Duel whose opponent dropped out, won without a game */
+    private record Judged(Resolution.Outcome outcome, Map<UUID, Reward> forced, int sum, int target, boolean walkover) {}
+
+    private Judged judge() {
         tracker.poll(online());
         int target = teamTarget(), sum = teamSum();
-        Resolution.Outcome o;
-        Map<UUID, Reward> forced = Map.of();
-        if (kind == Kind.DUEL && participants.size() == 1) {
-            o = new Resolution.Outcome(Map.of(), List.copyOf(participants), null, true);
-        } else if (game != null) {
+        if (kind == Kind.DUEL && participants.size() == 1)
+            return new Judged(new Resolution.Outcome(Map.of(), List.copyOf(participants), null, true), Map.of(), sum, target, true);
+        if (game != null) {
             Verdict v = game.verdict();
-            forced = v.forced();
-            o = new Resolution.Outcome(v.drinks(), v.winners(), null, !v.winners().isEmpty());
-        } else {
-            long now = plugin.now();
-            for (UUID id : participants) if (!doneAt.containsKey(id) && done(id)) doneAt.put(id, now);
-            List<Resolution.Progress> ps = new ArrayList<>();
-            for (UUID id : participants) ps.add(new Resolution.Progress(id, tracker.progress(id), done(id), tracker.broken(id), doneAt.getOrDefault(id, 0L)));
-            Collections.shuffle(ps);
-            o = Resolution.resolve(kind, def.avoidType(), def.sips(), target, ps);
+            return new Judged(new Resolution.Outcome(v.drinks(), v.winners(), null, !v.winners().isEmpty()), v.forced(), sum, target, false);
         }
-        tracker.stop();
-        hideBars();
-        announceResult(o, sum, target);
+        long now = plugin.now();
+        for (UUID id : participants) if (!doneAt.containsKey(id) && done(id)) doneAt.put(id, now);
+        List<Resolution.Progress> ps = new ArrayList<>();
+        for (UUID id : participants) ps.add(new Resolution.Progress(id, tracker.progress(id), done(id), tracker.broken(id), doneAt.getOrDefault(id, 0L)));
+        Collections.shuffle(ps);
+        return new Judged(Resolution.resolve(kind, def.avoidType(), def.sips(), target, ps), Map.of(), sum, target, false);
+    }
+
+    private void payOut(Judged judged) {
+        Resolution.Outcome o = judged.outcome();
+        announceResult(o, judged.sum(), judged.target(), judged.walkover());
         for (UUID id : participants) {
             Member m = round.member(id);
             if (m == null) continue;
@@ -226,13 +268,12 @@ public final class ChallengeRun {
             if (!o.rewarded().isEmpty()) plugin.rewards().grant(round, o.mvp(), def, true, o.winners());
         } else {
             for (UUID w : o.rewarded()) {
-                Reward given = forced.get(w);
+                Reward given = judged.forced().get(w);
                 if (given != null) plugin.rewards().give(round, w, def, given);
                 else plugin.rewards().grant(round, w, def, false, List.of());
             }
         }
         Bukkit.getPluginManager().callEvent(new ChallengeEndEvent(Views.round(round, this), Views.challenge(this), true, o.winners(), o.drinks()));
-        plugin.director().ended(round, true);
     }
 
     // ---------------------------------------------------------------------------------------------- text
@@ -287,12 +328,13 @@ public final class ChallengeRun {
         };
     }
 
-    private void announceResult(Resolution.Outcome o, int sum, int target) {
+    /** a walkover keeps the default line: a game's own line would tell a game nobody lost */
+    private void announceResult(Resolution.Outcome o, int sum, int target, boolean walkover) {
         for (UUID id : round.members.keySet()) {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
             String lang = Msg.lang(id);
-            String custom = game == null ? null : game.result(id);
+            String custom = game == null || walkover ? null : game.result(id);
             Msg.tell(p, "result.line", V.of("name", def.name(lang)), V.mm("result", custom != null ? custom : resultLine(id, o, sum, target)));
             boolean won = o.winners().contains(id);
             if (!participants.contains(id) || !won && !lost(o, id)) continue;

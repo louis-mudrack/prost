@@ -66,11 +66,14 @@ public final class Director {
 
     /** one broken challenge (e.g. an admin-edited entry the server rejects) must not stop every other round */
     private void failed(ChallengeRun run, RuntimeException e) {
-        plugin.getLogger().log(Level.WARNING, "challenge " + run.def.id() + " in round " + run.round.code + " failed - cancelled", e);
+        String what = "challenge " + run.def.id() + " in round " + run.round.code;
+        plugin.getLogger().log(Level.WARNING, what + " failed - cancelled", e);
         try {
-            run.cancel("challenge.error");
+            run.cancel("challenge.error");   // a no-op when it broke while finishing: it cancelled itself then
         } catch (RuntimeException again) {
-            ended(run.round, false);   // cancel broke halfway: the run is marked over, drop it anyway
+            plugin.getLogger().log(Level.WARNING, "cancelling " + what + " failed too", again);
+        } finally {
+            if (runs.get(run.round.code) == run) ended(run.round, false);   // a broken run never holds its round
         }
     }
 
@@ -124,8 +127,12 @@ public final class Director {
         }
         r.used.add(choice.def().id());
         r.challenges++;
-        ChallengeRun run = new ChallengeRun(plugin, r, choice.def(), choice.kind(), participants);
-        runs.put(r.code, run);
+        launch(new ChallengeRun(plugin, r, choice.def(), choice.kind(), participants));
+    }
+
+    /** the round's run from now on; tests hand in one with a scripted game */
+    void launch(ChallengeRun run) {
+        runs.put(run.round.code, run);
         run.start();
         plugin.rounds().save();
     }
