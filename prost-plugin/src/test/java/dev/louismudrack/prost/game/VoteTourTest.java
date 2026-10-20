@@ -94,6 +94,8 @@ class VoteTourTest {
         anna = server.addPlayer("Anna");
         ben = server.addPlayer("Ben");
         everyone = List.of(host, anna, ben);
+        // MockBukkit's players are off the ground until told otherwise: every return would count as one into mid-air
+        for (PlayerMock p : everyone) p.setOnGround(true);
         host.performCommand("prost start");
         round = plugin.rounds().of(host.getUniqueId());
         for (PlayerMock p : List.of(anna, ben)) p.performCommand("prost join " + round.code);
@@ -537,9 +539,12 @@ class VoteTourTest {
             toVote(host);
             assertEquals(1, log.messages().stream().filter(m -> m.contains("Anna") && m.contains("not loaded")).count(), log.messages().toString());
         }
-        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"), "she is told too");
+        assertTrue(told(TestServer.messages(anna), "Prost tries again for a minute"), "she is told too");
         assertTrue(builds.containsValue(anna.getLocation()), "no other place instead: " + anna.getLocation());
         assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept");
+        later(60_001L);
+        plugin.returns().tick();
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"));
         server.addSimpleWorld("other");
         anna.disconnect();
         anna.reconnect();
@@ -594,12 +599,162 @@ class VoteTourTest {
         TestServer.messages(anna);
         toVote(host);
         assertTrue(builds.containsValue(anna.getLocation()), "still at a build: " + anna.getLocation());
-        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"));
+        assertTrue(told(TestServer.messages(anna), "Prost tries again for a minute"));
         assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept");
-        assertSheltered(anna, false, "the tour is over for her");
+        assertSheltered(anna, true, "while her return is tried again");
+        later(60_001L);
+        plugin.returns().tick();
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"));
+        assertSheltered(anna, false, "the tries are over");
         HandlerList.unregisterAll(blocker);
         anna.disconnect();
         anna.reconnect();
         assertHome(anna, "back on joining");
+    }
+
+    @Test
+    void aRefusedReturnIsRetriedWhileOnline() throws Exception {
+        tour();
+        HomeBlocker blocker = new HomeBlocker(homes.get(anna));
+        server.getPluginManager().registerEvents(blocker, plugin);
+        TestServer.messages(anna);
+        toVote(host);
+        assertTrue(builds.containsValue(anna.getLocation()), "still at a build: " + anna.getLocation());
+        assertTrue(told(TestServer.messages(anna), "Prost tries again for a minute"));
+        assertSheltered(anna, true, "while her return is tried again");
+        HandlerList.unregisterAll(blocker);
+        later(5000L);
+        plugin.returns().tick();
+        assertHome(anna, "back on the next try");
+        assertTrue(told(TestServer.messages(anna), "You are back where you stood before the tour"));
+        assertFalse(saved().containsKey(anna.getUniqueId().toString()), "forgotten");
+        later(60_001L);
+        plugin.returns().tick();
+        assertFalse(told(TestServer.messages(anna), "Prost brings you back when you join again"), "no tries left to give up");
+    }
+
+    @Test
+    void aReturnThatKeepsFailingGivesUpAfterAMinute() throws Exception {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(anna)), plugin);
+        toVote(host);
+        TestServer.messages(anna);
+        later(5000L);
+        plugin.returns().tick();
+        assertTrue(builds.containsValue(anna.getLocation()), "refused again: " + anna.getLocation());
+        assertEquals(List.of(), TestServer.messages(anna), "a try that fails again is not told again");
+        later(55_001L);
+        plugin.returns().tick();
+        assertSheltered(anna, false, "a minute after the tour");
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"));
+        assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept for the join");
+    }
+
+    @Test
+    void aPendingRetryEndsWithTheRespawnReturn() {
+        tour();
+        HomeBlocker blocker = new HomeBlocker(homes.get(anna));
+        server.getPluginManager().registerEvents(blocker, plugin);
+        toVote(host);
+        anna.setHealth(0);
+        HandlerList.unregisterAll(blocker);
+        anna.respawn();
+        assertHome(anna, "respawned where she stood");
+        Location walkedOff = at(0, 64, 0);
+        anna.teleport(walkedOff);
+        TestServer.messages(anna);
+        later(5000L);
+        plugin.returns().tick();
+        assertEquals(walkedOff, anna.getLocation(), "no try moves her again");
+        later(60_001L);
+        plugin.returns().tick();
+        assertFalse(told(TestServer.messages(anna), "Prost brings you back when you join again"), "no tries left to give up");
+    }
+
+    // ---------------------------------------------------------------------------------------------- a return into mid-air
+
+    /** Anna was flying or falling when the tour started */
+    @Test
+    void aReturnToMidAirIsShelteredUntilLanding() {
+        anna.setOnGround(false);
+        anna.setFallDistance(12f);
+        tour();
+        toVote(host);
+        assertHome(anna, "back in mid-air");
+        assertEquals(0f, anna.getFallDistance(), "the fall before the tour does not count");
+        later(4000L);
+        assertSheltered(anna, true, "4 s after the return, still falling");
+        anna.setOnGround(true);
+        plugin.returns().tick();
+        later(3001L);
+        assertSheltered(anna, false, "the grace after landing is over");
+    }
+
+    @Test
+    void aLandingShelterEndsAtTheCap() {
+        anna.setOnGround(false);
+        tour();
+        toVote(host);
+        later(29_999L);
+        assertSheltered(anna, true, "falling for almost 30 s");
+        later(2L);
+        plugin.returns().tick();
+        assertSheltered(anna, false, "30 s after the return");
+        anna.setOnGround(true);
+        plugin.returns().tick();
+        assertSheltered(anna, false, "a landing after the cap brings no new grace");
+    }
+
+    @Test
+    void aReturnedFallerWhoRejoinsIsStillSheltered() {
+        anna.setOnGround(false);
+        tour();
+        toVote(host);
+        anna.disconnect();
+        later(5000L);
+        plugin.returns().tick();
+        anna.reconnect();
+        assertSheltered(anna, true, "rejoined before landing");
+        anna.setOnGround(true);
+        plugin.returns().tick();
+        later(3001L);
+        assertSheltered(anna, false, "landed");
+    }
+
+    // ---------------------------------------------------------------------------------------------- passengers, refused visits
+
+    @Test
+    void aPlayerCarryingAPassengerIsToured() {
+        ChallengeRun run = build();
+        anna.addPassenger(world().spawnEntity(homes.get(anna), EntityType.PIG));
+        later(run.def.seconds() * 1000L);
+        tick();
+        assertTrue(builds.containsValue(anna.getLocation()), "on the tour: " + anna.getLocation());
+        anna.addPassenger(world().spawnEntity(anna.getLocation(), EntityType.PIG));
+        toVote(host);
+        assertHome(anna, "back with nothing on her");
+    }
+
+    @Test
+    void aRefusedVisitIsToldAndTheTourGoesOn() {
+        ChallengeRun run = build();
+        server.getPluginManager().registerEvents(new HomeBlocker(builds.get(ben)), plugin);   // the same refusal, at Ben's build
+        TestServer.messages(anna);
+        later(run.def.seconds() * 1000L);
+        tick();
+        List<String> told = new ArrayList<>();
+        for (int i = 0; i < TOUR_STEPS && !(holder(anna) instanceof GameMenu); i++) {
+            List<String> step = TestServer.messages(anna);
+            told.addAll(step);
+            if (told(step, "another plugin refused it")) {
+                assertNotEquals(builds.get(ben), anna.getLocation(), "not taken there");
+                assertSheltered(anna, true, "while Ben's build is on show");
+            }
+            later(viewMs());
+            tick();
+        }
+        assertTrue(told(told, "You could not be taken to the build by Ben - another plugin refused it"), told.toString());
+        assertInstanceOf(GameMenu.class, holder(anna), "the vote follows the tour");
+        for (PlayerMock p : everyone) assertHome(p, "back after the tour");
     }
 }

@@ -265,9 +265,11 @@ game:
     show_missing: "<hl>Build by <name><gray>: can't be visited (no spot), it still gets votes"
     unvisitable: "<hl>Build by <name><gray>: can't be visited (no room to stand within <blocks> blocks above the spot), it still gets votes"
     unvisitable_closed: "<hl>Build by <name><gray>: can't be visited (its dimension is closed), it still gets votes"
-    # vote.teleport: when the tour starts, back where the player stood, the way back not possible yet, its world deleted
+    visit_refused: "<gray>You could not be taken to the build by <hl><name><gray> - another plugin refused it; its place is in the chat."
+    # vote.teleport: when the tour starts, back where the player stood, the way back not possible yet (tried for a minute, then on joining), its world deleted
     visiting: "The tour takes you to every build and then back here. Meanwhile you take no damage and cannot build, use or take anything."
     returned: "You are back where you stood before the tour."
+    return_retry: "You can't be brought back to where you stood before the tour yet - Prost tries again for a minute, otherwise when you join again. Until then you stay protected."
     return_later: "You can't be brought back to where you stood before the tour yet - Prost brings you back when you join again."
     return_gone: "The world you stood in before the tour no longer exists - you stay here."
     title: "Vote for your favourite build"

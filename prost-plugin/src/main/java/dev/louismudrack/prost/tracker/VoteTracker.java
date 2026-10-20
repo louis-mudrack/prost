@@ -303,7 +303,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
      * spot, in a dimension the server closed ({@code closed}) or with no room to stand is only named in chat
      */
     private void present(UUID builder, Location spot, Location stand, boolean closed) {
-        if (stand != null && teleporting) visit(stand);
+        if (stand != null && teleporting) visit(builder, stand);
         for (UUID id : ctx.round().members.keySet()) {
             Player p = Bukkit.getPlayer(id);
             if (p == null) continue;
@@ -321,13 +321,14 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         }
     }
 
-    /** only who has a way back: one back early (dropped, rejoined, respawned) stays where they are */
-    private void visit(Location stand) {
+    /** only who has a way back: one back early (dropped, rejoined, respawned) stays where they are; a refused move is told */
+    private void visit(UUID builder, Location stand) {
         for (UUID id : touring) {
             Player p = Bukkit.getPlayer(id);
             if (p == null || !returns().remembers(id)) continue;
             p.leaveVehicle();
-            p.teleport(stand);
+            p.eject();
+            if (!p.teleport(stand)) Msg.tell(p, "game.vote.visit_refused", V.of("name", name(builder)));
         }
     }
 

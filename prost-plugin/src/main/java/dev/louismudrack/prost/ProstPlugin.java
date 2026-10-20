@@ -143,6 +143,7 @@ public class ProstPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(placed, this);
         rounds.load();
         getServer().getScheduler().runTaskTimer(this, () -> rounds.tickPresence(), 20L, 20L);
+        getServer().getScheduler().runTaskTimer(this, () -> returns.tick(), 10L, 10L);
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             PlaceholderSnapshots snapshots = new PlaceholderSnapshots(this);
             snapshotTask = getServer().getScheduler().runTaskTimer(this, () -> snapshots.publish(), 1L, 1L);

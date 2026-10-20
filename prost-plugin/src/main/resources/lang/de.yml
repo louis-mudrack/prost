@@ -265,9 +265,11 @@ game:
     show_missing: "<hl>Bau von <name><gray>: kann nicht besucht werden (keine Stelle), bekommt trotzdem Stimmen"
     unvisitable: "<hl>Bau von <name><gray>: kann nicht besucht werden (in den <blocks> Blöcken über der Stelle ist kein Platz zum Stehen), bekommt trotzdem Stimmen"
     unvisitable_closed: "<hl>Bau von <name><gray>: kann nicht besucht werden (seine Dimension ist geschlossen), bekommt trotzdem Stimmen"
-    # vote.teleport: wenn die Tour beginnt, zurück, wo der Spieler stand, der Rückweg geht noch nicht, seine Welt ist gelöscht
+    visit_refused: "<gray>Du konntest nicht zum Bau von <hl><name> <gray>gebracht werden - ein anderes Plugin hat es verhindert; wo er steht, steht im Chat."
+    # vote.teleport: wenn die Tour beginnt, zurück, wo der Spieler stand, der Rückweg geht noch nicht (eine Minute lang versucht, dann beim Beitreten), seine Welt ist gelöscht
     visiting: "Die Tour bringt dich zu jedem Bau und danach hierher zurück. So lange nimmst du keinen Schaden und kannst nichts bauen, benutzen oder mitnehmen."
     returned: "Du bist zurück, wo du vor der Tour standest."
+    return_retry: "Du kannst noch nicht dorthin zurück, wo du vor der Tour standest - Prost versucht es eine Minute lang weiter, sonst wenn du wieder beitrittst. Bis dahin bleibst du geschützt."
     return_later: "Du kannst noch nicht dorthin zurück, wo du vor der Tour standest - Prost bringt dich zurück, wenn du wieder beitrittst."
     return_gone: "Die Welt, in der du vor der Tour standest, gibt es nicht mehr - du bleibst hier."
     title: "Stimm für deinen Lieblingsbau"
