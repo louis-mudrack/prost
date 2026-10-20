@@ -105,8 +105,9 @@ A round that ends while a challenge is running fires only `RoundEndEvent` (its v
 - `RoundView`: `code`, `host`, `pace` (`chill`, `normal`, `party`), `paused`, `members` (UUIDs in join order),
   `challenge` (`Optional<ChallengeView>`).
 - `ChallengeView`: `id` (the key in `challenges.yml`), `kind` (`team`, `each`, `race`, `duel`, `solo`, `reaction`, `luck`, `vote`), `sips`
-  (what the losers drink), `endsAtMillis` (epoch milliseconds; a hot potato's real end, although players see `??`),
-  `participants`.
+  (what the losers drink), `endsAtMillis` (epoch milliseconds; it can move while a game runs: a build contest reports
+  the end of its current phase - building, the build on show, the vote - and a luck game the end of its reveal once
+  everybody has decided; a hot potato reports its real end, although players see `??`), `participants`.
 - `StatsView` from `stats(UUID)`: `player`, `name` (last known), `sipsDrunk`, `sipsWater`, `sipsGiven`, `won`, `lost`,
   `rouletteHits`, `jokersUsed`, `rulesMade`, `rounds`.
 
