@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityCombustEvent;
@@ -39,18 +40,24 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * The hot potato as an item: Prost's mark on a poisonous potato, and the rules every marked potato follows whether a game
  * runs or not. It is never stored (containers, ender chests, bundles, item frames, allays, armor stands, decorated pots,
  * hoppers), composted, eaten, burnt, destroyed, despawned, carried through a portal or dropped on death; which player
- * may catch a thrown one is the game's call. A potato that outlived its game (a crash) goes when its player joins or its
- * chunk loads.
+ * may catch a thrown one is the game's call. A potato that outlived its game (a crash) goes when its player joins, its
+ * chunk loads, a click finds it in a container or, while a hot potato runs, a hopper moves it.
  */
 public final class Potatoes implements Listener {
     /** NamespacedKey(plugin, "potato") of the plugin named Prost, static so isPotato needs no instance */
     private static final NamespacedKey KEY = new NamespacedKey("prost", "potato");
 
     private final ProstPlugin plugin;
+    private final Listener hoppers = new HopperWatch();
+    /** the hot potato games running now: hoppers are watched while there is one */
+    private final Set<PotatoTracker> games = new HashSet<>();
 
     public Potatoes(ProstPlugin plugin) { this.plugin = plugin; }
 
@@ -76,6 +83,16 @@ public final class Potatoes implements Listener {
         if (isPotato(p.getItemOnCursor())) p.setItemOnCursor(null);
     }
 
+    /** InventoryMoveItemEvent comes with every hopper transfer on the server: listened to only while a hot potato runs */
+    void started(PotatoTracker game) {
+        if (games.add(game) && games.size() == 1) plugin.getServer().getPluginManager().registerEvents(hoppers, plugin);
+    }
+
+    /** inline: onDisable stops the games through here */
+    void stopped(PotatoTracker game) {
+        if (games.remove(game) && games.isEmpty()) HandlerList.unregisterAll(hoppers);
+    }
+
     public void sweepWorlds() {
         for (World w : plugin.getServer().getWorlds()) for (Item item : w.getEntitiesByClass(Item.class)) removeIfPotato(item);
     }
@@ -99,16 +116,20 @@ public final class Potatoes implements Listener {
 
     // ---------------------------------------------------------------------------------------------- never stored
 
+    /** a game keeps its own potato out of containers: one clicked in a container is a leftover and goes */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onClick(InventoryClickEvent e) {
-        if (touchesPotato(e) && (foreign(e.getView()) || isBundle(e.getCurrentItem()) || isBundle(e.getCursor()))) e.setCancelled(true);
+        if (!touchesPotato(e)) return;
+        if (clickedInContainer(e)) {
+            e.setCancelled(true);
+            removeFrom(e.getClickedInventory());
+        } else if (foreign(e.getView()) || isBundle(e.getCurrentItem()) || isBundle(e.getCursor())) {
+            e.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDrag(InventoryDragEvent e) { if (isPotato(e.getOldCursor()) && foreign(e.getView())) e.setCancelled(true); }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onHopperMove(InventoryMoveItemEvent e) { if (isPotato(e.getItem())) e.setCancelled(true); }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onHopperPickup(InventoryPickupItemEvent e) { if (isPotatoEntity(e.getItem())) e.setCancelled(true); }
@@ -135,6 +156,11 @@ public final class Potatoes implements Listener {
         if (isPotato(e.getCurrentItem()) || isPotato(e.getCursor())) return true;
         if (e.getClick() == ClickType.NUMBER_KEY) return isPotato(e.getWhoClicked().getInventory().getItem(e.getHotbarButton()));
         return e.getClick() == ClickType.SWAP_OFFHAND && isPotato(e.getWhoClicked().getInventory().getItemInOffHand());
+    }
+
+    /** the clicked potato lies in the open container, not in the player's own inventory or crafting grid */
+    private static boolean clickedInContainer(InventoryClickEvent e) {
+        return isPotato(e.getCurrentItem()) && foreign(e.getView()) && e.getView().getTopInventory().equals(e.getClickedInventory());
     }
 
     /** any open inventory but the player's own, whose top is the 2x2 crafting grid */
@@ -179,4 +205,17 @@ public final class Potatoes implements Listener {
     /** an item crossing a portal is copied into the other world: the game would lose track of it */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPortal(EntityPortalEvent e) { if (isPotatoEntity(e.getEntity())) e.setCancelled(true); }
+
+    /**
+     * A potato a hopper moves can only be a leftover: it is taken out of the inventory it leaves. The move is cancelled as
+     * well - the moving stack is a copy, which would arrive at the other end.
+     */
+    static final class HopperWatch implements Listener {
+        @EventHandler(priority = EventPriority.HIGHEST)
+        public void onHopperMove(InventoryMoveItemEvent e) {
+            if (!isPotato(e.getItem())) return;
+            e.setCancelled(true);
+            removeFrom(e.getSource());
+        }
+    }
 }

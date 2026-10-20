@@ -59,6 +59,7 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
         long longest = ctx.def().seconds() * SECOND_MS;
         deadline = ctx.plugin().now() + ctx.plugin().random().nextLong(longest / 2, longest + 1);
         for (Player p : ps) order.add(p.getUniqueId());
+        potatoes.started(this);
         if (!order.isEmpty()) handTo(pick(order), order, false);
     }
 
@@ -130,6 +131,7 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
     @Override
     public void stop() {
         super.stop();
+        potatoes.stopped(this);
         if (thrown != null) thrown.remove();
         thrown = null;
         for (UUID id : players) {

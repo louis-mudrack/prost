@@ -336,6 +336,52 @@ class HotPotatoTest {
         assertTrue(cancelled(new PlayerInteractEntityEvent(h, frame, EquipmentSlot.HAND)), "into an item frame");
     }
 
+    private boolean hoppersWatched() {
+        return Stream.of(InventoryMoveItemEvent.getHandlerList().getRegisteredListeners()).anyMatch(r -> r.getPlugin() == plugin);
+    }
+
+    /** InventoryMoveItemEvent comes with every hopper transfer on the server: Prost listens to it only while a hot potato runs */
+    @Test
+    void hoppersAreWatchedOnlyWhileAHotPotatoRuns() {
+        assertFalse(hoppersWatched(), "no hot potato yet");
+        force();
+        assertTrue(hoppersWatched(), "while it runs");
+        later(LONGEST_MS);
+        tick();
+        assertFalse(running());
+        assertFalse(hoppersWatched(), "after it ended");
+        force();
+        plugin.director().shutdown();
+        assertFalse(hoppersWatched(), "after a stop");
+    }
+
+    /** a game keeps its own potato out of containers: one a hopper finds there is a leftover, it moves nowhere and goes */
+    @Test
+    void aLeftoverPotatoAHopperFindsIsRemoved() {
+        force();
+        Inventory chest = inventory(null, 27, InventoryType.CHEST);
+        chest.setItem(3, plugin.potatoes().create("en"));
+        chest.setItem(4, new ItemStack(Material.BREAD));
+        assertTrue(cancelled(new InventoryMoveItemEvent(chest, chest.getItem(3), inventory(null, 5, InventoryType.HOPPER), false)),
+                "it moves nowhere");
+        assertNull(chest.getItem(3), "the leftover is gone");
+        assertEquals(new ItemStack(Material.BREAD), chest.getItem(4), "the rest stays");
+    }
+
+    @Test
+    void aLeftoverPotatoClickedInAContainerIsRemoved() {
+        PlayerMock dora = server.addPlayer("Dora");
+        Inventory chest = inventory(null, 27, InventoryType.CHEST);
+        chest.setItem(0, plugin.potatoes().create("en"));
+        chest.setItem(1, new ItemStack(Material.BREAD));
+        InventoryView view = dora.openInventory(chest);
+        assertTrue(cancelled(new InventoryClickEvent(view, InventoryType.SlotType.CONTAINER, 0, ClickType.LEFT, InventoryAction.PICKUP_ALL)),
+                "not taken");
+        assertNull(chest.getItem(0), "the leftover is gone");
+        assertEquals(new ItemStack(Material.BREAD), chest.getItem(1), "the rest stays");
+        assertFalse(Potatoes.isPotato(dora.getItemOnCursor()), "nor on the cursor");
+    }
+
     /** the real server burns, damages and despawns item entities; MockBukkit does not, so the events are fired by hand */
     @Test
     void aPotatoOnTheGroundCannotBurnBreakDespawnOrBeTakenByMobs() {
