@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.2 - 2026-10-20
+### Fixes
+- Build contest tour: a player is no longer left falling or hurt after the tour sends them home. They stay protected
+  until they land (30 seconds at most), a return that is refused (or into a world that is not loaded) is tried again
+  every 5 seconds for a minute and then on their next join, a rider is taken off their mount before every teleport, and a
+  visit that is refused is told and the tour goes on.
+- A challenge that fails to start or to stop no longer blocks the round: it is cancelled and freed at once, the others
+  keep running, and the next challenge can be drawn.
+- A player who has just left the server is no longer drawn into a challenge.
+- Hot potato: the first holder is announced once, the end of one round no longer takes the potatoes of another round
+  from players, and a marked potato lying on the ground is removed when a player touches it.
+- Luck: a wheel of fortune left with one spinner says so in its result line, and a mystery box whose taker left is no
+  longer shown as untouched.
+- Votes: a vote cast after the clock has run out no longer counts.
+- challenges.yml after an update: a `.catalogue-version` file that holds no version is reported once and nothing is
+  added until it is fixed or deleted, and when the new challenges cannot be appended the log now says why (the file
+  would not read any more, one of your entries would change, or the number of entries would change).
+
 ## 0.4.1 - 2026-10-20
 ### Fixes
 - Hot potato: an admin who clicks the potato in the holder's inventory through /invsee or OpenInv no longer removes it
