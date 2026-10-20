@@ -158,15 +158,17 @@ public final class CatalogueMerge {
         return out;
     }
 
+    private static final String UNREADABLE_HINT = "the file would not read any more (are its entries indented, or does it end with '...'?)";
+
     /** null when the merged file reads as the admin's entries, each unchanged, plus the added ones; else the cause */
     private static String problem(Map<?, ?> admins, byte[] merged, int added) {
         Object after;
         try {
             after = DataFiles.parse(merged);
         } catch (IOException | RuntimeException e) {
-            return "the file would not read any more (are its entries indented, or does it end with '...'?)";
+            return UNREADABLE_HINT;
         }
-        if (!(after instanceof Map<?, ?> entries)) return "the file would not read any more (are its entries indented, or does it end with '...'?)";
+        if (!(after instanceof Map<?, ?> entries)) return UNREADABLE_HINT;
         for (Map.Entry<?, ?> e : admins.entrySet())
             if (!Objects.equals(entries.get(e.getKey()), e.getValue()))
                 return "your entry '" + e.getKey() + "' would change (a text kept with |+ or >+?)";

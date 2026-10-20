@@ -616,7 +616,6 @@ class HotPotatoTest {
         assertFalse(lying.get(0).isValid());
     }
 
-    /** the raw slot MockBukkit's view reads a player slot from (InventoryClickEvent#getCurrentItem): the bottom right after the top */
     /** the first poll names the first holder; one who is replaced before it was named must not be announced twice */
     @Test
     void aFirstHolderWhoDiesBeforeTheFirstPollIsAnnouncedOnce() {
@@ -728,5 +727,6 @@ class HotPotatoTest {
         assertFalse(Potatoes.isPotato(h.getOpenInventory().getTopInventory().getItem(1)), "the grid is cleared");
     }
 
+    /** the raw slot MockBukkit's view reads a player slot from (InventoryClickEvent#getCurrentItem): the bottom right after the top */
     private static int rawSlotOf(InventoryView view, int playerSlot) { return view.getTopInventory().getSize() + playerSlot; }
 }

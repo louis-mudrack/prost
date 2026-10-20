@@ -116,8 +116,8 @@ public final class TestServer {
         private static void deleteTree(Path root) {
             try (Stream<Path> paths = Files.walk(root)) {
                 paths.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
+            } catch (IOException | RuntimeException e) {
+                System.err.println("could not delete the test worlds in " + root + ": " + e);   // a shutdown hook must not throw
             }
         }
 

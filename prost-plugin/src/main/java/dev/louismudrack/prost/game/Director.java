@@ -130,14 +130,15 @@ public final class Director {
         start(r, choice, chosen, active);
     }
 
-    private void start(Round r, DrawRules.Choice choice, List<UUID> chosen, List<UUID> active) {
+    /** false when the run broke while starting (it is cancelled then) */
+    private boolean start(Round r, DrawRules.Choice choice, List<UUID> chosen, List<UUID> active) {
         List<UUID> participants = switch (choice.kind()) {
             case SOLO -> List.of(!chosen.isEmpty() ? chosen.get(0) : DrawRules.fewest(counts(r, true), active, rnd));
             case DUEL -> chosen.size() >= 2 ? chosen.subList(0, 2) : DrawRules.fewestTwo(counts(r, false), active, rnd);
             default -> active;
         };
         r.used.add(choice.def().id());   // also when it fails: a broken entry is not drawn again before the pool resets
-        if (!launch(new ChallengeRun(plugin, r, choice.def(), choice.kind(), participants))) return;
+        if (!launch(new ChallengeRun(plugin, r, choice.def(), choice.kind(), participants))) return false;
         for (UUID id : participants) {
             Member m = r.member(id);
             if (choice.kind() == Kind.SOLO) m.solos++;
@@ -145,6 +146,7 @@ public final class Director {
         }
         r.challenges++;
         plugin.rounds().save();
+        return true;
     }
 
     /** the round's run from now on, unless its start fails (then it is cancelled); tests hand in one with a scripted game */
@@ -186,8 +188,7 @@ public final class Director {
     public Forced force(Round r, ChallengeDef d, Kind kind) {
         List<UUID> active = playable(r);
         if (runs.containsKey(r.code) || !DrawRules.kinds(d, active.size()).contains(kind)) return Forced.REFUSED;
-        start(r, new DrawRules.Choice(d, kind), List.of(), active);
-        return runs.containsKey(r.code) ? Forced.STARTED : Forced.FAILED;
+        return start(r, new DrawRules.Choice(d, kind), List.of(), active) ? Forced.STARTED : Forced.FAILED;
     }
 
     /** what /prost admin force can tell: it began, it was not allowed, or it broke while starting */

@@ -997,6 +997,26 @@ class VoteTourTest {
         assertSheltered(anna, false, "landed");
     }
 
+    /** a resumed landing is capped like a first one: 30 s counted from her arrival */
+    @Test
+    void aResumedLandingShelterEndsAtTheCap() {
+        midAir(anna);
+        tour();
+        toVote(host);
+        anna.disconnect();
+        later(5000L);
+        plugin.returns().tick();
+        anna.reconnect();
+        plugin.returns().tick();
+        later(29_999L);
+        plugin.returns().tick();
+        assertSheltered(anna, true, "falling for almost 30 s after rejoining");
+        land(anna);
+        later(2L);
+        plugin.returns().tick();
+        assertSheltered(anna, false, "30 s after rejoining a landing brings no new grace");
+    }
+
     /** the cap counts while she is online: away longer than it, her landing starts again when she joins */
     @Test
     void aFallerWhoRejoinsAfterTheCapIsStillSheltered() {
