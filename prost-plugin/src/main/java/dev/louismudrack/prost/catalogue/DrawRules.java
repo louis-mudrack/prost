@@ -12,13 +12,20 @@ import java.util.UUID;
 
 /**
  * Which challenge comes next: only what is possible at this moment - Nether/End entries only while that
- * dimension is open (owner 2026-10-15), time and weather needs, "enter X" never while someone is already there, kinds
- * that fit the number of active members, no repeats until the pool runs dry; then kind by kind-weights and entry by its
- * weight. Solo goes to the member with the fewest solos, Duel to the two with the fewest duels.
+ * dimension is open (owner 2026-10-15), time and weather needs, "enter X" never while someone is already there, no
+ * reaction someone cannot do where they are, kinds that fit the number of active members, no repeats until the pool
+ * runs dry; then kind by kind-weights and entry by its weight. Solo goes to the member with the fewest solos, Duel to
+ * the two with the fewest duels.
  */
 public final class DrawRules {
+    /** anyoneFull: an active member's food bar is full, so they cannot eat */
     public record Conditions(boolean netherOpen, boolean endOpen, boolean night, boolean rain, boolean thunder,
-                      boolean anyoneInNether, boolean anyoneInEnd) {}
+                      boolean anyoneInNether, boolean anyoneInEnd, boolean anyoneFull) {}
+
+    /** what a player in that dimension can get into their hand in a reaction's time: the ground it is made of */
+    private static final Set<String> NETHER_GROUND = Set.of("NETHERRACK", "SOUL_SAND", "SOUL_SOIL", "GRAVEL", "BASALT", "BLACKSTONE",
+            "MAGMA_BLOCK");
+    private static final Set<String> END_GROUND = Set.of("END_STONE");
 
     public record Choice(ChallengeDef def, Kind kind) {}
 
@@ -39,7 +46,23 @@ public final class DrawRules {
             if (!ok) return false;
         }
         if (d.entersDimension("nether") && c.anyoneInNether()) return false;
-        return !(d.entersDimension("the_end") && c.anyoneInEnd());
+        if (d.entersDimension("the_end") && c.anyoneInEnd()) return false;
+        return !"reaction".equals(d.tracker()) || doable(d, c);
+    }
+
+    /** water boils away in the Nether, a full food bar cannot eat, and the overworld's dirt is not to be had elsewhere */
+    private static boolean doable(ChallengeDef d, Conditions c) {
+        return switch (d.mode()) {
+            case "water" -> !c.anyoneInNether();
+            case "eat" -> !c.anyoneFull();
+            case "hold" -> (!c.anyoneInNether() || holdsAny(d, NETHER_GROUND)) && (!c.anyoneInEnd() || holdsAny(d, END_GROUND));
+            default -> true;
+        };
+    }
+
+    private static boolean holdsAny(ChallengeDef d, Set<String> ground) {
+        List<String> targets = Tags.resolveAll(d.targets());
+        return targets != null && targets.stream().anyMatch(t -> ground.contains(t));
     }
 
     public static List<Kind> kinds(ChallengeDef d, int active) {

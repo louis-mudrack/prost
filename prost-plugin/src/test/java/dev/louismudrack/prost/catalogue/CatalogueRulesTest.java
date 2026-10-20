@@ -244,8 +244,8 @@ class CatalogueRulesTest {
 
     @Test
     void draw() {
-        DrawRules.Conditions all = new DrawRules.Conditions(true, true, true, true, true, false, false);
-        DrawRules.Conditions closed = new DrawRules.Conditions(false, false, false, false, false, false, false);
+        DrawRules.Conditions all = new DrawRules.Conditions(true, true, true, true, true, false, false, false);
+        DrawRules.Conditions closed = new DrawRules.Conditions(false, false, false, false, false, false, false, false);
         ChallengeDef quartz = entry("mine_quartz", List.of(Kind.EACH, Kind.SOLO), Set.of(Need.NETHER), "mine", "", "", 1);
         ChallengeDef end = entry("enter_end", List.of(Kind.SOLO), Set.of(Need.END), "reach", "dimension", "the_end", 1);
         ChallengeDef enterNether = entry("enter_nether", List.of(Kind.SOLO), Set.of(Need.NETHER), "reach", "dimension", "nether", 1);
@@ -258,9 +258,9 @@ class CatalogueRulesTest {
         check("Nether challenge while the Nether is open", DrawRules.feasible(quartz, all));
         check("Nether challenge while it is closed: never", !DrawRules.feasible(quartz, closed));
         check("End challenge while the End is closed: never",
-                !DrawRules.feasible(end, new DrawRules.Conditions(true, false, true, false, false, false, false)));
+                !DrawRules.feasible(end, new DrawRules.Conditions(true, false, true, false, false, false, false, false)));
         check("enter the Nether while someone is already there: skipped",
-                !DrawRules.feasible(enterNether, new DrawRules.Conditions(true, true, false, false, false, true, false)));
+                !DrawRules.feasible(enterNether, new DrawRules.Conditions(true, true, false, false, false, true, false, false)));
         check("night challenge at night", DrawRules.feasible(zombies, all));
         check("night challenge by day: never", !DrawRules.feasible(zombies, closed));
         check("day challenge at night: never", !DrawRules.feasible(day, all));
@@ -311,6 +311,40 @@ class CatalogueRulesTest {
         eq("unknown pace", null, Pace.of("crazy"));
         eq("gap at the low end", 240_000L, Pace.gapMs(new int[]{240, 420}, 0.0));
         eq("gap at the high end", 420_000L, Pace.gapMs(new int[]{240, 420}, 1.0));
+    }
+
+    private static ChallengeDef reaction(String id, String mode, List<String> targets) {
+        return new ChallengeDef(id, Map.of("en", id), Map.of("en", id), "reaction", "", "", mode, "", targets, 1, 30, 1, 1,
+                List.of(Kind.REACTION, Kind.SOLO), List.of(Reward.HANDOUT), Set.of(), List.of(), 1, 1);
+    }
+
+    /** everything open, by day: only where the participants are and whether one of them is full */
+    private static DrawRules.Conditions where(boolean inNether, boolean inEnd, boolean full) {
+        return new DrawRules.Conditions(true, true, false, false, false, inNether, inEnd, full);
+    }
+
+    /** a reaction somebody cannot do where they are is not drawn: it would make them drink for being there */
+    @Test
+    void reactionsNobodyCanDoWhereTheyAreAreNotDrawn() {
+        DrawRules.Conditions overworld = where(false, false, false), nether = where(true, false, false), end = where(false, true, false),
+                full = where(false, false, true);
+        ChallengeDef water = reaction("react_water", "water", List.of());
+        check("water in the overworld", DrawRules.feasible(water, overworld));
+        check("water while somebody is in the Nether: it boils away there", !DrawRules.feasible(water, nether));
+        check("water while somebody is in the End", DrawRules.feasible(water, end));
+        ChallengeDef eat = reaction("react_eat", "eat", List.of());
+        check("eating while nobody is full", DrawRules.feasible(eat, overworld));
+        check("eating while somebody's food bar is full: they cannot eat", !DrawRules.feasible(eat, full));
+        ChallengeDef dirt = reaction("react_dirt", "hold", List.of("DIRT"));
+        check("dirt in the overworld", DrawRules.feasible(dirt, overworld) && DrawRules.feasible(dirt, full));
+        check("dirt while somebody is in the Nether", !DrawRules.feasible(dirt, nether));
+        check("dirt while somebody is in the End", !DrawRules.feasible(dirt, end));
+        ChallengeDef netherrack = reaction("hold_netherrack", "hold", List.of("DIRT", "NETHERRACK"));
+        check("a target the Nether is made of", DrawRules.feasible(netherrack, nether));
+        check("but not in the End", !DrawRules.feasible(netherrack, end));
+        check("End stone in the End", DrawRules.feasible(reaction("hold_end_stone", "hold", List.of("END_STONE")), end));
+        ChallengeDef crouch = reaction("react_crouch", "crouch", List.of());
+        for (DrawRules.Conditions c : List.of(overworld, nether, end, full)) check("crouching works anywhere", DrawRules.feasible(crouch, c));
     }
 
     @Test

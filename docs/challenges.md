@@ -122,7 +122,10 @@ All listed conditions must hold when the challenge is drawn.
 An entry that targets something that exists only in the Nether or End (nether quartz ore, ancient debris, netherrack,
 blazes, ghasts, shulkers, end stone and so on) must list `nether` or `end`, and an entry that makes players enter a
 dimension too; otherwise it is skipped with a warning. "Enter the Nether" is not drawn while somebody is already there
-(the same for the End).
+(the same for the End). Nor is a reaction somebody cannot do where they are: `water` while somebody is in the Nether,
+`eat` while somebody's food bar is full, and `hold` while somebody is in the Nether or the End, unless one of its
+`targets` is a block that dimension is made of (netherrack, soul sand, soul soil, gravel, basalt, blackstone or magma
+in the Nether, end stone in the End).
 
 ### The trackers
 
