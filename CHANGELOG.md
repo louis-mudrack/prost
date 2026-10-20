@@ -2,9 +2,9 @@
 
 ## 0.4.3 - 2026-10-20
 ### Fixes
-- Build contest tour: a way back that fails is tried for one minute counted from its first failure, whether the player
-  is online or not. A quit no longer drops those tries and a join no longer restarts them; a join after the minute gets
-  one more try without protection and tells the player to join again if it fails. A respawn into a world that is not
+- Build contest tour: a way back that fails still gets its minute of tries with protection, counted from its first
+  failure whether the player is online or not (a quit or a join no longer restarts it). After that minute each join
+  tries once without protection and tells the player to join again if it fails. A respawn into a world that is not
   loaded ends a running minute.
 - A return that is done is never tried again, even when the message telling the player fails. At the end of a tour (and
   at a stop) a return that fails no longer keeps the others away.

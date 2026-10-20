@@ -396,7 +396,8 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
     }
 
     private boolean mayVote(UUID voter, UUID builder) {
-        return phase == Phase.VOTE && ctx.plugin().now() < voteEndsAt && order.contains(voter) && order.contains(builder) && !voter.equals(builder);
+        return phase == Phase.VOTE && ctx.plugin().now() < voteEndsAt
+                && order.contains(voter) && order.contains(builder) && !voter.equals(builder);
     }
 
     private static void close(UUID id, GameMenu menu) {
