@@ -79,7 +79,7 @@ public final class Potatoes implements Listener {
         removeFrom(p.getInventory());
         removeFrom(p.getEnderChest());
         InventoryView view = p.getOpenInventory();
-        // null only on MockBukkit, whose own view has no crafting grid
+        // a view without a top inventory has no crafting grid to clear (MockBukkit's own view is one)
         if (!foreign(view) && view.getTopInventory() != null) removeFrom(view.getTopInventory());
         if (isPotato(p.getItemOnCursor())) p.setItemOnCursor(null);
     }
@@ -194,9 +194,15 @@ public final class Potatoes implements Listener {
         e.getItemsToKeep().removeIf(item -> isPotato(item));
     }
 
-    /** a game decides which player may catch its potato; a mob never does */
+    /** a game decides which player may catch its thrown potato; a mob never does, and any other potato on the ground is a leftover */
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onMobPickup(EntityPickupItemEvent e) { if (!(e.getEntity() instanceof Player) && isPotatoEntity(e.getItem())) e.setCancelled(true); }
+    public void onPickup(EntityPickupItemEvent e) {
+        Item item = e.getItem();
+        boolean byPlayer = e.getEntity() instanceof Player;
+        if (!isPotatoEntity(item) || byPlayer && games.stream().anyMatch(game -> game.thrown(item))) return;
+        e.setCancelled(true);
+        if (byPlayer) item.remove();
+    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onBurn(EntityCombustEvent e) { if (isPotatoEntity(e.getEntity())) e.setCancelled(true); }

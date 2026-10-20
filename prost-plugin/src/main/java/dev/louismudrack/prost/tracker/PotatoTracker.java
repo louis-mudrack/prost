@@ -16,9 +16,11 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -134,7 +136,9 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
         potatoes.stopped(this);
         if (thrown != null) thrown.remove();
         thrown = null;
-        for (UUID id : players) {
+        Set<UUID> carriers = new HashSet<>(order);
+        if (holder != null) carriers.add(holder);
+        for (UUID id : carriers) {
             Player p = Bukkit.getPlayer(id);
             if (p != null) potatoes.removeFrom(p);
         }
@@ -172,7 +176,7 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent e) { if (e.getPlayer().getUniqueId().equals(holder)) passOn(holder); }
 
-    private boolean thrown(Item item) { return thrown != null && thrown.getUniqueId().equals(item.getUniqueId()); }
+    boolean thrown(Item item) { return thrown != null && thrown.getUniqueId().equals(item.getUniqueId()); }
 
     /** another active participant, within the pass window */
     private boolean catches(LivingEntity who) {
@@ -215,7 +219,9 @@ final class PotatoTracker extends BaseTracker implements GameTracker {
     private void becomes(UUID id, boolean tell) {
         if (id.equals(holder)) return;
         holder = id;
-        if (tell) Msg.round(ctx.round(), "game.potato.passed", V.of("name", name(id)));
+        if (!tell) return;
+        firstHolderTold = true;
+        Msg.round(ctx.round(), "game.potato.passed", V.of("name", name(id)));
     }
 
     private void got(Player p) {

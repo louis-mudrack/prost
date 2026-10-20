@@ -23,6 +23,7 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityCombustEvent;
@@ -616,5 +617,116 @@ class HotPotatoTest {
     }
 
     /** the raw slot MockBukkit's view reads a player slot from (InventoryClickEvent#getCurrentItem): the bottom right after the top */
+    /** the first poll names the first holder; one who is replaced before it was named must not be announced twice */
+    @Test
+    void aFirstHolderWhoDiesBeforeTheFirstPollIsAnnouncedOnce() {
+        plugin.random(new FirstPick());
+        force();
+        for (PlayerMock p : players()) TestServer.messages(p);
+        host.setHealth(0);
+        tick();
+        assertEquals(1, linesWith(TestServer.messages(ben), "holds the hot potato now"), "the others hear it once");
+        List<String> annaHeard = TestServer.messages(anna);
+        assertEquals(1, linesWith(annaHeard, "holds the hot potato now"), "the new holder hears it once, too");
+        assertEquals(1, linesWith(annaHeard, "You have the hot potato"), "and is told how to pass it once");
+    }
+
+    private static long linesWith(List<String> lines, String part) { return lines.stream().filter(l -> l.contains(part)).count(); }
+
+    /** every random pick takes the last candidate and the hidden length sits at one end of its range */
+    static final class LastPickAtLength extends Random {
+        private final boolean longest;
+
+        LastPickAtLength(boolean longest) { this.longest = longest; }
+
+        @Override public int nextInt(int bound) { return bound - 1; }
+        @Override public long nextLong(long origin, long bound) { return longest ? bound - 1 : origin; }
+    }
+
+    @Test
+    void endingAHotPotatoLeavesAnotherRoundsPotatoAlone() {
+        plugin.random(new LastPickAtLength(false));
+        force();
+        anna.performCommand("prost leave");
+        PlayerMock dora = server.addPlayer("Dora");
+        dora.performCommand("prost start");
+        Round second = plugin.rounds().of(dora.getUniqueId());
+        anna.performCommand("prost join " + second.code);
+        plugin.random(new LastPickAtLength(true));
+        server.dispatchCommand(server.getConsoleSender(), "prost admin force " + second.code + " hot_potato reaction");
+        assertNotNull(plugin.director().running(second), "the second round runs a hot potato");
+        assertEquals(1, potatoesOf(anna), "Anna, who joined last, holds the second round's potato");
+        later(LONGEST_MS / 2 + 1);
+        tick();
+        assertFalse(running(), "the first round's potato ended");
+        assertEquals(1, potatoesOf(anna), "Anna keeps the other round's potato");
+        assertNotNull(plugin.director().running(second), "and its game still runs");
+    }
+
+    @Test
+    void aStrayPotatoIsRemovedWhenAPlayerTouchesIt() {
+        Item noGame = anna.getWorld().dropItem(anna.getLocation(), plugin.potatoes().create("en"));
+        assertFalse(pickUp(anna, noGame), "no game owns it");
+        assertFalse(noGame.isValid(), "it is gone");
+        force();
+        Item duringGame = anna.getWorld().dropItem(anna.getLocation(), plugin.potatoes().create("en"));
+        assertFalse(pickUp(anna, duringGame), "it is not the game's thrown potato");
+        assertFalse(duringGame.isValid(), "it is gone");
+        assertEquals(1, potatoes(), "the game's own potato is untouched");
+    }
+
+    @Test
+    void theThrowerDyingWhileThePotatoFliesPassesIt() {
+        force();
+        PlayerMock thrower = holder();
+        drop(thrower);
+        thrower.setHealth(0);
+        assertEquals(0, potatoesOnTheGround(), "the flying potato is gone");
+        assertNotEquals(thrower, holder(), "another participant holds it");
+        assertEquals(1, potatoes());
+    }
+
+    @Test
+    void anAfkParticipantCannotCatchIt() {
+        force();
+        PlayerMock thrower = holder(), catcher = otherThan(thrower);
+        round.member(id(catcher)).afk = true;
+        DroppedItem potato = drop(thrower);
+        assertFalse(pickUp(catcher, potato), "AFK");
+        assertEquals(1, potatoesOnTheGround(), "it still waits for somebody else");
+    }
+
+    private boolean potatoListenerRegistered() {
+        return HandlerList.getRegisteredListeners(plugin).stream().anyMatch(r -> r.getListener().getClass().getSimpleName().equals("PotatoTracker"));
+    }
+
+    @Test
+    void noPotatoListenerOutlivesTheGame() {
+        force();
+        assertTrue(potatoListenerRegistered(), "the game listens while it runs");
+        later(LONGEST_MS);
+        tick();
+        assertFalse(potatoListenerRegistered(), "not after it ended");
+        ended.clear();
+        force();
+        assertTrue(potatoListenerRegistered());
+        plugin.director().shutdown();
+        assertFalse(potatoListenerRegistered(), "not after the plugin shut the games down");
+    }
+
+    @Test
+    void aPotatoInTheCraftingGridGoesAtTheEnd() {
+        force();
+        PlayerMock h = holder();
+        ItemStack potato = h.getInventory().getItem(potatoSlot(h));
+        h.getInventory().setItem(potatoSlot(h), null);
+        InventoryView own = new PlayerInventoryViewMock(h, inventory(h, 5, InventoryType.CRAFTING));
+        h.openInventory(own);
+        own.getTopInventory().setItem(1, potato);
+        later(LONGEST_MS);
+        tick();
+        assertFalse(Potatoes.isPotato(h.getOpenInventory().getTopInventory().getItem(1)), "the grid is cleared");
+    }
+
     private static int rawSlotOf(InventoryView view, int playerSlot) { return view.getTopInventory().getSize() + playerSlot; }
 }
