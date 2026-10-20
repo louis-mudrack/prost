@@ -38,6 +38,7 @@ import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.HashSet;
@@ -116,7 +117,7 @@ public final class Potatoes implements Listener {
 
     // ---------------------------------------------------------------------------------------------- never stored
 
-    /** a game keeps its own potato out of containers: one clicked in a container is a leftover and goes */
+    /** a game keeps its own potato out of containers: one clicked in a container is a leftover and goes; any other foreign view only refuses the click */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onClick(InventoryClickEvent e) {
         if (!touchesPotato(e)) return;
@@ -158,9 +159,13 @@ public final class Potatoes implements Listener {
         return e.getClick() == ClickType.SWAP_OFFHAND && isPotato(e.getWhoClicked().getInventory().getItemInOffHand());
     }
 
-    /** the clicked potato lies in the open container, not in the player's own inventory or crafting grid */
+    /**
+     * the clicked potato lies in the open container, not in the player's own inventory or crafting grid; a player's
+     * inventory on top (an admin's /invsee, OpenInv) is no container: a game's potato may be there
+     */
     private static boolean clickedInContainer(InventoryClickEvent e) {
-        return isPotato(e.getCurrentItem()) && foreign(e.getView()) && e.getView().getTopInventory().equals(e.getClickedInventory());
+        Inventory clicked = e.getClickedInventory();
+        return isPotato(e.getCurrentItem()) && foreign(e.getView()) && !(clicked instanceof PlayerInventory) && e.getView().getTopInventory().equals(clicked);
     }
 
     /** any open inventory but the player's own, whose top is the 2x2 crafting grid */

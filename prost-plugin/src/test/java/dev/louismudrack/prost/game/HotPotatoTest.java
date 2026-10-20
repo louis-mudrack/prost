@@ -48,6 +48,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,7 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.ItemMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockbukkit.mockbukkit.inventory.InventoryMock;
+import org.mockbukkit.mockbukkit.inventory.PlayerInventoryMock;
 import org.mockbukkit.mockbukkit.inventory.PlayerInventoryViewMock;
 
 import java.util.ArrayList;
@@ -99,6 +101,27 @@ class HotPotatoTest {
     /** every random pick takes the first candidate: the participants in join order, host first */
     static final class FirstPick extends Random {
         @Override public int nextInt(int bound) { return 0; }
+    }
+
+    /** every random pick takes the last candidate: the participant who joined last */
+    static final class LastPick extends Random {
+        @Override public int nextInt(int bound) { return bound - 1; }
+    }
+
+    /** a player whose inventory answers getHolder(boolean) as TestServer's do: an admin's /invsee puts it on top of a view */
+    static final class InspectablePlayer extends PlayerMock {
+        private PlayerInventoryMock inventory;
+
+        InspectablePlayer(ServerMock server, String name) { super(server, name); }
+
+        @Override
+        public PlayerInventory getInventory() {
+            if (inventory == null) inventory = new PlayerInventoryMock(this) {
+                @Override
+                public InventoryHolder getHolder(boolean useSnapshot) { return getHolder(); }
+            };
+            return inventory;
+        }
     }
 
     /** the hidden length at one end of its range */
@@ -380,6 +403,27 @@ class HotPotatoTest {
         assertNull(chest.getItem(0), "the leftover is gone");
         assertEquals(new ItemStack(Material.BREAD), chest.getItem(1), "the rest stays");
         assertFalse(Potatoes.isPotato(dora.getItemOnCursor()), "nor on the cursor");
+    }
+
+    /** a player's inventory in a foreign view (an admin's /invsee, OpenInv) is no container: the game's potato stays there */
+    @Test
+    void anInvseeViewOfTheHolderOnlyRefusesTheClick() {
+        PlayerMock ivy = new InspectablePlayer(server, "Ivy");
+        server.addPlayer(ivy);
+        ivy.performCommand("prost join " + round.code);
+        plugin.random(new LastPick());
+        force();
+        assertEquals(1, potatoesOf(ivy), "Ivy, who joined last, holds it");
+        PlayerMock admin = server.addPlayer("Admin");
+        InventoryView invsee = admin.openInventory(ivy.getInventory());
+        assertEquals(InventoryType.PLAYER, invsee.getType());
+        assertTrue(cancelled(new InventoryClickEvent(invsee, InventoryType.SlotType.CONTAINER, potatoSlot(ivy), ClickType.LEFT, InventoryAction.PICKUP_ALL)),
+                "not taken");
+        assertEquals(1, potatoesOf(ivy), "the holder still has it");
+        assertFalse(Potatoes.isPotato(admin.getItemOnCursor()), "nor is it on the admin's cursor");
+        tick();
+        assertTrue(running(), "the game goes on");
+        assertEquals(1, potatoesOf(ivy));
     }
 
     /** the real server burns, damages and despawns item entities; MockBukkit does not, so the events are fired by hand */
