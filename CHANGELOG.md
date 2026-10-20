@@ -3,9 +3,11 @@
 ## 0.4.2 - 2026-10-20
 ### Fixes
 - Build contest tour: a player is no longer left falling or hurt after the tour sends them home. They stay protected
-  until they land (30 seconds at most), a return that is refused (or into a world that is not loaded) is tried again
-  every 5 seconds for a minute and then on their next join, a rider is taken off their mount before every teleport, and a
-  visit that is refused is told and the tour goes on.
+  until they stand on something again (30 seconds at most; flying counts), and a return that is refused, fails or leads
+  into a world that is not loaded is tried again every 5 seconds for a minute while they stay protected (not while they
+  ride something they mounted meanwhile), then on their next join. Anything riding on a player is set down before every
+  teleport, a visit that is refused is told and the tour goes on, and a player on the death screen is skipped instead of
+  being told another plugin refused the visit.
 - A challenge that fails to start or to stop no longer blocks the round: it is cancelled and freed at once, the others
   keep running, and the next challenge can be drawn.
 - A player who has just left the server is no longer drawn into a challenge.
