@@ -49,6 +49,8 @@ final class LuckTracker extends BaseTracker implements GameTracker {
     private final Map<UUID, Integer> choices = new HashMap<>();
     private final Map<UUID, GameMenu> menus = new HashMap<>();
     private UUID caller;
+    /** the trap box's taker who dropped out: the result says so instead of "nobody took it" */
+    private UUID trapTaker;
     private boolean heads, revealing, buttonsTold;
     private int shown, next, trap, boxes;
     /** what each chest hides, filled when one is opened */
@@ -76,7 +78,8 @@ final class LuckTracker extends BaseTracker implements GameTracker {
                 boxes = Math.min(order.size(), MenuSlots.MAX);
                 trap = rnd().nextInt(boxes);
             }
-            default -> { }
+            case "wheel", "chests", "dice" -> { }
+            default -> throw unknownMode();
         }
         for (Player p : ps) if (decides(p.getUniqueId())) open(p);
     }
@@ -90,15 +93,16 @@ final class LuckTracker extends BaseTracker implements GameTracker {
     @Override
     public Verdict verdict() {
         int sips = ctx.def().sips();
+        if (order.isEmpty()) return Verdict.of(Map.of(), List.of());
         Map<UUID, Integer> picks = picks();
-        UUID first = order.get(0);
         return switch (mode) {
             case "wheel" -> LuckRules.wheel(ctx.kind(), picks, sips);
             case "coin" -> LuckRules.coin(caller, other(), picks.get(caller) == HEADS, heads, sips);
-            case "chests" -> LuckRules.chests(first, chests[picks.get(first)], sips);
-            case "dice" -> LuckRules.dice(first, picks.get(first), sips);
+            case "chests" -> LuckRules.chests(order.get(0), chests[picks.get(order.get(0))], sips);
+            case "dice" -> LuckRules.dice(order.get(0), picks.get(order.get(0)), sips);
             case "high_low" -> LuckRules.highLow(guesses(picks), shown, next, sips);
-            default -> LuckRules.boxes(picks, trap, sips);
+            case "boxes" -> LuckRules.boxes(picks, trap, sips);
+            default -> throw unknownMode();
         };
     }
 
@@ -117,19 +121,24 @@ final class LuckTracker extends BaseTracker implements GameTracker {
         if (!revealing) return null;
         Map<UUID, Integer> picks = picks();
         UUID first = order.isEmpty() ? null : order.get(0);
+        UUID spinner = picks.isEmpty() ? null : picks.keySet().iterator().next();
         return switch (mode) {
-            case "wheel" -> Msg.str(viewer, "game.luck.result.wheel", V.mm("rolls", each(picks, n -> String.valueOf(n))));
+            case "wheel" -> aLoneSpinnerOfALuckWheel(picks)
+                    ? Msg.str(viewer, "game.luck.result.wheel_alone", V.of("name", name(spinner)), V.of("roll", picks.get(spinner)))
+                    : Msg.str(viewer, "game.luck.result.wheel", V.mm("rolls", each(picks, n -> String.valueOf(n))));
             case "coin" -> picks.containsKey(caller) ? Msg.str(viewer, "game.luck.result.coin", V.of("name", name(caller)),
                     V.mm("call", side(viewer, picks.get(caller) == HEADS)), V.mm("side", side(viewer, heads))) : null;
             case "chests" -> Msg.str(viewer, "game.luck.result.chests", V.of("name", name(first)), V.mm("prize", prizeName(viewer, chests[picks.get(first)])));
             case "dice" -> Msg.str(viewer, "game.luck.result.dice", V.of("name", name(first)), V.of("roll", picks.get(first)));
             case "high_low" -> Msg.str(viewer, "game.luck.result.high_low", V.of("shown", shown), V.of("next", next),
                     V.mm("guesses", each(picks, g -> Msg.str(viewer, g == HIGHER ? "game.luck.higher" : "game.luck.lower"))));
-            default -> {
+            case "boxes" -> {
                 UUID taker = takerOf(trap);
-                yield taker == null ? Msg.str(viewer, "game.luck.result.boxes_free", V.of("box", trap + 1))
-                        : Msg.str(viewer, "game.luck.result.boxes", V.of("box", trap + 1), V.of("name", name(taker)));
+                if (taker != null) yield Msg.str(viewer, "game.luck.result.boxes", V.of("box", trap + 1), V.of("name", name(taker)));
+                yield trapTaker != null ? Msg.str(viewer, "game.luck.result.boxes_left", V.of("box", trap + 1), V.of("name", name(trapTaker)))
+                        : Msg.str(viewer, "game.luck.result.boxes_free", V.of("box", trap + 1));
             }
+            default -> throw unknownMode();
         };
     }
 
@@ -145,7 +154,8 @@ final class LuckTracker extends BaseTracker implements GameTracker {
             case "chests" -> Msg.str(viewer, "challenge.stakes.chests", sips, give);
             case "dice" -> Msg.str(viewer, "challenge.stakes.dice", sips, give);
             case "high_low" -> solo ? Msg.str(viewer, "challenge.stakes.high_low_solo", sips, reward) : Msg.str(viewer, "challenge.stakes.high_low", sips, reward);
-            default -> Msg.str(viewer, "challenge.stakes.boxes", sips);
+            case "boxes" -> Msg.str(viewer, "challenge.stakes.boxes", sips);
+            default -> throw unknownMode();
         };
     }
 
@@ -153,7 +163,8 @@ final class LuckTracker extends BaseTracker implements GameTracker {
     @Override
     public void dropped(UUID id) {
         order.remove(id);
-        choices.remove(id);
+        Integer box = choices.remove(id);
+        if ("boxes".equals(mode) && box != null && box == trap) trapTaker = id;
         GameMenu menu = menus.remove(id);
         Player p = Bukkit.getPlayer(id);
         if (menu != null && p != null && menu.isOpen()) p.closeInventory();
@@ -206,8 +217,10 @@ final class LuckTracker extends BaseTracker implements GameTracker {
             case "boxes" -> {
                 if (option < 0 || takerOf(option) != null) return;
                 choices.put(id, option);
+                if (option == trap) trapTaker = null;
             }
-            default -> choices.put(id, option);
+            case "coin", "high_low" -> choices.put(id, option);
+            default -> throw unknownMode();
         }
         if (everyoneDecided()) reveal();
         else redrawAll();
@@ -222,7 +235,8 @@ final class LuckTracker extends BaseTracker implements GameTracker {
                 for (int b = 0; b < boxes; b++) if (takerOf(b) == null) free.add(b);
                 yield free.isEmpty() ? -1 : free.get(rnd().nextInt(free.size()));
             }
-            default -> 0;   // the wheel and the die roll in decide
+            case "wheel", "dice" -> 0;   // they roll in decide
+            default -> throw unknownMode();
         };
     }
 
@@ -291,7 +305,8 @@ final class LuckTracker extends BaseTracker implements GameTracker {
             case "coin" -> drawCoin(m, viewer);
             case "chests" -> drawChests(m, viewer);
             case "high_low" -> drawHighLow(m, viewer);
-            default -> drawBoxes(m, viewer);
+            case "boxes" -> drawBoxes(m, viewer);
+            default -> throw unknownMode();
         }
     }
 
@@ -410,6 +425,11 @@ final class LuckTracker extends BaseTracker implements GameTracker {
         picks.forEach((id, guess) -> out.put(id, guess == HIGHER));
         return out;
     }
+
+    private IllegalStateException unknownMode() { return new IllegalStateException("luck mode " + mode); }
+
+    /** the rule is the solo one then (LuckRules#wheel), so the line says why */
+    private boolean aLoneSpinnerOfALuckWheel(Map<UUID, Integer> picks) { return ctx.kind() != Kind.SOLO && picks.size() == 1; }
 
     private UUID other() { return order.stream().filter(id -> !id.equals(caller)).findFirst().orElseThrow(); }
 

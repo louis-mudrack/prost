@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class LuckGameTest {
     private static final int CLOCK_SLOT = 4;
     /** the wheel's spin button; three chests or three boxes sit at 11, 13 and 15 */
-    private static final int MIDDLE = 13, LEFT = 11;
+    private static final int MIDDLE = 13, LEFT = 11, RIGHT = 15;
     /** the game's first draw is the prize behind the opened chest: seed 2 draws index 1 of (drink, joker, hand out) */
     private static final long JOKER_SEED = 2L;
     private static final Pattern SPIN = Pattern.compile("(Host|Anna|Ben) (\\d+)");
@@ -241,6 +241,74 @@ class LuckGameTest {
         click(anna, MIDDLE);
         assertEquals("Anna", headOwner(item(anna, MIDDLE)), "the refused click did not use up Anna's pick");
         assertEquals("Anna", headOwner(item(host, MIDDLE)), "the host sees it too");
+    }
+
+    @Test
+    void aLoneSpinnerIsToldTheSoloRule() {
+        force("wheel", "luck");
+        anna.performCommand("prost pause");
+        ben.performCommand("prost pause");
+        click(host, MIDDLE);
+        tick();
+        TestServer.messages(host);
+        later(revealMs());
+        tick();
+        List<String> told = TestServer.messages(host);
+        assertTrue(told.stream().anyMatch(m -> m.contains("alone")), told.toString());
+    }
+
+    @Test
+    void aSoloWheelKeepsItsOwnResultLine() {
+        UUID playing = force("wheel", "solo").participants().get(0);
+        click(player(playing), MIDDLE);
+        tick();
+        TestServer.messages(player(playing));
+        later(revealMs());
+        tick();
+        List<String> told = TestServer.messages(player(playing));
+        assertTrue(told.stream().anyMatch(m -> m.contains("Spins:")), told.toString());
+        assertTrue(told.stream().noneMatch(m -> m.contains("alone")), told.toString());
+    }
+
+    @Test
+    void theTrapsTakerWhoLeavesIsNamed() {
+        plugin.random(new HotPotatoTest.FirstPick());
+        force("mystery_box", "luck");
+        click(host, LEFT);
+        click(anna, MIDDLE);
+        click(ben, RIGHT);
+        tick();
+        assertTrue(running(), "the reveal runs");
+        TestServer.messages(anna);
+        host.performCommand("prost pause");
+        later(revealMs());
+        tick();
+        List<String> told = TestServer.messages(anna);
+        assertTrue(told.stream().anyMatch(m -> m.contains("Host took it, then left")), told.toString());
+    }
+
+    @Test
+    void aBoxFreedWhileChoosingCanBeTakenAgain() {
+        force("mystery_box", "luck");
+        click(host, LEFT);
+        host.performCommand("prost pause");
+        tick();
+        click(anna, LEFT);
+        assertEquals("Anna", headOwner(item(anna, LEFT)), "the left box is Anna's now");
+    }
+
+    @Test
+    void aDiceHandOutOpensTheHandOutMenuWithoutAChoice() {
+        plugin.random(new HotPotatoTest.LastPick());
+        UUID playing = force("dice", "solo").participants().get(0);
+        PlayerMock player = player(playing);
+        click(player, MIDDLE);
+        tick();
+        later(revealMs());
+        tick();
+        assertFalse(running());
+        InventoryHolder open = holder(player);
+        assertInstanceOf(HandoutMenu.class, open, "a six hands out");
     }
 
     @Test

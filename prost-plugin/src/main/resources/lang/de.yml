@@ -231,12 +231,14 @@ game:
       handout: "<sips> verteilen"
     result:
       wheel: "<gray>Gedreht: <rolls>"
+      wheel_alone: "<gray>Nur <hl><name> <gray>hat noch gedreht: <hl><roll> <dark_gray>(allein: 1-3 trinkt)"
       coin: "<hl><name> <gray>tippte auf <hl><call><gray> - es ist <hl><side>"
       chests: "<hl><name> <gray>öffnete: <hl><prize>"
       dice: "<hl><name> <gray>würfelte eine <hl><roll>"
       high_low: "<hl><shown><gray>, dann <hl><next> <dark_gray>· <guesses>"
       boxes: "<gray>Die Falle war in Kiste <hl><box><gray>: <hl><name>"
       boxes_free: "<gray>Die Falle war in Kiste <hl><box><gray> - keiner hat sie genommen"
+      boxes_left: "<gray>Die Falle war in Kiste <hl><box><gray>: <hl><name> <gray>hat sie genommen und ist dann gegangen"
   vote:
     here_button: "<click:run_command:'<cmd>'><ok>[Meinen Bau hier markieren]</click> <dark_gray>(sonst steht dein Bau dort, wo du bist, wenn die Zeit um ist)"
     marked: "Dein Bau ist markiert: <hl><world> <x> <y> <z>"

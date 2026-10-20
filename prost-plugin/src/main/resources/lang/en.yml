@@ -231,12 +231,14 @@ game:
       handout: "Hand out <sips>"
     result:
       wheel: "<gray>Spins: <rolls>"
+      wheel_alone: "<gray>Only <hl><name> <gray>was left to spin: <hl><roll> <dark_gray>(alone: 1-3 drinks)"
       coin: "<hl><name> <gray>called <hl><call><gray> - it is <hl><side>"
       chests: "<hl><name> <gray>opened: <hl><prize>"
       dice: "<hl><name> <gray>rolled a <hl><roll>"
       high_low: "<hl><shown> <gray>then <hl><next> <dark_gray>· <guesses>"
       boxes: "<gray>The trap was in box <hl><box><gray>: <hl><name>"
       boxes_free: "<gray>The trap was in box <hl><box><gray> - nobody took it"
+      boxes_left: "<gray>The trap was in box <hl><box><gray>: <hl><name> <gray>took it, then left"
   vote:
     here_button: "<click:run_command:'<cmd>'><ok>[Mark my build here]</click> <dark_gray>(otherwise your build is where you stand when the time is up)"
     marked: "Your build is marked: <hl><world> <x> <y> <z>"
