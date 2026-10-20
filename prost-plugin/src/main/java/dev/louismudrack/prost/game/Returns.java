@@ -191,7 +191,7 @@ public final class Returns implements Listener {
             Player p = Bukkit.getPlayer(id);
             if (!shelters(id)) {
                 it.remove();
-            } else if (p != null && !airborne(p)) {
+            } else if (p != null && standsOnSomething(p)) {
                 sheltered.put(id, plugin.now() + RETURN_GRACE_MS);
                 it.remove();
             }
@@ -263,15 +263,21 @@ public final class Returns implements Listener {
             retry(p, p.getName() + " could not be moved back to " + home);
             return false;
         }
-        returned(p);
+        returned(p, standsOnSomething(p));
         return true;
     }
 
     /**
      * a return another plugin refused or into a world that is not loaded: the shelter holds while tick tries again; the
-     * first failure of this return is logged and told, and the minute of tries starts with it
+     * first failure of this return is logged and told, and the minute of tries starts with it. On a stop no tick runs any
+     * more: the next join tries.
      */
     private void retry(Player p, String failure) {
+        if (!plugin.isEnabled()) {
+            plugin.getLogger().warning(failure + " - tried again when they join");
+            Msg.tell(p, "game.vote.return_later");
+            return;
+        }
         UUID id = p.getUniqueId();
         sheltered.put(id, UNTIL_BACK);
         if (retries.containsKey(id)) return;
@@ -302,24 +308,31 @@ public final class Returns implements Listener {
         if (homes.size() < before) save(" - a player who is back may be moved there again on joining after a restart");
     }
 
-    /** a fall before the return does not count; in mid-air the grace starts once they land (tick), at the cap otherwise */
-    private void returned(Player p) {
+    /**
+     * a fall before the return does not count; {@code standing}: the grace starts now, otherwise once tick finds them
+     * standing on something, at the cap at the latest
+     */
+    private void returned(Player p, boolean standing) {
         UUID id = p.getUniqueId();
         forget(id);
         p.setFallDistance(0f);
-        if (airborne(p)) {
+        if (standing) {
+            sheltered.put(id, plugin.now() + RETURN_GRACE_MS);
+        } else {
             sheltered.put(id, plugin.now() + LANDING_MAX_MS);
             landing.add(id);
-        } else {
-            sheltered.put(id, plugin.now() + RETURN_GRACE_MS);
         }
         Msg.tell(p, "game.vote.returned");
     }
 
-    /** isOnGround is what the client last reported (deprecated for that): the server has nothing better */
-    @SuppressWarnings("deprecation")
-    private static boolean airborne(Player p) {
-        return !p.isOnGround() && !p.isInWater() && !p.isClimbing() && !p.isInsideVehicle();
+    /**
+     * what the server sees, not the client's isOnGround (stale right after a teleport): in water, climbing, riding, or a
+     * solid block just below the feet. Anything unclear (lava, a fence top, an unloaded chunk) is no: the shelter holds.
+     */
+    private static boolean standsOnSomething(Player p) {
+        if (p.isInWater() || p.isClimbing() || p.isInsideVehicle()) return true;
+        Location below = p.getLocation().clone().subtract(0, 0.1, 0);
+        return below.isChunkLoaded() && below.getBlock().getType().isSolid();
     }
 
     /** a running grace stays */
@@ -382,7 +395,7 @@ public final class Returns implements Listener {
         if (world != null) {
             extinguish(p);
             e.setRespawnLocation(home.in(world));
-            returned(p);
+            returned(p, false);   // still where they died: tick looks where they respawned
         } else if (remembers(id)) {   // not loaded: they respawn as usual, away from the build
             stopRetrying(id);
             plugin.getLogger().warning(notLoaded(p, home) + " - tried again when they join");

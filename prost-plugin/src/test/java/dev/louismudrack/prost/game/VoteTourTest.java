@@ -5,6 +5,7 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import dev.louismudrack.prost.api.ProstApi;
 import dev.louismudrack.prost.menu.GameMenu;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -94,8 +95,6 @@ class VoteTourTest {
         anna = server.addPlayer("Anna");
         ben = server.addPlayer("Ben");
         everyone = List.of(host, anna, ben);
-        // MockBukkit's players are off the ground until told otherwise: every return would count as one into mid-air
-        for (PlayerMock p : everyone) p.setOnGround(true);
         host.performCommand("prost start");
         round = plugin.rounds().of(host.getUniqueId());
         for (PlayerMock p : List.of(anna, ben)) p.performCommand("prost join " + round.code);
@@ -103,6 +102,8 @@ class VoteTourTest {
         for (PlayerMock p : everyone) {
             builds.put(p, at(10 * i, 64, 10 * i));
             homes.put(p, new Location(world(), -10.5 * i, 70, -10.5 * i, 45f * i, 10f));
+            floorOf(homes.get(p)).setType(Material.STONE);   // a return home is no fall
+            homes.get(p).getChunk().load();   // as a player's chunk is on a server: MockBukkit loads one only when asked
             i++;
         }
     }
@@ -152,6 +153,9 @@ class VoteTourTest {
     private World world() { return server.getWorld("world"); }
 
     private Location at(double x, double y, double z) { return new Location(world(), x, y, z); }
+
+    /** the block someone at {@code at} stands on */
+    private static Block floorOf(Location at) { return at.getBlock().getRelative(BlockFace.DOWN); }
 
     private static InventoryHolder holder(PlayerMock p) {
         Inventory top = p.getOpenInventory().getTopInventory();
@@ -671,20 +675,39 @@ class VoteTourTest {
         assertFalse(told(TestServer.messages(anna), "Prost brings you back when you join again"), "no tries left to give up");
     }
 
+    /** a stop brings the tour back inline: no tick tries again after it, the join does */
+    @Test
+    void aReturnRefusedAtAStopIsLeftToTheJoin() throws Exception {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(anna)), MockBukkit.createMockPlugin("Blocker"));
+        TestServer.messages(anna);
+        server.getPluginManager().disablePlugin(plugin);
+        List<String> told = TestServer.messages(anna);
+        assertTrue(told(told, "Prost brings you back when you join again"), told.toString());
+        assertFalse(told(told, "Prost tries again for a minute"), told.toString());
+        assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept for the join");
+    }
+
     // ---------------------------------------------------------------------------------------------- a return into mid-air
 
-    /** Anna was flying or falling when the tour started */
+    /** nothing under {@code p}'s home: they were flying or falling there when the tour started */
+    private void midAir(PlayerMock p) { floorOf(homes.get(p)).setType(Material.AIR); }
+
+    /** something solid under {@code p}'s feet: they land (assertSheltered puts one there too) */
+    private static void land(PlayerMock p) { floorOf(p.getLocation()).setType(Material.STONE); }
+
     @Test
     void aReturnToMidAirIsShelteredUntilLanding() {
-        anna.setOnGround(false);
+        midAir(anna);
         anna.setFallDistance(12f);
         tour();
         toVote(host);
         assertHome(anna, "back in mid-air");
         assertEquals(0f, anna.getFallDistance(), "the fall before the tour does not count");
         later(4000L);
+        plugin.returns().tick();
         assertSheltered(anna, true, "4 s after the return, still falling");
-        anna.setOnGround(true);
+        land(anna);
         plugin.returns().tick();
         later(3001L);
         assertSheltered(anna, false, "the grace after landing is over");
@@ -692,33 +715,67 @@ class VoteTourTest {
 
     @Test
     void aLandingShelterEndsAtTheCap() {
-        anna.setOnGround(false);
+        midAir(anna);
         tour();
         toVote(host);
         later(29_999L);
+        plugin.returns().tick();
         assertSheltered(anna, true, "falling for almost 30 s");
+        land(anna);
         later(2L);
         plugin.returns().tick();
-        assertSheltered(anna, false, "30 s after the return");
-        anna.setOnGround(true);
-        plugin.returns().tick();
-        assertSheltered(anna, false, "a landing after the cap brings no new grace");
+        assertSheltered(anna, false, "30 s after the return a landing brings no new grace");
     }
 
     @Test
     void aReturnedFallerWhoRejoinsIsStillSheltered() {
-        anna.setOnGround(false);
+        midAir(anna);
         tour();
         toVote(host);
         anna.disconnect();
         later(5000L);
         plugin.returns().tick();
         anna.reconnect();
+        plugin.returns().tick();
         assertSheltered(anna, true, "rejoined before landing");
-        anna.setOnGround(true);
+        land(anna);
         plugin.returns().tick();
         later(3001L);
         assertSheltered(anna, false, "landed");
+    }
+
+    /** a floor Prost cannot read counts as none */
+    @Test
+    void aReturnWhereTheGroundCannotBeReadKeepsTheShelter() {
+        tour();
+        Chunk chunk = homes.get(anna).getChunk();
+        assertTrue(world().unloadChunk(chunk.getX(), chunk.getZ(), false));
+        toVote(host);
+        later(4000L);
+        plugin.returns().tick();
+        assertSheltered(anna, true, "4 s after the return, the ground unread");
+        chunk.load();
+        plugin.returns().tick();
+        later(3001L);
+        assertSheltered(anna, false, "the grace once the ground is read");
+    }
+
+    /** the respawn event comes before the move: where she died says nothing about where she lands */
+    @Test
+    void aRespawnIntoMidAirIsShelteredUntilLanding() {
+        midAir(anna);
+        tour();
+        land(anna);   // at the build
+        anna.setHealth(0);
+        anna.respawn();
+        assertHome(anna, "respawned where she stood, in mid-air");
+        later(4000L);
+        plugin.returns().tick();
+        assertSheltered(anna, true, "4 s after the respawn, still falling");
+        land(anna);
+        plugin.returns().tick();
+        later(3001L);
+        assertSheltered(anna, false, "the grace after landing is over");
     }
 
     // ---------------------------------------------------------------------------------------------- passengers, refused visits
