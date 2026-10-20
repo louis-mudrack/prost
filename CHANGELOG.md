@@ -16,8 +16,8 @@
 - Luck: a wheel of fortune left with one spinner says so in its result line, and a mystery box whose taker left is no
   longer shown as untouched.
 - Votes: a vote cast after the clock has run out no longer counts.
-- challenges.yml after an update: a `.catalogue-version` file that holds no version is reported once and nothing is
-  added until it is fixed or deleted, and when the new challenges cannot be appended the log now says why (the file
+- challenges.yml after an update: a `.catalogue-version` file that holds no version is reported on each start and
+  `/prost reload`, and nothing is added until it is fixed or deleted, and when the new challenges cannot be appended the log now says why (the file
   would not read any more, one of your entries would change, or the number of entries would change).
 
 ## 0.4.1 - 2026-10-20
