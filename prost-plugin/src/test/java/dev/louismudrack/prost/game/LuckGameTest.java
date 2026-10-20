@@ -353,6 +353,36 @@ class LuckGameTest {
         assertTrue(told.stream().noneMatch(m -> m.contains(" called ")), "no coin line for a call nobody lost: " + told);
     }
 
+    /** higher or lower: the first draw is the shown number, then the next one (never the shown) */
+    @Test
+    void aHighLowGuessIsJudgedAgainstTheNextNumber() {
+        plugin.random(new Scripted(3, 7));   // shown 3 + 1 = 4; next: 7 + 1 = 8, above the shown one, so 9
+        List<UUID> duel = force("high_low", "duel").participants();
+        PlayerMock guessesHigher = player(duel.get(0)), guessesLower = player(duel.get(1));
+        click(guessesHigher, RIGHT);
+        click(guessesLower, LEFT);
+        tick();
+        later(revealMs());
+        TestServer.messages(guessesLower);
+        tick();
+        assertFalse(running());
+        ChallengeEndEvent result = end();
+        assertEquals(Map.of(id(guessesLower), 2), result.drinks(), "the wrong guess drinks 2");
+        assertEquals(List.of(id(guessesHigher)), result.winners());
+        List<String> told = TestServer.messages(guessesLower);
+        assertTrue(told.stream().anyMatch(m -> m.contains("4 then 9")), told.toString());
+    }
+
+    /** the first random picks come from the script, then every pick takes the first candidate */
+    private static final class Scripted extends Random {
+        private final int[] picks;
+        private int used;
+
+        Scripted(int... picks) { this.picks = picks; }
+
+        @Override public int nextInt(int bound) { return used < picks.length ? picks[used++] : 0; }
+    }
+
     @Test
     void whoDropsOutDuringTheRevealKeepsNothing() {
         force("wheel", "luck");
