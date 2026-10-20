@@ -24,7 +24,7 @@ public final class Trackers {
             case "proximity" -> new ProximityTracker(ctx);
             case "reaction" -> new ReactionTracker(ctx);
             case "potato" -> new PotatoTracker(ctx);
-            case "luck" -> new LuckTracker(ctx);
+            case "luck" -> LuckTracker.create(ctx);
             case "vote" -> new VoteTracker(ctx);
             default -> throw new IllegalArgumentException("unknown tracker " + d.tracker());
         };
