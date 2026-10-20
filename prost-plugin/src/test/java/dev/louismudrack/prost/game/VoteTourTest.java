@@ -3,6 +3,7 @@ package dev.louismudrack.prost.game;
 import dev.louismudrack.prost.LogCapture;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
+import dev.louismudrack.prost.api.ProstApi;
 import dev.louismudrack.prost.menu.GameMenu;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -38,6 +39,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.util.Vector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +50,7 @@ import org.mockbukkit.mockbukkit.entity.PigMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation;
 import org.mockbukkit.mockbukkit.simulate.entity.PlayerSimulation;
+import org.mockbukkit.mockbukkit.world.WorldMock;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -60,6 +63,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -348,13 +352,77 @@ class VoteTourTest {
         assertFalse(saved().containsKey(old.getUniqueId().toString()), "and forgotten");
     }
 
-    @Test
-    void teleportOffOnlyAnnounces() throws Exception {
+    private void teleportOff() throws IOException {
         File file = new File(plugin.getDataFolder(), "game.yml");
         YamlConfiguration c = YamlConfiguration.loadConfiguration(file);
         c.set("vote.teleport", false);
         c.save(file);
         plugin.reloadData();
+    }
+
+    /** Ben built in the Nether, which the server closes before the tour (as AniOps' /ani survival nether close does) */
+    private ChallengeRun benBuildsInTheNetherThatCloses() {
+        WorldMock nether = server.addSimpleWorld("world_nether");
+        nether.setEnvironment(World.Environment.NETHER);
+        AtomicBoolean gateOpen = new AtomicBoolean(true);
+        server.getServicesManager().load(ProstApi.class).registerDimensionGate(MockBukkit.createMockPlugin("Network"), env -> gateOpen.get());
+        builds.put(ben, new Location(nether, 30, 64, 30));
+        ChallengeRun run = build();
+        gateOpen.set(false);
+        return run;
+    }
+
+    /** the builders in {@code viewer}'s vote menu: MockBukkit's skull keeps the owner's name */
+    private static Set<String> votable(PlayerMock viewer) {
+        Set<String> out = new HashSet<>();
+        for (ItemStack it : viewer.getOpenInventory().getTopInventory().getContents())
+            if (it != null && it.getItemMeta() instanceof SkullMeta skull && skull.getOwningPlayer() != null) out.add(skull.getOwningPlayer().getName());
+        return out;
+    }
+
+    @Test
+    void aBuildInAClosedDimensionIsNotVisitedButStaysVotable() {
+        ChallengeRun run = benBuildsInTheNetherThatCloses();
+        TestServer.messages(host);
+        later(run.def.seconds() * 1000L);
+        tick();
+        long tourStart = now.get();
+        Set<Location> visited = new HashSet<>();
+        List<String> told = new ArrayList<>();
+        for (int i = 0; i < TOUR_STEPS && !(holder(host) instanceof GameMenu); i++) {
+            visited.add(host.getLocation());
+            told.addAll(TestServer.messages(host));
+            later(viewMs());
+            tick();
+        }
+        told.addAll(TestServer.messages(host));
+        assertEquals(Set.of(builds.get(host), builds.get(anna)), visited, "only the builds outside the closed Nether");
+        assertTrue(told(told, "Build by Ben: can't be visited (its dimension is closed), it still gets votes"), told.toString());
+        assertEquals(2 * viewMs(), now.get() - tourStart, "no viewing time for it");
+        for (PlayerMock p : everyone) assertHome(p, "back where they stood");
+        assertEquals(Set.of("Anna", "Ben"), votable(host), "it stays votable");
+    }
+
+    @Test
+    void withoutTeleportABuildInAClosedDimensionIsStillAnnounced() throws Exception {
+        teleportOff();
+        ChallengeRun run = benBuildsInTheNetherThatCloses();
+        TestServer.messages(host);
+        later(run.def.seconds() * 1000L);
+        tick();
+        List<String> told = new ArrayList<>(TestServer.messages(host));
+        for (int i = 0; i < TOUR_STEPS && !(holder(host) instanceof GameMenu); i++) {
+            later(viewMs());
+            tick();
+            told.addAll(TestServer.messages(host));
+        }
+        assertTrue(told(told, "Build by Ben: world_nether 30 64 30"), "its coordinates are named: " + told);
+        assertFalse(told(told, "its dimension is closed"), told.toString());
+    }
+
+    @Test
+    void teleportOffOnlyAnnounces() throws Exception {
+        teleportOff();
         ChallengeRun run = build();
         TestServer.messages(host);
         later(run.def.seconds() * 1000L);

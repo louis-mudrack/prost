@@ -243,6 +243,7 @@ game:
     not_now: "Gerade gibt es keinen Bau zu markieren."
     wrong_world: "Bauten zählen nur in den Welten, in denen Prost spielt - nicht markiert."
     excluded: "Dieser Bereich ist von Prost ausgenommen - nicht markiert."
+    gate_closed: "Diese Dimension ist gerade geschlossen - nicht markiert."
     model: "Dein Modell: <hl><name> <dark_gray>(nur du weißt es - bau sein Porträt)"
     too_few: "Für den Bauwettbewerb sind weniger als drei Spieler übrig - abgebrochen, niemand trinkt."
     # die eigene Zeile, dann die Liste für Zuschauer: jeder Name, dann baut oder markiert, wird gezeigt oder schaut, stimmt ab oder hat gestimmt
@@ -263,6 +264,7 @@ game:
     show_at: "<hl>Bau von <name><gray>: <white><world> <x> <y> <z>"
     show_missing: "<hl>Bau von <name><gray>: kann nicht besucht werden (keine Stelle), bekommt trotzdem Stimmen"
     unvisitable: "<hl>Bau von <name><gray>: kann nicht besucht werden (in den <blocks> Blöcken über der Stelle ist kein Platz zum Stehen), bekommt trotzdem Stimmen"
+    unvisitable_closed: "<hl>Bau von <name><gray>: kann nicht besucht werden (seine Dimension ist geschlossen), bekommt trotzdem Stimmen"
     # vote.teleport: wenn die Tour beginnt, zurück, wo der Spieler stand, der Rückweg geht noch nicht, seine Welt ist gelöscht
     visiting: "Die Tour bringt dich zu jedem Bau und danach hierher zurück. So lange nimmst du keinen Schaden und kannst nichts bauen, benutzen oder mitnehmen."
     returned: "Du bist zurück, wo du vor der Tour standest."

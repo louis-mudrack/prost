@@ -11,6 +11,7 @@ import dev.louismudrack.prost.ui.Hud;
 import dev.louismudrack.prost.ui.Sounds;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
@@ -31,10 +32,11 @@ import java.util.logging.Level;
 
 /**
  * A build contest in three phases. BUILD: every participant builds for the entry's seconds; /prost here marks the spot
- * (only in a game world and outside the excluded areas), otherwise it is where the builder stands when the time is up.
- * SHOW: the builds in a random order, vote.view-seconds each; a build without a spot is announced as not visitable and
- * stays votable. With vote.teleport the tour takes every participant to each build (the spot raised out of blocks, a
- * buried one not visited) and back afterwards: Returns saves the way back before anyone moves and shelters them.
+ * (only in a game world, outside the excluded areas and not in a Nether or End the DimensionGate keeps closed), otherwise
+ * it is where the builder stands when the time is up. SHOW: the builds in a random order, vote.view-seconds each; a build
+ * without a spot is announced as not visitable and stays votable. With vote.teleport the tour takes every participant to
+ * each build (the spot raised out of blocks, a buried one or one in a dimension closed by then not visited) and back
+ * afterwards: Returns saves the way back before anyone moves and shelters them.
  * VOTE: a menu with the other builders' heads for vote.vote-seconds, one vote that may change until the deadline.
  * mode portrait: each builder is told privately whom to portray. Who drops out is no longer votable and their vote is
  * gone. VoteRules judges; every draw comes from ProstPlugin#random, every time from ProstPlugin#now.
@@ -80,7 +82,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         if (PORTRAIT.equals(ctx.def().mode()) && order.size() >= MIN_VOTERS) models = VoteRules.derangement(order, rnd());
     }
 
-    /** /prost here: the spot is where the builder stands, while building, in a game world and outside the excluded areas */
+    /** /prost here: the spot is where the builder stands, while building, in a game world, an open dimension and outside the excluded areas */
     public boolean mark(Player p) {
         UUID id = p.getUniqueId();
         if (phase != Phase.BUILD || !order.contains(id)) {
@@ -90,6 +92,10 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         Location at = p.getLocation();
         if (!inGameWorld(at)) {
             Msg.error(p, "game.vote.wrong_world");
+            return false;
+        }
+        if (gateClosed(at)) {
+            Msg.error(p, "game.vote.gate_closed");
             return false;
         }
         if (excluded(at)) {
@@ -233,7 +239,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
             Player p = Bukkit.getPlayer(id);
             if (spots.containsKey(id) || p == null) continue;
             Location at = p.getLocation();
-            if (inGameWorld(at) && !excluded(at)) spots.put(id, at);
+            if (inGameWorld(at) && !gateClosed(at) && !excluded(at)) spots.put(id, at);
         }
         tour.addAll(order);
         Collections.shuffle(tour, rnd());
@@ -257,13 +263,18 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         for (UUID id : touring) Msg.tell(Bukkit.getPlayer(id), "game.vote.visiting");
     }
 
-    /** the next build still in the contest; one without a spot is announced and passed; after the last the vote starts */
+    /**
+     * the next build still in the contest; one without a spot, or one the tour cannot visit, is announced and passed; after
+     * the last the vote starts. The gate counts when the build's turn comes: the server may close a dimension meanwhile.
+     */
     private void showNext() {
         while (++shown < tour.size()) {
             UUID builder = tour.get(shown);
             if (!order.contains(builder)) continue;
-            Location spot = spotOf(builder), stand = standing(spot);
-            present(builder, spot, stand);
+            Location spot = spotOf(builder);
+            boolean closed = teleporting && spot != null && gateClosed(spot);
+            Location stand = closed ? null : standing(spot);
+            present(builder, spot, stand, closed);
             if (stand != null) {
                 viewEndsAt = ctx.plugin().now() + games().voteViewSeconds() * SECOND_MS;
                 return;
@@ -289,9 +300,9 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
 
     /**
      * a build's turn: the tour moves there, then every round member hears whose it is and where it stands; one without a
-     * spot, or one with no room to stand, is only named in chat
+     * spot, in a dimension the server closed ({@code closed}) or with no room to stand is only named in chat
      */
-    private void present(UUID builder, Location spot, Location stand) {
+    private void present(UUID builder, Location spot, Location stand, boolean closed) {
         if (stand != null && teleporting) visit(stand);
         for (UUID id : ctx.round().members.keySet()) {
             Player p = Bukkit.getPlayer(id);
@@ -299,6 +310,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
             if (stand == null) {
                 V who = V.of("name", name(builder));
                 if (spot == null) Msg.tell(p, "game.vote.show_missing", who);
+                else if (closed) Msg.tell(p, "game.vote.unvisitable_closed", who);
                 else Msg.tell(p, "game.vote.unvisitable", who, V.of("blocks", MAX_RAISE));
                 continue;
             }
@@ -389,6 +401,12 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
     private boolean inGameWorld(Location at) { return ctx.plugin().pluginConfig().gameWorld(at.getWorld().getName()); }
 
     private boolean excluded(Location at) { return ctx.plugin().hooks().excluded(at); }
+
+    /** a Nether or End spot while the server keeps that dimension closed; the gate is asked for those two only */
+    private boolean gateClosed(Location at) {
+        World.Environment env = at.getWorld().getEnvironment();
+        return (env == World.Environment.NETHER || env == World.Environment.THE_END) && !ctx.plugin().hooks().open(env);
+    }
 
     /** the builder's spot; a world unloaded since the mark makes it none (Location#getWorld would throw) */
     private Location spotOf(UUID builder) {

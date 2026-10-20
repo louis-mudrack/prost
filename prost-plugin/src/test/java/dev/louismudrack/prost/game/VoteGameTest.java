@@ -2,6 +2,7 @@ package dev.louismudrack.prost.game;
 
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
+import dev.louismudrack.prost.api.ProstApi;
 import dev.louismudrack.prost.api.event.ChallengeEndEvent;
 import dev.louismudrack.prost.menu.GameMenu;
 import net.kyori.adventure.bossbar.BossBar;
@@ -9,6 +10,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -23,6 +25,7 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import org.mockbukkit.mockbukkit.simulate.entity.PlayerSimulation;
+import org.mockbukkit.mockbukkit.world.WorldMock;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -31,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -43,6 +47,7 @@ class VoteGameTest {
     private static final int TOUR_STEPS = 10;
 
     private final AtomicLong now = new AtomicLong(1_000_000L);
+    private final AtomicBoolean gateOpen = new AtomicBoolean(true);
     private final List<ChallengeEndEvent> ended = new ArrayList<>();
     private ServerMock server;
     private ProstPlugin plugin;
@@ -234,6 +239,41 @@ class VoteGameTest {
         List<String> tour = toVote(run);
         assertTrue(told(tour, "Build by Anna: can't be visited"), "still in the area when the time ran out: " + tour);
         assertEquals(Set.of("Anna", "Ben", "Cleo"), new HashSet<>(heads(host)), "a build that cannot be visited stays votable");
+    }
+
+    /** a Nether world behind a gate the test opens and closes, as AniOps' /ani survival nether open|close does */
+    private World netherBehindAGate() {
+        WorldMock nether = server.addSimpleWorld("world_nether");
+        nether.setEnvironment(World.Environment.NETHER);
+        server.getServicesManager().load(ProstApi.class).registerDimensionGate(MockBukkit.createMockPlugin("Network"), env -> gateOpen.get());
+        return nether;
+    }
+
+    @Test
+    void hereInAClosedDimensionIsRefused() {
+        World nether = netherBehindAGate();
+        gateOpen.set(false);
+        force(STATUE);
+        anna.teleport(new Location(nether, 4, 70, 4));
+        TestServer.messages(anna);
+        anna.performCommand("prost here");
+        List<String> told = TestServer.messages(anna);
+        assertTrue(told(told, "This dimension is closed right now - not marked."), told.toString());
+        assertFalse(told(told, MARKED));
+        gateOpen.set(true);
+        anna.performCommand("prost here");
+        assertTrue(told(TestServer.messages(anna), MARKED + ": world_nether 4 70 4"), "open again: marked");
+    }
+
+    @Test
+    void noSpotIsTakenInAClosedDimensionWhenTheTimeIsUp() {
+        World nether = netherBehindAGate();
+        ChallengeRun run = force(STATUE);
+        ben.teleport(new Location(nether, 4, 70, 4));
+        gateOpen.set(false);
+        List<String> tour = toVote(run);
+        assertTrue(told(tour, "Build by Ben: can't be visited (no spot)"), tour.toString());
+        assertTrue(heads(host).contains("Ben"), "still votable");
     }
 
     @Test

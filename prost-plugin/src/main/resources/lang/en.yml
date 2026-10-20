@@ -243,6 +243,7 @@ game:
     not_now: "There is no build to mark right now."
     wrong_world: "Builds only count in the worlds Prost plays in - not marked."
     excluded: "This area is excluded from Prost - not marked."
+    gate_closed: "This dimension is closed right now - not marked."
     model: "Your model: <hl><name> <dark_gray>(only you know it - build their portrait)"
     too_few: "Fewer than three players are left for the build contest - cancelled, nobody drinks."
     # the own line, then a watcher's list: each name, then building or marked, on show or looking, voting or voted
@@ -263,6 +264,7 @@ game:
     show_at: "<hl>Build by <name><gray>: <white><world> <x> <y> <z>"
     show_missing: "<hl>Build by <name><gray>: can't be visited (no spot), it still gets votes"
     unvisitable: "<hl>Build by <name><gray>: can't be visited (no room to stand within <blocks> blocks above the spot), it still gets votes"
+    unvisitable_closed: "<hl>Build by <name><gray>: can't be visited (its dimension is closed), it still gets votes"
     # vote.teleport: when the tour starts, back where the player stood, the way back not possible yet, its world deleted
     visiting: "The tour takes you to every build and then back here. Meanwhile you take no damage and cannot build, use or take anything."
     returned: "You are back where you stood before the tour."
