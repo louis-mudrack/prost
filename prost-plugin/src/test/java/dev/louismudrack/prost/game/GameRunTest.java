@@ -47,10 +47,10 @@ class GameRunTest {
         boolean decided, hidden, stopped;
         String cancelKey, result;
         Verdict verdict = Verdict.of(Map.of(), List.of());
-        /** non-null: verdict() throws it */
-        RuntimeException verdictFails;
+        /** non-null: verdict() throws it (a RuntimeException or an Error) */
+        Throwable verdictFails;
         /** non-null: start() throws it once it listens */
-        RuntimeException startFails;
+        Throwable startFails;
         /** non-null: stop() throws it once it stopped listening */
         RuntimeException stopFails;
         final List<UUID> dropped = new ArrayList<>();
@@ -58,7 +58,7 @@ class GameRunTest {
 
         @Override public void start(List<Player> players) {
             Bukkit.getPluginManager().registerEvents(this, Bukkit.getPluginManager().getPlugin("Prost"));
-            if (startFails != null) throw startFails;
+            if (startFails != null) throwUnchecked(startFails);
         }
         @Override public int progress(UUID id) { return 0; }
         @Override public void stop() {
@@ -70,7 +70,7 @@ class GameRunTest {
         @Override public boolean decided() { return decided; }
         @Override public Verdict verdict() {
             verdicts++;
-            if (verdictFails != null) throw verdictFails;
+            if (verdictFails != null) throwUnchecked(verdictFails);
             return verdict;
         }
         @Override public String status(UUID viewer, UUID who) { return "<white>playing"; }
@@ -80,6 +80,11 @@ class GameRunTest {
         @Override public String cancelKey() { return cancelKey; }
 
         @EventHandler public void onQuit(PlayerQuitEvent e) { }
+
+        private static void throwUnchecked(Throwable t) {
+            if (t instanceof RuntimeException e) throw e;
+            throw (Error) t;
+        }
     }
 
     private final AtomicLong now = new AtomicLong(1_000_000L);
@@ -301,6 +306,22 @@ class GameRunTest {
         assertNotNull(plugin.director().running(round), "and is drawn");
     }
 
+    /** a linkage error (a missing class of an optional hook) is no different from any other error: the run is cancelled */
+    @Test
+    void aGameThatThrowsALinkageErrorWhileRunningIsCancelled() {
+        game.verdictFails = new NoClassDefFoundError("scripted/Missing");
+        launch(round, game);
+        game.decided = true;
+        TestServer.messages(host);
+        try (LogCapture log = LogCapture.root()) {
+            plugin.director().tick();
+            assertEquals(1, log.records().stream().filter(r -> r.getThrown() == game.verdictFails).count(), "logged once: " + log.messages());
+        }
+        assertNull(plugin.director().running(round), "the broken run is gone");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("hit an error")), "the round is told");
+        assertTrue(plugin.director().next(round), "the next challenge may be drawn");
+    }
+
     /** a second round of two, hosted by Dora */
     private Round secondRound() {
         PlayerMock dora = server.addPlayer("Dora"), eve = server.addPlayer("Eve");
@@ -370,6 +391,23 @@ class GameRunTest {
         assertTrue(plugin.director().next(round), "the next challenge may be drawn");
     }
 
+    @Test
+    void aGameWhoseStartThrowsALinkageErrorFreesTheRound() {
+        game.startFails = new NoClassDefFoundError("scripted/Missing");
+        TestServer.messages(host);
+        try (LogCapture log = LogCapture.root()) {
+            launch(round, game);
+            assertEquals(1, log.records().stream().filter(r -> r.getThrown() == game.startFails).count(), "logged once: " + log.messages());
+        }
+        assertNull(plugin.director().running(round), "the broken run is gone");
+        assertFalse(listens(game), "no listener left");
+        assertTrue(host.getBossBars().isEmpty(), "no bar left");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("hit an error")), "the round is told");
+        assertEquals(1, ended.size(), "API listeners see it end");
+        assertFalse(ended.get(0).resolved());
+        assertTrue(plugin.director().next(round), "the next challenge may be drawn");
+    }
+
     /** the hot potato draws its hidden length when it starts: a random source that throws breaks that start */
     @Test
     void aForcedChallengeWhoseStartFailsLeavesNoRun() {
@@ -377,10 +415,15 @@ class GameRunTest {
         plugin.random(new Random() {
             @Override public long nextLong(long origin, long bound) { throw broken; }
         });
+        int played = round.challenges;
+        TestServer.messages(server.getConsoleSender());
         try (LogCapture log = LogCapture.root()) {
             server.dispatchCommand(server.getConsoleSender(), "prost admin force " + round.code + " hot_potato reaction");
             assertEquals(1, log.records().stream().filter(r -> r.getThrown() == broken).count(), "the start failed: " + log.messages());
         }
+        assertTrue(TestServer.messages(server.getConsoleSender()).stream().anyMatch(m -> m.contains("failed to start")), "force says so");
+        assertEquals(played, round.challenges, "a failed start does not count as played");
+        assertTrue(round.used.contains("hot_potato"), "and is not drawn again before the pool resets");
         assertNull(plugin.director().running(round), "no run left");
         plugin.random(new Random());
         assertTrue(plugin.director().next(round), "the round may draw again");

@@ -293,7 +293,11 @@ public final class ProstCommand implements BasicCommand {
                 ChallengeDef d = args.length > 3 ? Catalogue.find(plugin.challenges(), args[3]) : null;
                 Kind k = args.length > 4 ? Kind.of(args[4]) : null;
                 if (r == null || d == null || k == null) reply(s, "admin.force_usage");
-                else if (!plugin.director().force(r, d, k)) reply(s, "admin.force_refused");
+                else switch (plugin.director().force(r, d, k)) {
+                    case REFUSED -> reply(s, "admin.force_refused");
+                    case FAILED -> reply(s, "admin.force_failed");
+                    case STARTED -> { }
+                }
             }
             case "debug" -> {
                 Roulette rl = plugin.roulette();

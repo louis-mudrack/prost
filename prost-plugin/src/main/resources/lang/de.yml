@@ -383,6 +383,7 @@ admin:
   unknown_code: "Unbekannter Code."
   force_usage: "Nutzung: /prost admin force <code> <id> <kind>"
   force_refused: "Geht gerade nicht (läuft schon etwas, oder zu wenige aktive Spieler für diese Art)."
+  force_failed: "Die Herausforderung konnte nicht starten - abgebrochen, der Fehler steht in der Konsole."
   debug_on: "Roulette-Debug in der Konsole: an"
   debug_off: "Roulette-Debug in der Konsole: aus"
   migrated: "AniDrinks-Daten übernommen - die Zahlen stehen in der Konsole."

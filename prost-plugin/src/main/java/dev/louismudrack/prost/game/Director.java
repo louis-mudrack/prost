@@ -44,7 +44,7 @@ public final class Director {
             }
             try {
                 run.tick();
-            } catch (RuntimeException e) {
+            } catch (RuntimeException | LinkageError e) {
                 failed(run, e);
             }
         }
@@ -57,7 +57,7 @@ public final class Director {
                 if (DirectorRules.mayStart(runs.containsKey(r.code), r.paused, active.size(), now, r.nextDrawAt)) draw(r, active);
                 remindRules(r, now);
                 showPaused(r);
-            } catch (RuntimeException e) {
+            } catch (RuntimeException | LinkageError e) {
                 plugin.getLogger().log(Level.WARNING, "round " + r.code + ": starting a challenge failed - next try in a minute", e);
                 r.nextDrawAt = now + RETRY_MS;
             }
@@ -65,12 +65,12 @@ public final class Director {
     }
 
     /** one broken challenge (e.g. an admin-edited entry the server rejects) must not stop every other round */
-    private void failed(ChallengeRun run, RuntimeException e) {
+    private void failed(ChallengeRun run, Throwable e) {
         String what = "challenge " + run.def.id() + " in round " + run.round.code;
         plugin.getLogger().log(Level.WARNING, what + " failed - cancelled", e);
         try {
             run.cancel("challenge.error");   // a no-op when it broke while finishing: it cancelled itself then
-        } catch (RuntimeException again) {
+        } catch (RuntimeException | LinkageError again) {
             plugin.getLogger().log(Level.WARNING, "cancelling " + what + " failed too", again);
         } finally {
             if (runs.get(run.round.code) == run) ended(run.round, false);   // a broken run never holds its round
@@ -136,26 +136,27 @@ public final class Director {
             case DUEL -> chosen.size() >= 2 ? chosen.subList(0, 2) : DrawRules.fewestTwo(counts(r, false), active, rnd);
             default -> active;
         };
+        r.used.add(choice.def().id());   // also when it fails: a broken entry is not drawn again before the pool resets
+        if (!launch(new ChallengeRun(plugin, r, choice.def(), choice.kind(), participants))) return;
         for (UUID id : participants) {
             Member m = r.member(id);
             if (choice.kind() == Kind.SOLO) m.solos++;
             if (choice.kind() == Kind.DUEL) m.duels++;
         }
-        r.used.add(choice.def().id());
         r.challenges++;
-        launch(new ChallengeRun(plugin, r, choice.def(), choice.kind(), participants));
+        plugin.rounds().save();
     }
 
-    /** the round's run from now on; tests hand in one with a scripted game */
-    void launch(ChallengeRun run) {
+    /** the round's run from now on, unless its start fails (then it is cancelled); tests hand in one with a scripted game */
+    boolean launch(ChallengeRun run) {
         runs.put(run.round.code, run);
         try {
             run.start();
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
             failed(run, e);
-            return;
+            return false;
         }
-        plugin.rounds().save();
+        return true;
     }
 
     private static Map<UUID, Integer> counts(Round r, boolean solos) {
@@ -182,12 +183,15 @@ public final class Director {
     }
 
     /** /prost admin force: a given challenge and kind right now (testing, staff) */
-    public boolean force(Round r, ChallengeDef d, Kind kind) {
+    public Forced force(Round r, ChallengeDef d, Kind kind) {
         List<UUID> active = playable(r);
-        if (runs.containsKey(r.code) || !DrawRules.kinds(d, active.size()).contains(kind)) return false;
+        if (runs.containsKey(r.code) || !DrawRules.kinds(d, active.size()).contains(kind)) return Forced.REFUSED;
         start(r, new DrawRules.Choice(d, kind), List.of(), active);
-        return true;
+        return runs.containsKey(r.code) ? Forced.STARTED : Forced.FAILED;
     }
+
+    /** what /prost admin force can tell: it began, it was not allowed, or it broke while starting */
+    public enum Forced { STARTED, REFUSED, FAILED }
 
     public ChallengeRun running(Round r) { return runs.get(r.code); }
 

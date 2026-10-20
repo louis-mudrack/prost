@@ -216,10 +216,10 @@ public final class ChallengeRun {
         Judged judged;
         try {
             judged = judge();
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
             try {
                 end("challenge.error");
-            } catch (RuntimeException again) {
+            } catch (RuntimeException | LinkageError again) {
                 e.addSuppressed(again);
             }
             throw e;

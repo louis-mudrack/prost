@@ -383,6 +383,7 @@ admin:
   unknown_code: "Unknown code."
   force_usage: "Usage: /prost admin force <code> <id> <kind>"
   force_refused: "Not possible now (something runs, or too few active players for that kind)."
+  force_failed: "The challenge failed to start - cancelled, the console has the error."
   debug_on: "Roulette debug in the console: on"
   debug_off: "Roulette debug in the console: off"
   migrated: "AniDrinks data taken over - the counts are in the console."
