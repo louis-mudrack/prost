@@ -85,7 +85,7 @@ public final class CatalogueMerge {
             return 0;
         }
         try {
-            plugin.files().writeAtomically(FILE, merged);
+            plugin.files().writeDurably(FILE, merged);
         } catch (IOException e) {
             plugin.getLogger().warning(FILE + ": " + what + " could not be added (" + YamlErrors.describe(e) + ") - they are tried again "
                     + "on the next start");
@@ -162,7 +162,7 @@ public final class CatalogueMerge {
 
     private static void mark(ProstPlugin plugin, String version) {
         try {
-            plugin.files().writeAtomically(MARKER, (version + "\n").getBytes(StandardCharsets.UTF_8));
+            plugin.files().writeDurably(MARKER, (version + "\n").getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             plugin.getLogger().warning(MARKER + " not saved (" + YamlErrors.describe(e) + ") - a new challenge you delete from " + FILE
                     + " before the next start comes back then");

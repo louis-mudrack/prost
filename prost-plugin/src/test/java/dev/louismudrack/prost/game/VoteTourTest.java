@@ -385,6 +385,20 @@ class VoteTourTest {
         assertNotEquals(homes.get(anna), anna.getLocation(), "the others tour on");
     }
 
+    /** once returns.yml is blocked by a folder every save fails with one warning: so the warnings count the saves */
+    @Test
+    void theEndOfTheTourSavesTheWaysBackOnceForEveryone() {
+        tour();
+        assertTrue(returnsFile().delete());
+        assertTrue(new File(returnsFile(), "in-the-way").mkdirs(), "a folder where returns.yml belongs");
+        try (LogCapture log = LogCapture.root()) {
+            toVote(host);
+            assertEquals(1, log.messages().stream().filter(m -> m.contains(RETURNS + " not saved")).count(),
+                    "one save for the three returns: " + log.messages());
+        }
+        for (PlayerMock p : everyone) assertHome(p, "back where they stood");
+    }
+
     @Test
     void aContestCancelledMidTourBringsEveryoneBack() throws Exception {
         tour();

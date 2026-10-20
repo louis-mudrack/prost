@@ -134,11 +134,16 @@ public final class DataFiles {
     }
 
     /**
-     * A file of the data folder replaced through a temp file that is forced to disk first: a stop, a crash or a power
-     * loss halfway through leaves the old content or the new, never a broken or empty file. Synchronous, so it works
-     * while the plugin is disabling. On failure the temp file is removed; the exception's message says if it is left.
+     * A file of the data folder replaced through a temp file and an atomic move: a stop or a crash of the server halfway
+     * through leaves the old content or the new, never a broken or empty file. Synchronous, so it works while the plugin
+     * is disabling. On failure the temp file is removed; the exception's message says if it is left.
      */
-    public void writeAtomically(String name, byte[] content) throws IOException {
+    public void writeAtomically(String name, byte[] content) throws IOException { write(name, content, false); }
+
+    /** writeAtomically with the temp file forced to disk before the move: a power loss, too, leaves the old content or the new */
+    public void writeDurably(String name, byte[] content) throws IOException { write(name, content, true); }
+
+    private void write(String name, byte[] content, boolean force) throws IOException {
         Path file = dataFile(name), tmp = file.resolveSibling(name + ".tmp");
         try {
             Files.createDirectories(file.getParent());
@@ -146,7 +151,7 @@ public final class DataFiles {
                     StandardOpenOption.WRITE)) {
                 ByteBuffer data = ByteBuffer.wrap(content);
                 while (data.hasRemaining()) out.write(data);
-                out.force(true);
+                if (force) out.force(true);
             }
             try {
                 Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

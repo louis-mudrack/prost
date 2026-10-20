@@ -37,10 +37,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Level;
 
 /**
  * The way back from a build contest tour: where each touring player stood when it started, written to returns.yml before
@@ -162,6 +164,28 @@ public final class Returns implements Listener {
      * brings them back. A return that cannot be made yet is told to them and tried again when they join.
      */
     public boolean bringBack(Player p) {
+        int before = homes.size();
+        boolean moved = moveBack(p);
+        saveIfFewer(before);
+        return moved;
+    }
+
+    /** the end of a tour: each of them back as bringBack does, with one save for all; one failed return keeps nobody else away */
+    public void bringBackAll(Collection<Player> ps) {
+        int before = homes.size();
+        for (Player p : ps) {
+            try {
+                moveBack(p);
+            } catch (RuntimeException e) {
+                String what = p.getName() + " could not be brought back from the tour - tried again when they join";
+                plugin.getLogger().log(Level.WARNING, what, e);
+            }
+        }
+        saveIfFewer(before);
+    }
+
+    /** bringBack without saving: the caller saves once for everybody it brings back */
+    private boolean moveBack(Player p) {
         UUID id = p.getUniqueId();
         endShelter(id);
         Home home = homes.get(id);
@@ -179,10 +203,15 @@ public final class Returns implements Listener {
         return true;
     }
 
-    /** the way back is gone, and with it the shelter that lasts until they are back */
-    public void forget(UUID id) {
+    /** the way back is gone, and with it the shelter that lasts until they are back; saveIfFewer writes it down */
+    private void forget(UUID id) {
         endShelter(id);
-        if (homes.remove(id) != null) save(" - a player who is back may be moved there again on joining after a restart");
+        homes.remove(id);
+    }
+
+    /** the ways back dropped since {@code before} (homes.size() then) leave returns.yml */
+    private void saveIfFewer(int before) {
+        if (homes.size() < before) save(" - a player who is back may be moved there again on joining after a restart");
     }
 
     private void returned(Player p) {
@@ -240,12 +269,15 @@ public final class Returns implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRespawn(PlayerRespawnEvent e) {
         Player p = e.getPlayer();
+        int before = homes.size();
         Home home = homes.get(p.getUniqueId());
         World world = home == null ? null : worldOf(p, home);
-        if (world == null) return;
-        extinguish(p);
-        e.setRespawnLocation(home.in(world));
-        returned(p);
+        if (world != null) {
+            extinguish(p);
+            e.setRespawnLocation(home.in(world));
+            returned(p);
+        }
+        saveIfFewer(before);
     }
 
     // ---------------------------------------------------------------------------------------------- the shelter
@@ -309,7 +341,8 @@ public final class Returns implements Listener {
         DumperOptions o = new DumperOptions();
         o.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         try {
-            plugin.files().writeAtomically(FILE, (HEADER + new Yaml(o).dump(out)).getBytes(StandardCharsets.UTF_8));
+            // forced to disk: after a power loss the file still has to bring everyone back
+            plugin.files().writeDurably(FILE, (HEADER + new Yaml(o).dump(out)).getBytes(StandardCharsets.UTF_8));
             return true;
         } catch (IOException e) {
             plugin.getLogger().warning(FILE + " not saved (" + YamlErrors.describe(e) + ")" + consequence);

@@ -319,9 +319,14 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         }
     }
 
-    /** everyone the tour moved goes back; who is offline finds the way back on joining */
+    /** everyone the tour moved goes back, with one save of returns.yml; who is offline finds the way back on joining */
     private void endTour() {
-        for (UUID id : touring) bringBack(id);
+        List<Player> back = new ArrayList<>();
+        for (UUID id : touring) {
+            Player p = Bukkit.getPlayer(id);
+            if (p != null) back.add(p);
+        }
+        returns().bringBackAll(back);
         touring.clear();
     }
 
