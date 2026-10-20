@@ -17,16 +17,19 @@ import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -134,8 +137,10 @@ class ShutdownTest {
         server.getPluginManager().disablePlugin(plugin);
         assertEquals(before + 1, nextTaskId(other), "onDisable scheduled a task");
         for (PlayerMock p : everyone) assertEquals(homes.get(p), p.getLocation(), p.getName() + " is back where they stood");
-        String saved = Files.readString(new File(plugin.getDataFolder(), "returns.yml").toPath());
-        for (PlayerMock p : everyone) assertFalse(saved.contains(p.getUniqueId().toString()), "nothing left to return: " + saved);
+        Map<?, ?> saved = new Yaml().load(Files.readString(new File(plugin.getDataFolder(), "returns.yml").toPath()));
+        for (PlayerMock p : everyone) assertFalse(saved.containsKey(p.getUniqueId().toString()), "nothing left to return: " + saved);
+        assertEquals(everyone.stream().map(p -> p.getUniqueId().toString()).collect(Collectors.toSet()), Set.copyOf((List<?>) saved.get("landing")),
+                "their homes are in mid-air: each landing waits for the next start");
     }
 
     @Test

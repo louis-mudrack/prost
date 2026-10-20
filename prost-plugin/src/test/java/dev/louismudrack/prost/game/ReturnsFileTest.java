@@ -4,10 +4,14 @@ import dev.louismudrack.prost.LogCapture;
 import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import org.bukkit.Location;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.damage.DamageType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import org.mockbukkit.mockbukkit.simulate.entity.LivingEntitySimulation;
 
 import java.io.File;
 import java.io.IOException;
@@ -78,5 +82,31 @@ class ReturnsFileTest {
     void anEmptyFileIsNobodyToBringBack() {
         assertEquals(List.of(), startWith(Map.of(RETURNS, "")));
         assertFalse(Files.exists(file(RETURNS + ".broken")));
+    }
+
+    private static String wayBack(UUID id) { return id + ":\n  world: world\n  x: 5.5\n  y: 70.0\n  z: 5.5\n  yaw: 30.0\n  pitch: 0.0\n"; }
+
+    @Test
+    void aBrokenLandingListIsSkippedAndTheWaysBackLoad() {
+        UUID id = UUID.randomUUID();
+        List<String> told = startWith(Map.of(RETURNS, wayBack(id) + "landing: nope\n"));
+        assertEquals(1, told.size(), told.toString());
+        assertTrue(told.get(0).contains(RETURNS + ": landing is not a list"), told.toString());
+        PlayerMock anna = new PlayerMock(server, "Anna", id);
+        server.addPlayer(anna);
+        assertEquals(new Location(server.getWorld("world"), 5.5, 70, 5.5, 30f, 0f), anna.getLocation(), "brought back on joining");
+        assertFalse(Files.exists(file(RETURNS + ".broken")), "not set aside");
+    }
+
+    @Test
+    void anIdInTheLandingListThatIsNoPlayerIsSkipped() {
+        UUID falling = UUID.randomUUID();
+        List<String> told = startWith(Map.of(RETURNS, "landing:\n- not-a-player\n- " + falling + "\n"));
+        assertEquals(1, told.size(), told.toString());
+        assertTrue(told.get(0).contains("not-a-player"), told.toString());
+        PlayerMock ben = new PlayerMock(server, "Ben", falling);
+        server.addPlayer(ben);
+        assertTrue(new LivingEntitySimulation(ben).simulateDamage(2, DamageSource.builder(DamageType.FALL).build()).isCancelled(),
+                "the other landing resumes on joining");
     }
 }

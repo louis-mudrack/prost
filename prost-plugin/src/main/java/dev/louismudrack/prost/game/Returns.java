@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -56,16 +57,20 @@ import java.util.logging.Level;
  * anyone moves, so a quit, a stop or a crash still gets them back - inline on a stop, on the next join or respawn
  * otherwise. From the start of the tour until it is over for them, and RETURN_GRACE_MS after a return, they take no
  * damage and cannot change or take anything at a build: no blocks, buckets or block and item use, no using, hitting or
- * breaking entities, no dropping or picking up items. A return into mid-air keeps the shelter until they land; one another
- * plugin refuses, or into a world that is not loaded, keeps it while tick tries again: for one minute per way back, from
- * its first failure on and also while they are away (a join within it shelters them again). After that minute each join
+ * breaking entities, no dropping or picking up items. A return into mid-air keeps the shelter until they land, at most
+ * 30 s while they are online (a flyer whose flight holds through the grace is on their own); returns.yml keeps the
+ * landing too, so one that a quit, a stop or a reload cut short starts again on their arrival. A return another plugin
+ * refuses, or into a world that is not loaded, keeps it while tick tries again: for one minute per way back, from its
+ * first failure on and also while they are away (a join within it shelters them again). After that minute each join
  * tries once, without the shelter. A return that is made is finished, also when telling them about it fails.
  */
 public final class Returns implements Listener {
     private static final String FILE = "returns.yml";
+    /** the top-level key of the landing players' ids: no player id looks like it */
+    private static final String LANDING = "landing";
     /** spec §7: the arrival may need a moment (chunks loading) before the player is on their own again */
     private static final long RETURN_GRACE_MS = 3000L;
-    /** a return into mid-air: sheltered until they land, at most this long */
+    /** a return into mid-air: sheltered until they land, at most this long online */
     private static final long LANDING_MAX_MS = 30_000L;
     /** a return that failed is tried again this often while they are online ... */
     private static final long RETRY_MS = 5_000L;
@@ -79,8 +84,11 @@ public final class Returns implements Listener {
     private final Map<UUID, Home> homes = new LinkedHashMap<>();
     /** id -> until when (plugin time) they are sheltered */
     private final Map<UUID, Long> sheltered = new HashMap<>();
-    /** returned into mid-air: their shelter ends LANDING_MAX_MS after the return, or RETURN_GRACE_MS after they land */
-    private final Set<UUID> landing = new HashSet<>();
+    /**
+     * returned into mid-air: id -> when (plugin time) the landing (re)started, at the return or the arrival that resumed
+     * it. Never someone Prost holds a way back for: that return decides about the landing.
+     */
+    private final Map<UUID, Long> landing = new HashMap<>();
     /** id -> the return that failed, tried again by tick */
     private final Map<UUID, Retry> retries = new HashMap<>();
     /** ways back whose minute of tries is over: apart from retries, so tick never looks at them again */
@@ -135,11 +143,26 @@ public final class Returns implements Listener {
             return;
         }
         saved.forEach((key, value) -> {
+            if (LANDING.equals(key)) return;
             Home home = Home.decode(value);
             UUID id = uuid(String.valueOf(key));
             if (id == null || home == null) plugin.getLogger().warning(FILE + ": the entry " + key + " is incomplete - skipped");
             else homes.put(id, home);
         });
+        if (saved.containsKey(LANDING)) loadLanding(saved.get(LANDING));
+    }
+
+    /** after the ways back: each landing waits for its player's arrival, which restarts it; what is unreadable is skipped */
+    private void loadLanding(Object value) {
+        if (!(value instanceof List<?> ids)) {
+            plugin.getLogger().warning(FILE + ": " + LANDING + " is not a list of player ids - skipped");
+            return;
+        }
+        for (Object entry : ids) {
+            UUID id = uuid(String.valueOf(entry));
+            if (id == null) plugin.getLogger().warning(FILE + ": " + LANDING + " lists " + entry + ", which is not a player id - skipped");
+            else if (!homes.containsKey(id)) landing.put(id, plugin.now());
+        }
     }
 
     /** the next save would overwrite it: moved next to it under a name no save uses, for the admin to repair */
@@ -170,15 +193,17 @@ public final class Returns implements Listener {
      */
     public boolean remember(Map<UUID, Location> where) {
         Map<UUID, Home> before = new LinkedHashMap<>(homes);
+        Map<UUID, Long> landingBefore = new HashMap<>(landing);
         where.forEach((id, at) -> homes.put(id, Home.of(at)));
+        landing.keySet().removeAll(where.keySet());
         if (!save(" - the tour only names the builds, nobody is moved")) {
             homes.clear();
             homes.putAll(before);
+            landing.putAll(landingBefore);
             return false;
         }
         for (UUID id : where.keySet()) {
             sheltered.put(id, UNTIL_BACK);
-            landing.remove(id);
             retries.remove(id);
             triesOver.remove(id);
         }
@@ -188,22 +213,41 @@ public final class Returns implements Listener {
     /** every half second: who returned into mid-air and has landed gets the grace, a failed return is tried again */
     public void tick() {
         if (landing.isEmpty() && retries.isEmpty()) return;
-        endLandings();
+        if (endLandings()) save(" - a player who has landed may be sheltered again for a moment on joining after a restart");
         retryReturns();
     }
 
-    /** past the cap the shelter runs out by time; offline they stay in, so a rejoin before the cap is still sheltered */
-    private void endLandings() {
-        for (Iterator<UUID> it = landing.iterator(); it.hasNext(); ) {
-            UUID id = it.next();
-            Player p = Bukkit.getPlayer(id);
-            if (!shelters(id)) {
+    /** online only: away, a landing waits for their arrival, which restarts it. True if any landing ended */
+    private boolean endLandings() {
+        boolean ended = false;
+        for (Iterator<Map.Entry<UUID, Long>> it = landing.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<UUID, Long> started = it.next();
+            Player p = Bukkit.getPlayer(started.getKey());
+            if (p != null && endLanding(p, plugin.now() - started.getValue())) {
                 it.remove();
-            } else if (p != null && standsOnSomething(p)) {
-                sheltered.put(id, plugin.now() + RETURN_GRACE_MS);
-                it.remove();
+                ended = true;
             }
         }
+        return ended;
+    }
+
+    /**
+     * true if the landing that has run for {@code since} is over: past the cap its shelter runs out by time, standing on
+     * something the grace starts, a flight that held through the grace ends it now. A flight that ended meanwhile is held
+     * like a fall.
+     */
+    private boolean endLanding(Player p, long since) {
+        UUID id = p.getUniqueId();
+        if (since >= LANDING_MAX_MS) return true;
+        if (standsOnSomething(p)) {
+            sheltered.put(id, plugin.now() + RETURN_GRACE_MS);
+            return true;
+        }
+        if (p.isFlying() && since >= RETURN_GRACE_MS) {
+            sheltered.remove(id);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -235,6 +279,21 @@ public final class Returns implements Listener {
 
     /** whether Prost holds a way back for this player */
     public boolean remembers(UUID id) { return homes.containsKey(id); }
+
+    /**
+     * A player who is (back) on the server: brought back when Prost holds a way back for them, otherwise a landing that a
+     * quit, a stop or a reload cut short starts again, sheltered for at most LANDING_MAX_MS from now.
+     */
+    public void arrive(Player p) {
+        UUID id = p.getUniqueId();
+        if (remembers(id)) {
+            bringBack(p);
+        } else if (landing.containsKey(id)) {
+            long now = plugin.now();
+            landing.put(id, now);
+            sheltered.put(id, now + LANDING_MAX_MS);
+        }
+    }
 
     /**
      * Back to where they stood when the tour started, out of any vehicle and rid of any passenger, no longer burning or
@@ -315,7 +374,7 @@ public final class Returns implements Listener {
         Retry pending = retries.get(id);
         if (!plugin.isEnabled()) {
             leaveToTheJoin(p, failure, error);
-        } else if (triesOver.contains(id) || pending != null && plugin.now() >= pending.endsAt()) {
+        } else if (minuteOver(id, pending)) {
             endMinute(id);
             leaveToTheJoin(p, failure, error);
         } else if (pending == null) {
@@ -334,6 +393,11 @@ public final class Returns implements Listener {
                 Msg.tell(p, "game.vote.return_retry");
             }
         }
+    }
+
+    /** also a minute that ran out while they were away, before tick saw it */
+    private boolean minuteOver(UUID id, Retry pending) {
+        return triesOver.contains(id) || (pending != null && plugin.now() >= pending.endsAt());
     }
 
     private void leaveToTheJoin(Player p, String failure, RuntimeException error) {
@@ -371,8 +435,8 @@ public final class Returns implements Listener {
     }
 
     /**
-     * a fall before the return does not count; {@code standing}: the grace starts now, otherwise once tick finds them
-     * standing on something, at the cap at the latest
+     * a fall before the return does not count; {@code standing}: the grace starts now, otherwise the landing, which tick
+     * ends. The caller's save of the ways back writes the landing down too.
      */
     private void returned(Player p, boolean standing) {
         UUID id = p.getUniqueId();
@@ -382,18 +446,18 @@ public final class Returns implements Listener {
             sheltered.put(id, plugin.now() + RETURN_GRACE_MS);
         } else {
             sheltered.put(id, plugin.now() + LANDING_MAX_MS);
-            landing.add(id);
+            landing.put(id, plugin.now());
         }
         Msg.tell(p, "game.vote.returned");
     }
 
     /**
      * read live from where they are, not from the client's isOnGround or isInWater (both stale right after a teleport):
-     * flying (they choose when to come down), climbing, riding, water at the feet, or a solid block just below them.
-     * Anything unclear (lava, a fence top, seagrass, an unloaded chunk) is no: the shelter holds.
+     * climbing, riding, water at the feet, or a solid block just below them. Not flying: a flight can end right after the
+     * return, tick watches it. Anything unclear (lava, a fence top, seagrass, an unloaded chunk) is no: the shelter holds.
      */
     private static boolean standsOnSomething(Player p) {
-        if (p.isFlying() || p.isClimbing() || p.isInsideVehicle()) return true;
+        if (p.isClimbing() || p.isInsideVehicle()) return true;
         Location feet = p.getLocation();
         if (!feet.isChunkLoaded()) return false;
         return isWater(feet.getBlock()) || feet.clone().subtract(0, 0.1, 0).getBlock().getType().isSolid();
@@ -403,7 +467,7 @@ public final class Returns implements Listener {
         return b.getType() == Material.WATER || b.getBlockData() instanceof Waterlogged w && w.isWaterlogged();
     }
 
-    /** a running grace stays */
+    /** a running grace stays; while a minute of tries runs only a quit may end this shelter - retry tells a join from tick's tries by it */
     private void endShelter(UUID id) { sheltered.remove(id, UNTIL_BACK); }
 
     /** the shelter of the tour, or the one the tries keep */
@@ -446,7 +510,7 @@ public final class Returns implements Listener {
     // ---------------------------------------------------------------------------------------------- the way back
 
     @EventHandler
-    public void onJoin(PlayerJoinEvent e) { bringBack(e.getPlayer()); }
+    public void onJoin(PlayerJoinEvent e) { arrive(e.getPlayer()); }
 
     /** the minute runs on while they are away, the shelter its tries keep ends: a join within it shelters them again */
     @EventHandler
@@ -532,10 +596,11 @@ public final class Returns implements Listener {
 
     // ---------------------------------------------------------------------------------------------- the file
 
-    /** false (one warning ending in {@code consequence}) when it could not be written */
+    /** the ways back and the landing players; false (one warning ending in {@code consequence}) when it could not be written */
     private boolean save(String consequence) {
         Map<String, Object> out = new LinkedHashMap<>();
         homes.forEach((id, home) -> out.put(id.toString(), home.encode()));
+        if (!landing.isEmpty()) out.put(LANDING, landing.keySet().stream().map(UUID::toString).toList());
         DumperOptions o = new DumperOptions();
         o.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         try {

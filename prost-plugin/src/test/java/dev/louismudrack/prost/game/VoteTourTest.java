@@ -69,6 +69,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -805,6 +806,29 @@ class VoteTourTest {
     }
 
     @Test
+    void aMinuteThatRunsOutWhileAwayIsOverOnJoining() { minuteRunsOutWhileAway(true); }
+
+    /** no tick saw the end of the minute: the join finds it itself */
+    @Test
+    void aMinuteThatRunsOutWhileAwayIsOverOnJoiningBeforeTickSeesIt() { minuteRunsOutWhileAway(false); }
+
+    private void minuteRunsOutWhileAway(boolean tickSeesIt) {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(anna)), plugin);
+        toVote(host);
+        later(20_000L);
+        anna.disconnect();
+        later(40_001L);
+        if (tickSeesIt) plugin.returns().tick();
+        TestServer.messages(anna);
+        anna.reconnect();
+        List<String> told = TestServer.messages(anna);
+        assertTrue(told(told, "Prost brings you back when you join again"), told.toString());
+        assertFalse(told(told, "Prost tries again for a minute"), told.toString());
+        assertSheltered(anna, false, "the minute ran out while she was away");
+    }
+
+    @Test
     void aJoinAfterARespawnIntoAnUnloadedWorldIsNotProtected() {
         tourFromAnotherWorld(true);
         toVote(host);
@@ -839,6 +863,7 @@ class VoteTourTest {
         try (LogCapture log = LogCapture.root()) {
             toVote(host);
             assertHome(anna, "back, although she could not be told");
+            assertSheltered(anna, true, "the grace after the return holds, although telling her failed");
             List<LogRecord> back = log.records().stream().filter(r -> r.getMessage().contains("Anna is back from the tour")).toList();
             assertEquals(1, back.size(), log.messages().toString());
             assertEquals(Level.WARNING, back.get(0).getLevel());
@@ -972,6 +997,104 @@ class VoteTourTest {
         assertSheltered(anna, false, "landed");
     }
 
+    /** the cap counts while she is online: away longer than it, her landing starts again when she joins */
+    @Test
+    void aFallerWhoRejoinsAfterTheCapIsStillSheltered() {
+        midAir(anna);
+        tour();
+        toVote(host);
+        anna.disconnect();
+        later(60_000L);
+        plugin.returns().tick();
+        anna.reconnect();
+        later(4000L);
+        plugin.returns().tick();
+        assertSheltered(anna, true, "4 s after rejoining, a minute after the return");
+        land(anna);
+        plugin.returns().tick();
+        later(3001L);
+        assertSheltered(anna, false, "landed");
+    }
+
+    /**
+     * a crash while Anna falls: the old instance never stops, what is left is returns.yml as it was. Prost starts on a
+     * new server on the test's clock; {@code beforeProst} runs there first.
+     */
+    private void crashWhileAnnaFalls(Runnable beforeProst) throws IOException {
+        midAir(anna);
+        tour();
+        toVote(host);
+        assertEquals(List.of(anna.getUniqueId().toString()), saved().get("landing"), "her landing is in the file");
+        String onDisk = Files.readString(returnsFile().toPath(), StandardCharsets.UTF_8);
+        MockBukkit.unmock();
+        server = TestServer.mock();
+        plugin = TestServer.start(server, folder -> {
+            try {
+                Files.createDirectories(folder.toPath());
+                Files.writeString(new File(folder, RETURNS).toPath(), onDisk, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+            ((ProstPlugin) server.getPluginManager().getPlugin("Prost")).clock(() -> now.get());
+            beforeProst.run();
+        });
+    }
+
+    /** a player with Anna's name and id joins the new server where nothing is under her feet */
+    private PlayerMock annaJoinsInMidAir() {
+        Location midAir = at(0.5, 70, 0.5);
+        midAir.getChunk().load();
+        assertEquals(Material.AIR, floorOf(midAir).getType(), "nothing under her on the new server");
+        PlayerMock again = new PlayerMock(server, anna.getName(), anna.getUniqueId());
+        again.setLocation(midAir);
+        server.addPlayer(again);
+        assertEquals(midAir, again.getLocation(), "she joins in mid-air");
+        return again;
+    }
+
+    /** sheltered while she falls, the grace once she lands, and then the landing is out of the file */
+    private void assertResumedLanding(PlayerMock p) throws IOException {
+        later(4000L);
+        plugin.returns().tick();
+        assertSheltered(p, true, "4 s after the landing resumed, still falling");
+        land(p);
+        plugin.returns().tick();
+        later(3001L);
+        assertSheltered(p, false, "the grace after landing is over");
+        assertFalse(saved().containsKey("landing"), "her landing is over in the file too: " + saved());
+    }
+
+    @Test
+    void aLandingCutShortByARestartResumesOnJoin() throws Exception {
+        crashWhileAnnaFalls(() -> { });
+        assertResumedLanding(annaJoinsInMidAir());
+    }
+
+    /** she was online when Prost stopped (a stop, a reload, a crash): its start finds her landing */
+    @Test
+    void aLandingIsResumedWhenProstStartsWhilePlayersAreOnline() throws Exception {
+        AtomicReference<PlayerMock> again = new AtomicReference<>();
+        crashWhileAnnaFalls(() -> again.set(annaJoinsInMidAir()));
+        assertResumedLanding(again.get());
+    }
+
+    @Test
+    void theFileListsNoLandingWhenNobodyLands() throws Exception {
+        tour();
+        toVote(host);
+        assertEquals(Map.of(), saved(), "everyone is home on solid ground");
+    }
+
+    @Test
+    void aNewTourEndsALandingInTheFileToo() throws Exception {
+        midAir(anna);
+        tour();
+        toVote(host);
+        assertTrue(plugin.returns().remember(Map.of(anna.getUniqueId(), anna.getLocation())));
+        assertFalse(saved().containsKey("landing"), "on the next tour she is no longer landing: " + saved());
+        assertTrue(saved().containsKey(anna.getUniqueId().toString()), "her new way back");
+    }
+
     /** Anna swims at home, Ben stands in a waterlogged slab: nothing under either, but in water there is no fall */
     @Test
     void aReturnIntoWaterIsALanding() {
@@ -1018,7 +1141,26 @@ class VoteTourTest {
         toVote(host);
         assertHome(anna, "back in the air");
         later(3001L);
-        assertSheltered(anna, false, "the grace only");
+        plugin.returns().tick();
+        assertSheltered(anna, false, "her flight held through the grace");
+    }
+
+    /** the flight that kept her up ends right after the return: she falls, and is held like any faller */
+    @Test
+    void aFlyerWhoseFlightEndsRightAfterTheReturnIsShelteredUntilLanding() {
+        midAir(anna);
+        anna.setAllowFlight(true);
+        anna.setFlying(true);
+        tour();
+        toVote(host);
+        anna.setFlying(false);
+        later(4000L);
+        plugin.returns().tick();
+        assertSheltered(anna, true, "4 s after the return, falling since her flight ended");
+        land(anna);
+        plugin.returns().tick();
+        later(3001L);
+        assertSheltered(anna, false, "the grace after landing is over");
     }
 
     /** a floor Prost cannot read counts as none */

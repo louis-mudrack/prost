@@ -129,8 +129,9 @@ public class ProstPlugin extends JavaPlugin {
         returns = new Returns(this);
         returns.load();
         getServer().getPluginManager().registerEvents(returns, this);
-        // a crash leaves players at the builds of a vote tour: they go back on joining, who is already online now
-        getServer().getOnlinePlayers().forEach(p -> returns.bringBack(p));
+        // a crash leaves players at the builds of a vote tour, a stop or a reload cuts a landing short: they arrive on
+        // joining, who is already online now
+        getServer().getOnlinePlayers().forEach(p -> returns.arrive(p));
         director = new Director(this);
         getServer().getScheduler().runTaskTimer(this, () -> director.tick(), 10L, 10L);
         command = new ProstCommand(this);
