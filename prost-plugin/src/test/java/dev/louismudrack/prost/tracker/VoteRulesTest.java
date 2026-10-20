@@ -33,8 +33,18 @@ class VoteRulesTest {
     void selfVotesAndVotesForOutsidersDoNotCount() {
         Verdict v = VoteRules.verdict(List.of(a, b, c), Map.of(a, a, b, x, c, a), 2);
         assertEquals(Map.of(a, 1, b, 3, c, 2), v.drinks(), "a has a vote but abstained, b has none and abstained, c has none");
-        assertEquals(List.of(a), v.winners());
+        assertEquals(List.of(), v.winners(), "a has the most votes but drinks for abstaining");
         assertEquals(Map.of(a, 1, b, 0, c, 0), VoteRules.counts(List.of(a, b, c), Map.of(a, a, b, x, c, a)));
+    }
+
+    /** a drinker never also wins: a has the most votes but did not vote */
+    @Test
+    void theMostVotesWithoutAVoteOfOneOwnDrinkAndDoNotWin() {
+        Verdict v = VoteRules.verdict(List.of(a, b, c, d), Map.of(b, a, c, a, d, b), 2);
+        assertEquals(Map.of(a, 1, c, 2, d, 2), v.drinks(), "a 2 votes but abstained, b 1, c and d none");
+        assertEquals(List.of(), v.winners());
+        Verdict voted = VoteRules.verdict(List.of(a, b, c, d), Map.of(b, a, c, a, d, a, a, b), 2);
+        assertEquals(List.of(a), voted.winners(), "with a vote of a's own, a wins");
     }
 
     @Test

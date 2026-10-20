@@ -11,7 +11,8 @@ import java.util.UUID;
 /**
  * Who drinks after a build contest. Only a vote of a builder for another builder counts; anything else (a vote for
  * yourself, from or for somebody who dropped out) counts as no vote. The fewest votes drink, every builder without a
- * vote drinks one sip more, and the most votes win when that is not also the fewest. The verdict keeps the builders' order.
+ * vote drinks one sip more, and the most votes win when that is not also the fewest and they do not drink for not voting.
+ * The verdict keeps the builders' order.
  */
 final class VoteRules {
     /** what not voting costs on top */
@@ -28,7 +29,7 @@ final class VoteRules {
         for (UUID id : builders) {
             int n = (counts.get(id) == fewest ? sips : 0) + (voted(votes, builders, id) ? 0 : ABSTAIN_SIPS);
             if (n > 0) drinks.put(id, n);
-            if (most != fewest && counts.get(id) == most) winners.add(id);
+            if (n == 0 && most != fewest && counts.get(id) == most) winners.add(id);
         }
         return Verdict.of(drinks, winners);
     }
