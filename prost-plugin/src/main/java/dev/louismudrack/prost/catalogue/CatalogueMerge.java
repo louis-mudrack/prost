@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -32,12 +33,17 @@ public final class CatalogueMerge {
     /** a challenges.yml without a marker was written by 0.3.1 or earlier, whose entries carry no since */
     private static final String UNMARKED = "0.3.1";
 
+    private static final Pattern VERSION = Pattern.compile("v?\\d+(\\.\\d+)*(-[0-9A-Za-z.-]+)?");
+
     /** a line of the shipped file: the entry's id, the version that added it (null: one of the first) and the line itself */
     private record Shipped(String id, String since, String line) {}
 
     private CatalogueMerge() {}
 
-    /** the number of entries appended to the server's challenges.yml */
+    /**
+     * The number of entries appended to the server's challenges.yml. Call it right before {@code files.load(FILE)}: that
+     * load reports an unreadable file, which is why the catch here is silent.
+     */
     public static int ensure(ProstPlugin plugin) {
         String version = plugin.getPluginMeta().getVersion();
         if (!Files.exists(dataFile(plugin, FILE))) {
@@ -79,9 +85,9 @@ public final class CatalogueMerge {
         }
         String what = "the " + added.size() + " new challenges of Prost " + version;
         byte[] merged = withBlock(content, version, added);
-        if (!keeps(admins, merged, added.size())) {
-            plugin.getLogger().warning(FILE + ": " + what + " are not added - below the end of this file they would change your own "
-                    + "entries (does it end with '...' or a text kept with |+?); they follow once it ends with a plain entry");
+        String problem = problem(admins, merged, added.size());
+        if (problem != null) {
+            plugin.getLogger().warning(FILE + ": " + what + " are not added - " + problem + "; they follow once the file is fixed");
             return 0;
         }
         try {
@@ -101,7 +107,11 @@ public final class CatalogueMerge {
         Path marker = dataFile(plugin, MARKER);
         if (!Files.exists(marker)) return Optional.of(UNMARKED);
         try {
-            return Optional.of(Files.readString(marker, StandardCharsets.UTF_8).trim());
+            String text = Files.readString(marker, StandardCharsets.UTF_8).trim();
+            if (VERSION.matcher(text).matches()) return Optional.of(text);
+            plugin.getLogger().warning(FILE + ": " + MARKER + " holds no version ('" + text + "') - no new challenges added "
+                    + "until it is fixed or deleted");
+            return Optional.empty();
         } catch (IOException e) {
             plugin.getLogger().warning(FILE + ": " + MARKER + " is unreadable (" + YamlErrors.describe(e) + ") - no new challenges added "
                     + "until it is fixed or deleted");
@@ -148,16 +158,19 @@ public final class CatalogueMerge {
         return out;
     }
 
-    /** the merged file reads as the admin's entries, each unchanged, plus the added ones */
-    private static boolean keeps(Map<?, ?> admins, byte[] merged, int added) {
+    /** null when the merged file reads as the admin's entries, each unchanged, plus the added ones; else the cause */
+    private static String problem(Map<?, ?> admins, byte[] merged, int added) {
         Object after;
         try {
             after = DataFiles.parse(merged);
-        } catch (IOException | RuntimeException e) {   // the block made the file unreadable: it is not written
-            return false;
+        } catch (IOException | RuntimeException e) {
+            return "the file would not read any more (are its entries indented, or does it end with '...'?)";
         }
-        if (!(after instanceof Map<?, ?> entries) || entries.size() != admins.size() + added) return false;
-        return admins.entrySet().stream().allMatch(e -> Objects.equals(entries.get(e.getKey()), e.getValue()));
+        if (!(after instanceof Map<?, ?> entries)) return "the file would not read any more (are its entries indented, or does it end with '...'?)";
+        for (Map.Entry<?, ?> e : admins.entrySet())
+            if (!Objects.equals(entries.get(e.getKey()), e.getValue()))
+                return "your entry '" + e.getKey() + "' would change (a text kept with |+ or >+?)";
+        return entries.size() == admins.size() + added ? null : "the number of entries would change";
     }
 
     private static void mark(ProstPlugin plugin, String version) {

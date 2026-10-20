@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 
@@ -220,19 +221,51 @@ class CatalogueMergeTest {
 
     /** a closing "..." would make them a second document; a |+ text would take the blank line above them into its value */
     static Stream<Arguments> endings() {
+        String unreadable = "the file would not read any more (are its entries indented, or does it end with '...'?)";
+        String indented = old().lines().map(l -> "  " + l + "\n").collect(Collectors.joining());
         return Stream.of(
-                Arguments.of("a document end", old() + "...\n"),
+                Arguments.of("a document end", old() + "...\n", unreadable),
+                Arguments.of("indented entries", indented, unreadable),
                 Arguments.of("a text that keeps its line breaks", old() + "note:\n  name: {en: Note}\n  tracker: stat\n  stat: NOTEBLOCK_PLAYED\n"
-                        + "  seconds: 60\n  sips: 1\n  kinds: [each]\n  rewards: [handout]\n  text:\n    en: |+\n      Play a note block\n\n"));
+                        + "  seconds: 60\n  sips: 1\n  kinds: [each]\n  rewards: [handout]\n  text:\n    en: |+\n      Play a note block\n\n",
+                        "your entry 'note' would change (a text kept with |+ or >+?)"));
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("endings")
-    void aFileWhoseEndAnAppendWouldChangeIsLeftAlone(String what, String admins) {
+    void aFileWhoseEndAnAppendWouldChangeIsLeftAlone(String what, String admins, String hint) {
         ProstPlugin plugin = start(admins);
         assertEquals(admins, read(file(plugin)));
         assertEquals(1, warnings().size(), warnings().stream().map(LogRecord::getMessage).toList().toString());
+        assertTrue(warnings().get(0).getMessage().contains(hint), warnings().get(0).getMessage());
         assertFalse(Files.exists(marker(plugin)));
+    }
+
+    @ParameterizedTest(name = "[{0}]")
+    @ValueSource(strings = {"", "\n", "garbage"})
+    void aMarkerWithoutAVersionAddsNothing(String text) {
+        ProstPlugin plugin = TestServer.start(server, folder -> {
+            write(folder.toPath().resolve(FILE), old());
+            write(folder.toPath().resolve(MARKER), text);
+        });
+        assertEquals(old(), read(file(plugin)));
+        assertEquals(1, warnings().size(), warnings().stream().map(LogRecord::getMessage).toList().toString());
+        assertTrue(warnings().get(0).getMessage().contains(MARKER + " holds no version ('" + text.trim() + "')"), warnings().get(0).getMessage());
+    }
+
+    @Test
+    void anUnreadableMarkerAddsNothingUntilFixed() throws IOException {
+        ProstPlugin plugin = TestServer.start(server, folder -> {
+            write(folder.toPath().resolve(FILE), old());
+            write(folder.toPath().resolve(MARKER).resolve("in-the-way"), "");   // the marker is a directory
+        });
+        assertEquals(old(), read(file(plugin)));
+        assertEquals(1, warnings().size(), warnings().stream().map(LogRecord::getMessage).toList().toString());
+
+        Files.delete(marker(plugin).resolve("in-the-way"));
+        Files.delete(marker(plugin));
+        reload();
+        assertEquals(old() + block(newLines()), read(file(plugin)));
     }
 
     @Test

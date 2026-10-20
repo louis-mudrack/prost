@@ -161,6 +161,15 @@ class AniDrinksMigrationTest {
     }
 
     @Test
+    void aCatalogueCopiedNextToAStrayMarkerDropsIt() throws Exception {
+        OldInstall.write(plugins);
+        Files.writeString(prost.resolve(".catalogue-version"), "0.4.0\n");
+        run();
+        assertEquals("mine_iron: {}\n", Files.readString(prost.resolve("challenges.yml")));
+        assertFalse(Files.exists(prost.resolve(".catalogue-version")));
+    }
+
+    @Test
     void prostsOwnCatalogueKeepsItsMarker() throws Exception {
         OldInstall.write(plugins);
         String own = new String(shippedBytes("challenges.yml"), StandardCharsets.UTF_8) + "# mine\n";
