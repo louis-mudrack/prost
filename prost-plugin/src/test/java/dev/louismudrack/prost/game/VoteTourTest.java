@@ -807,16 +807,29 @@ class VoteTourTest {
     @Test
     void aJoinAfterARespawnIntoAnUnloadedWorldIsNotProtected() {
         tourFromAnotherWorld(true);
+        toVote(host);
+        assertTrue(told(TestServer.messages(anna), "Prost tries again for a minute"), "the end of the tour starts her minute");
         anna.setHealth(0);
-        TestServer.messages(anna);
         anna.respawn();
-        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"), "told on the respawn");
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"), "the respawn ends her minute");
         anna.disconnect();
         anna.reconnect();
         List<String> told = TestServer.messages(anna);
         assertTrue(told(told, "Prost brings you back when you join again"), told.toString());
         assertFalse(told(told, "Prost tries again for a minute"), told.toString());
         assertSheltered(anna, false, "the respawn ended the minute");
+    }
+
+    /** no minute runs while she is on the tour: the respawn ends none, the tour's own return starts it */
+    @Test
+    void aPlayerWhoDiesOnTheTourStillGetsTheMinuteAtItsEnd() {
+        tourFromAnotherWorld(true);
+        anna.setHealth(0);
+        anna.respawn();
+        TestServer.messages(anna);
+        toVote(host);
+        assertTrue(told(TestServer.messages(anna), "Prost tries again for a minute"), "the end of the tour starts her minute");
+        assertSheltered(anna, true, "while her return is tried again");
     }
 
     @Test
@@ -871,6 +884,24 @@ class VoteTourTest {
         }
         assertHome(ben, "brought back after her");
         assertSheltered(anna, true, "her minute of tries runs");
+    }
+
+    /** at a stop retry tells "join again" every time, so its error path throws once more: the loop takes it */
+    @Test
+    void oneReturnThatThrowsAtAStopKeepsNobodyElseAway() throws Exception {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(anna)), MockBukkit.createMockPlugin("Blocker"));
+        anna.chatBreaksOn = "Prost brings you back when you join again";
+        try (LogCapture log = LogCapture.root()) {
+            server.getPluginManager().disablePlugin(plugin);
+            List<LogRecord> kept = log.records().stream()
+                    .filter(r -> r.getMessage().equals("Anna could not be brought back from the tour - their way back is kept")).toList();
+            assertEquals(1, kept.size(), log.messages().toString());
+            assertEquals(Level.WARNING, kept.get(0).getLevel());
+            assertEquals("a broken chat", kept.get(0).getThrown().getMessage(), "with the stack trace");
+        }
+        assertHome(ben, "back after the stop");
+        assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept for her join");
     }
 
     /** the scheduler runs Returns#tick: every other test calls it by hand */

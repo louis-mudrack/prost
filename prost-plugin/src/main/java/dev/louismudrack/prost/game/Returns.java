@@ -253,7 +253,13 @@ public final class Returns implements Listener {
     /** the end of a tour: each of them back as bringBack does, with one save for all; one failed return keeps nobody else away */
     public void bringBackAll(Collection<Player> ps) {
         int before = homes.size();
-        for (Player p : ps) moveBackOrRetry(p);
+        for (Player p : ps) {
+            try {
+                moveBackOrRetry(p);
+            } catch (RuntimeException e) {   // from the error path itself: at a stop telling them throws again
+                warn(p.getName() + " could not be brought back from the tour - their way back is kept", e);
+            }
+        }
         saveIfFewer(before);
     }
 
@@ -311,7 +317,6 @@ public final class Returns implements Listener {
             leaveToTheJoin(p, failure, error);
         } else if (triesOver.contains(id) || pending != null && plugin.now() >= pending.endsAt()) {
             endMinute(id);
-            endShelter(id);   // the tour's too: a respawn ends the minute also while they are on it
             leaveToTheJoin(p, failure, error);
         } else if (pending == null) {
             long now = plugin.now();
@@ -345,10 +350,11 @@ public final class Returns implements Listener {
         Msg.tell(p, "game.vote.return_later");
     }
 
-    /** from now on each join tries once; the shelter the tries kept ends with them, without tries (still on the tour) it stays */
+    /** a running minute ends, and the shelter its tries kept with it: from now on each join tries once */
     private void endMinute(UUID id) {
+        if (retries.remove(id) == null) return;
         triesOver.add(id);
-        if (retries.remove(id) != null) endShelter(id);
+        endShelter(id);
     }
 
     /** the way back is gone, and with it the shelter that lasts until they are back and any tries; saveIfFewer writes it down */
@@ -451,7 +457,8 @@ public final class Returns implements Listener {
 
     /**
      * died on the tour, or while their return was tried again: they respawn where they stood. Into a world that is not
-     * loaded they respawn as usual, and the minute of tries is over (also when none had started yet).
+     * loaded they respawn as usual and a running minute of tries ends; on the tour none runs yet, the tour takes them
+     * along and its own return at the end starts it.
      */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRespawn(PlayerRespawnEvent e) {
