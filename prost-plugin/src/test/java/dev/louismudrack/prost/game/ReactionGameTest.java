@@ -17,8 +17,10 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Pig;
+import org.bukkit.entity.minecart.RideableMinecart;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -334,6 +336,30 @@ class ReactionGameTest {
         assertFalse(running());
         assertEquals(Map.of(id(ben), 2), end().drinks());
         assertEquals(List.of(id(host), id(anna)), end().winners());
+    }
+
+    @Test
+    void sittingInAMinecartCounts() {
+        allInTurn("react_sit", p -> assertTrue(p.getWorld().spawn(p.getLocation(), RideableMinecart.class).addPassenger(p), "seated"));
+    }
+
+    /** Paper asks VehicleEnterEvent first, then EntityMountEvent: a seat another plugin refuses at the mount is no seat */
+    @Test
+    void aMountAnotherPluginCancelsDoesNotCount() {
+        server.getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void on(EntityMountEvent e) { if (e.getEntity().equals(host)) e.setCancelled(true); }
+        }, plugin);
+        force("react_sit", "reaction");
+        int sips = plugin.director().running(round).def.sips();
+        assertFalse(host.getWorld().spawn(host.getLocation(), RideableMinecart.class).addPassenger(host), "the other plugin refuses the seat");
+        mount(anna);
+        mount(ben);
+        tick();
+        assertTrue(running(), "the host never sat down");
+        later(plugin.director().running(round).def.seconds() * 1000L);
+        tick();
+        assertEquals(Map.of(id(host), sips), end().drinks());
     }
 
     @Test

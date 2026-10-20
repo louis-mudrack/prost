@@ -17,7 +17,6 @@ import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
-import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -184,12 +183,12 @@ final class ReactionTracker extends BaseTracker implements GameTracker {
         if ("hold".equals(mode)) seen(p, holds(p.getInventory().getItem(e.getNewSlot())), ctx.plugin().now(), false);
     }
 
-    /** a mount is always a new seat: a rider is taken off the old one first, so sitting since the start never counts */
+    /**
+     * a mount is always a new seat: a rider is taken off the old one first, so sitting since the start never counts. Boats
+     * and minecarts too: VehicleEnterEvent comes before this one, so a seat another plugin refuses here would count there.
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMount(EntityMountEvent e) { if ("sit".equals(mode) && e.getEntity() instanceof Player p) doneNow(p); }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEnter(VehicleEnterEvent e) { if ("sit".equals(mode) && e.getEntered() instanceof Player p) doneNow(p); }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
