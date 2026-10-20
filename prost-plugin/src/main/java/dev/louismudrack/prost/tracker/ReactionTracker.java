@@ -81,7 +81,7 @@ final class ReactionTracker extends BaseTracker implements GameTracker {
     public long deadline() { return deadline; }
 
     @Override
-    public boolean decided() { return ReactionRules.decided(ctx.kind(), freeze, order, doneAt, broken); }
+    public boolean decided() { return ReactionRules.decided(freeze, order, doneAt, broken); }
 
     @Override
     public Verdict verdict() {

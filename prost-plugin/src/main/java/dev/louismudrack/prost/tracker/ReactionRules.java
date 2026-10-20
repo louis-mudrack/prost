@@ -41,7 +41,7 @@ final class ReactionRules {
     }
 
     /** the same for both kinds: a Solo has one participant */
-    static boolean decided(Kind kind, boolean freeze, List<UUID> participants, Map<UUID, Done> done, Set<UUID> broken) {
+    static boolean decided(boolean freeze, List<UUID> participants, Map<UUID, Done> done, Set<UUID> broken) {
         return participants.stream().allMatch(id -> freeze ? broken.contains(id) : done.containsKey(id));
     }
 

@@ -115,10 +115,10 @@ class ReactionRulesTest {
 
     @Test
     void decidedWhenEverybodyDoneOrEverybodyBroken() {
-        assertTrue(ReactionRules.decided(Kind.REACTION, false, List.of(a, b), Map.of(a, event(1), b, event(2)), Set.of()));
-        assertFalse(ReactionRules.decided(Kind.REACTION, false, List.of(a, b), Map.of(a, event(1)), Set.of()));
-        assertTrue(ReactionRules.decided(Kind.REACTION, true, List.of(a, b), Map.of(), Set.of(a, b)));
-        assertFalse(ReactionRules.decided(Kind.REACTION, true, List.of(a, b), Map.of(), Set.of(a)));
-        assertTrue(ReactionRules.decided(Kind.SOLO, true, List.of(a), Map.of(), Set.of(a)));
+        assertTrue(ReactionRules.decided(false, List.of(a, b), Map.of(a, event(1), b, event(2)), Set.of()));
+        assertFalse(ReactionRules.decided(false, List.of(a, b), Map.of(a, event(1)), Set.of()));
+        assertTrue(ReactionRules.decided(true, List.of(a, b), Map.of(), Set.of(a, b)));
+        assertFalse(ReactionRules.decided(true, List.of(a, b), Map.of(), Set.of(a)));
+        assertTrue(ReactionRules.decided(true, List.of(a), Map.of(), Set.of(a)));
     }
 }

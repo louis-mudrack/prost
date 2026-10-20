@@ -18,9 +18,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * Prost on a MockBukkit server (metrics and the update checker stay off: build.gradle.kts sets prost.offline).
@@ -85,8 +87,8 @@ public final class TestServer {
     }
 
     private static final class MenuServer extends ServerMock {
-        /** under the module's build folder: gradle clean removes what the tests leave there */
-        private static final Path WORLD_CONTAINERS = Path.of("build", "tmp", "test-worlds");
+        /** one folder per JVM under the module's build folder; a shutdown hook deletes it with everything the tests put there */
+        private static final Path WORLD_CONTAINERS = worldContainers();
         private File worldContainer;
 
         /** MockBukkit has none (it throws); Returns looks here for the folder of a world that is not loaded */
@@ -94,8 +96,26 @@ public final class TestServer {
         public File getWorldContainer() {
             try {
                 if (worldContainer == null)
-                    worldContainer = Files.createTempDirectory(Files.createDirectories(WORLD_CONTAINERS), "prost-worlds").toFile();
+                    worldContainer = Files.createTempDirectory(WORLD_CONTAINERS, "prost-worlds").toFile();
                 return worldContainer;
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
+        private static Path worldContainers() {
+            try {
+                Path root = Files.createTempDirectory(Files.createDirectories(Path.of("build", "tmp", "test-worlds")), "jvm");
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> deleteTree(root)));
+                return root;
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
+        private static void deleteTree(Path root) {
+            try (Stream<Path> paths = Files.walk(root)) {
+                paths.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
