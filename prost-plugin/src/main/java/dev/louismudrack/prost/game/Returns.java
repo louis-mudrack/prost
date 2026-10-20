@@ -5,7 +5,10 @@ import dev.louismudrack.prost.config.YamlErrors;
 import dev.louismudrack.prost.i18n.Msg;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.Waterlogged;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -326,13 +329,19 @@ public final class Returns implements Listener {
     }
 
     /**
-     * what the server sees, not the client's isOnGround (stale right after a teleport): in water, climbing, riding, or a
-     * solid block just below the feet. Anything unclear (lava, a fence top, an unloaded chunk) is no: the shelter holds.
+     * read live from where they are, not from the client's isOnGround or isInWater (both stale right after a teleport):
+     * climbing, riding, water at the feet, or a solid block just below them. Anything unclear (lava, a fence top, seagrass,
+     * an unloaded chunk) is no: the shelter holds.
      */
     private static boolean standsOnSomething(Player p) {
-        if (p.isInWater() || p.isClimbing() || p.isInsideVehicle()) return true;
-        Location below = p.getLocation().clone().subtract(0, 0.1, 0);
-        return below.isChunkLoaded() && below.getBlock().getType().isSolid();
+        if (p.isClimbing() || p.isInsideVehicle()) return true;
+        Location feet = p.getLocation();
+        if (!feet.isChunkLoaded()) return false;
+        return isWater(feet.getBlock()) || feet.clone().subtract(0, 0.1, 0).getBlock().getType().isSolid();
+    }
+
+    private static boolean isWater(Block b) {
+        return b.getType() == Material.WATER || b.getBlockData() instanceof Waterlogged w && w.isWaterlogged();
     }
 
     /** a running grace stays */

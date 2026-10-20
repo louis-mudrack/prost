@@ -11,6 +11,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Waterlogged;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
@@ -742,6 +743,42 @@ class VoteTourTest {
         plugin.returns().tick();
         later(3001L);
         assertSheltered(anna, false, "landed");
+    }
+
+    /** Anna swims at home, Ben stands in a waterlogged slab: nothing under either, but in water there is no fall */
+    @Test
+    void aReturnIntoWaterIsALanding() {
+        midAir(anna);
+        midAir(ben);
+        homes.get(anna).getBlock().setType(Material.WATER);
+        Block slab = homes.get(ben).getBlock();
+        slab.setType(Material.OAK_SLAB);
+        Waterlogged wet = (Waterlogged) slab.getBlockData();
+        wet.setWaterlogged(true);
+        slab.setBlockData(wet);
+        tour();
+        toVote(host);
+        later(3001L);
+        assertSheltered(anna, false, "the grace only, in water");
+        assertSheltered(ben, false, "the grace only, in a waterlogged block");
+    }
+
+    /** Paper refreshes isInWater on the entity's next tick: right after the teleport home it still tells of the build */
+    @Test
+    void aMidAirReturnFromABuildInWaterKeepsTheLandingShelter() {
+        midAir(anna);
+        tour();
+        anna.getLocation().getBlock().setType(Material.WATER);
+        anna.setInWater(true);
+        toVote(host);
+        assertHome(anna, "back in mid-air");
+        later(4000L);
+        plugin.returns().tick();
+        assertSheltered(anna, true, "4 s after the return, still falling");
+        land(anna);
+        plugin.returns().tick();
+        later(3001L);
+        assertSheltered(anna, false, "the grace after landing is over");
     }
 
     /** a floor Prost cannot read counts as none */
