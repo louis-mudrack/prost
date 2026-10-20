@@ -26,6 +26,8 @@ class KeyCoverageTest {
     private static final String CALLS = "(?:(?:Msg\\.(?:str|lines|tell|error|round)|\\btext|\\blines|\\breply)\\(\\s*(?:" + ARG + ",\\s*)?"
             + "|new (?:Choice|Game)Menu\\(\\s*" + ARG + ",\\s*" + ARG + ",\\s*)";
     private static final Pattern KEY = Pattern.compile(CALLS + "\"([a-z0-9_]+(?:\\.[a-z0-9_]+)+)\"");
+    /** {@code cond ? "a.b" : "c.d"}: both branches are keys */
+    private static final Pattern TERNARY = Pattern.compile("\\?\\s*\"([a-z0-9_]+(?:\\.[a-z0-9_]+)+)\"\\s*:\\s*\"([a-z0-9_]+(?:\\.[a-z0-9_]+)+)\"");
     private static final Pattern BUILT = Pattern.compile(CALLS + "\"([a-z0-9_.]+\\.)\"\\s*\\+");
     /** keys built at runtime: prefix -> every ending that exists */
     static final Map<String, List<String>> EXPANSIONS = Map.of(
@@ -54,12 +56,14 @@ class KeyCoverageTest {
         List<String> out = new ArrayList<>();
         Matcher m = KEY.matcher(src);
         while (m.find()) out.add(m.group(1));
+        Matcher ternary = TERNARY.matcher(src);
+        while (ternary.find()) { out.add(ternary.group(1)); out.add(ternary.group(2)); }
         return out;
     }
 
     @Test
     void everyCallFormIsRecognised() {
-        assertEquals(List.of("a.b", "c.d", "e.f", "g.h", "i.j", "k.l", "m.n", "o.p"), keysIn("""
+        assertEquals(List.of("a.b", "c.d", "e.f", "g.h", "i.j", "k.l", "m.n", "o.p", "q.r", "s.t"), keysIn("""
                 Msg.tell(p, "a.b", V.of("x", 1));
                 Msg.str(p.getUniqueId(), "c.d");
                 reply(s, "e.f");
@@ -68,6 +72,7 @@ class KeyCoverageTest {
                 Msg.round(plugin.rounds().get(id), "k.l");
                 lines(viewer, "m.n");
                 new GameMenu(plugin, p, "o.p", menu -> draw(menu));
+                Msg.str(viewer, own ? "q.r" : "s.t");
                 Msg.tell(p, "Not a key.", "Kein Schlüssel.");
                 """));
     }

@@ -386,7 +386,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
     }
 
     private void vote(UUID voter, UUID builder) {
-        if (phase != Phase.VOTE || !order.contains(voter) || !order.contains(builder) || voter.equals(builder)) return;
+        if (phase != Phase.VOTE || ctx.plugin().now() >= voteEndsAt || !order.contains(voter) || !order.contains(builder) || voter.equals(builder)) return;
         votes.put(voter, builder);
         GameMenu menu = menus.get(voter);
         if (menu != null) menu.redraw();

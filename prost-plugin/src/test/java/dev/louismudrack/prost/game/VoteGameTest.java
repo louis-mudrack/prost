@@ -455,6 +455,83 @@ class VoteGameTest {
     }
 
     @Test
+    void aVoteAfterTheDeadlineDoesNotCount() {
+        ChallengeRun run = force(STATUE);
+        toVote(run);
+        vote(host, anna);
+        vote(anna, host);
+        vote(ben, anna);
+        later(plugin.cfg().games().voteVoteSeconds() * 1000L);
+        vote(cleo, ben);
+        tick();
+        assertFalse(running());
+        int sips = run.def.sips();
+        assertEquals(Map.of(id(ben), sips, id(cleo), sips + 1), end().drinks(), "Cleo's vote came after the clock: " + end().drinks());
+    }
+
+    @Test
+    void hereOutsideTheGameWorldsIsRefused() throws Exception {
+        File file = new File(plugin.getDataFolder(), "config.yml");
+        YamlConfiguration c = YamlConfiguration.loadConfiguration(file);
+        c.set("worlds", List.of("world"));
+        c.save(file);
+        plugin.reloadData();
+        force(STATUE);
+        anna.teleport(new Location(server.addSimpleWorld("other"), 0, 64, 0));
+        TestServer.messages(anna);
+        anna.performCommand("prost here");
+        List<String> told = TestServer.messages(anna);
+        assertTrue(told(told, "Builds only count in the worlds Prost plays in"), told.toString());
+        assertFalse(told(told, MARKED));
+    }
+
+    @Test
+    void aWatchersHereIsRefused() {
+        force(STATUE);
+        PlayerMock dora = server.addPlayer("Dora");
+        dora.performCommand("prost join " + round.code);
+        TestServer.messages(dora);
+        dora.performCommand("prost here");
+        assertTrue(told(TestServer.messages(dora), "There is no build to mark right now"));
+    }
+
+    @Test
+    void fewerThanTwoLeftAfterTheBuildingCancels() {
+        ChallengeRun run = force(STATUE);
+        toVote(run);
+        anna.performCommand("prost leave");
+        ben.performCommand("prost leave");
+        cleo.performCommand("prost leave");
+        tick();
+        assertFalse(running());
+        assertEquals(1, ended.size());
+        assertFalse(ended.get(0).resolved(), "cancelled");
+        assertTrue(ended.get(0).drinks().isEmpty(), "nobody drinks");
+    }
+
+    @Test
+    void aBuilderWhoDropsDuringTheTourIsNotShownAndNotVotable() {
+        ChallengeRun run = force(STATUE);
+        for (PlayerMock p : everyone) TestServer.messages(p);
+        later(run.def.seconds() * 1000L);
+        tick();
+        List<String> first = shownBuilders(TestServer.messages(host));
+        PlayerMock leaving = (PlayerMock) server.getPlayerExact(first.get(0));
+        PlayerMock reader = everyone.stream().filter(p -> p != leaving).findFirst().orElseThrow();
+        leaving.performCommand("prost leave");
+        List<String> shown = new ArrayList<>(first);
+        TestServer.messages(reader);
+        for (int i = 0; i < TOUR_STEPS && !(holder(reader) instanceof GameMenu); i++) {
+            tick();
+            later(plugin.cfg().games().voteViewSeconds() * 1000L);
+            tick();
+            shown.addAll(shownBuilders(TestServer.messages(reader)));
+        }
+        assertEquals(1, shown.stream().filter(leaving.getName()::equals).count(), "shown once, then never again: " + shown);
+        assertFalse(heads(reader).contains(leaving.getName()), "not votable");
+    }
+
+    @Test
     void stoppingTheGameClosesItsMenus() {
         toVote(force(STATUE));
         plugin.director().shutdown();
