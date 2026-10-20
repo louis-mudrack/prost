@@ -7,7 +7,9 @@
 - **Reaction** (9, two players or more; five also play solo): do it faster than the others - crouch, jump into water,
   write "Prost" in chat, look straight up, jump, hold dirt, sit down (boat, minecart, mount or a sit plugin's seat) or
   eat something. Whoever is not in time drinks; when everybody is, the last one drinks. **Freeze:** whoever moves after
-  a two-second grace drinks (looking around is fine). Played solo: in time, or drink.
+  a two-second grace drinks (looking around is fine). Played solo: in time, or drink. Already sitting, holding dirt,
+  standing in water or looking up when it starts does not count - do it again. A reaction nobody can do where they are
+  is not drawn (water while someone is in the Nether, eating while someone's food bar is full, dirt in the Nether or End).
 - **Hot potato** (a reaction, two players or more): a marked poisonous potato goes to a random player, who passes it on by
   dropping it next to another one. Whoever holds it when the hidden clock runs out (60 to 120 seconds) drinks 3. The
   potato cannot be stored, eaten, burnt or lost, a holder who dies or leaves passes it on, and every Prost potato is
