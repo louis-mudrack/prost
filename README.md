@@ -105,7 +105,7 @@ Everything lives in `plugins/Prost/`. Details of every setting: [docs/configurat
 | `lang/*.yml` | you, new keys are appended | every text ([docs/translations.md](docs/translations.md)) |
 | `.catalogue-version` | the plugin | the Prost version whose new challenges `challenges.yml` has received |
 | `rounds.yml` | the plugin | running rounds, restored after a restart |
-| `returns.yml` | the plugin | where the players of a build contest tour go back to, applied after a quit or a crash |
+| `returns.yml` | the plugin | where the players of a build contest tour go back to, applied after a quit or a crash; also who is still landing after a return |
 | `stats.db` | the plugin | SQLite stats when `storage.type: sqlite` |
 
 ## Languages

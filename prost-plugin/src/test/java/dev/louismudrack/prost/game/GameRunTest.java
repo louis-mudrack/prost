@@ -28,6 +28,7 @@ import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -429,6 +430,28 @@ class GameRunTest {
         assertTrue(plugin.director().next(round), "the round may draw again");
         plugin.director().tick();
         assertNotNull(plugin.director().running(round), "and does");
+    }
+
+    /** high-low draws its first number when it starts: a random source that throws breaks that start */
+    @Test
+    void aForcedSoloWhoseStartFailsLeavesNoRunAndNoSolo() {
+        IllegalStateException broken = new IllegalStateException("scripted random failure");
+        plugin.random(new Random() {
+            @Override public int nextInt(int bound) { throw broken; }
+        });
+        int played = round.challenges;
+        Map<UUID, Integer> solos = new HashMap<>();
+        round.members.values().forEach(m -> solos.put(m.id, m.solos));
+        TestServer.messages(server.getConsoleSender());
+        try (LogCapture log = LogCapture.root()) {
+            server.dispatchCommand(server.getConsoleSender(), "prost admin force " + round.code + " high_low solo");
+            assertEquals(1, log.records().stream().filter(r -> r.getThrown() == broken).count(), "the start failed: " + log.messages());
+        }
+        assertTrue(TestServer.messages(server.getConsoleSender()).stream().anyMatch(m -> m.contains("failed to start")), "force says so");
+        assertNull(plugin.director().running(round), "no run left");
+        round.members.values().forEach(m -> assertEquals(solos.get(m.id), m.solos, "no solo is counted for " + m.id));
+        assertEquals(played, round.challenges, "a failed start does not count as played");
+        assertTrue(round.used.contains("high_low"), "and is not drawn again before the pool resets");
     }
 
     @Test

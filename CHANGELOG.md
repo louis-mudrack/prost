@@ -4,7 +4,8 @@
 ### Fixes
 - Build contest tour: a way back that fails still gets its minute of tries with protection, counted from its first
   failure whether the player is online or not (a quit or a join no longer restarts it). After that minute each join
-  tries once without protection and tells the player to join again if it fails. A respawn into a world that is not
+  tries once without protection and tells the player to join again if it fails (a way back refused while the server
+  stops waits for the next join; after a restart the first join whose way back fails starts a new minute). A respawn into a world that is not
   loaded ends a running minute.
 - A return that is done is never tried again, even when the message telling the player fails. At the end of a tour (and
   at a stop) a return that fails no longer keeps the others away.
@@ -14,6 +15,8 @@
 - A challenge that hits a missing class is cancelled like any other error instead of stopping the round.
 - `/prost admin force` tells the admin when the challenge failed to start, and a failed start no longer counts as
   played (the entry is still not drawn again until the pool resets).
+- `returns.yml` gains a `landing:` list while someone is landing. Going back to 0.4.2 logs one "entry landing is
+  incomplete" warning, which is harmless (the ways back still load).
 
 ## 0.4.2 - 2026-10-20
 ### Fixes

@@ -367,7 +367,9 @@ public final class Returns implements Listener {
      * failure is logged and told and starts its minute of tries: the shelter holds while tick tries again. A failure within
      * the minute is told only while the shelter is not held (a join: their quit ended it), so not on tick's tries, nor a
      * second time when telling it threw; of these only a first error is logged. After the minute (also one that ran out
-     * while they were away, before tick saw it), and on a stop (no tick runs any more), each join tries once, unsheltered.
+     * while they were away, before tick saw it), each join tries once, unsheltered. A return refused while the server stops
+     * (no tick runs any more) waits for the next join; the minute is kept in memory only, so after a restart the first join
+     * whose return fails starts a new one.
      */
     private void retry(Player p, String failure, RuntimeException error) {
         UUID id = p.getUniqueId();
