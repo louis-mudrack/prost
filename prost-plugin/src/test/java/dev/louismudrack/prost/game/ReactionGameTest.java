@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -313,5 +314,161 @@ class ReactionGameTest {
 
     private void consume(PlayerMock p, Material what) {
         server.getPluginManager().callEvent(new PlayerItemConsumeEvent(p, new ItemStack(what), EquipmentSlot.HAND));
+    }
+
+    private Pig mount(PlayerMock p) {
+        Pig pig = p.getWorld().spawn(p.getLocation(), Pig.class);
+        pig.addPassenger(p);
+        return pig;
+    }
+
+    /** the mount is the moment: three in turn between two polls are not a three-way tie */
+    @Test
+    void sittingCountsAtTheMomentOfTheMount() {
+        force("react_sit", "reaction");
+        for (PlayerMock p : List.of(host, anna, ben)) {
+            mount(p);
+            later(100);
+        }
+        tick();
+        assertFalse(running());
+        assertEquals(Map.of(id(ben), 2), end().drinks());
+        assertEquals(List.of(id(host), id(anna)), end().winners());
+    }
+
+    @Test
+    void whoAlreadySitsMustGetUpAndSitDownAgain() {
+        Pig pig = mount(host);
+        force("react_sit", "reaction");
+        mount(anna);
+        mount(ben);
+        tick();
+        assertTrue(running(), "sitting since before the start is not sitting down");
+        host.leaveVehicle();
+        later(100);
+        pig.addPassenger(host);
+        tick();
+        assertFalse(running());
+        assertEquals(Map.of(id(host), 2), end().drinks(), "the host sat down last");
+    }
+
+    /** host already in the state at the start: it counts once a poll has seen the host out of it */
+    private void alreadyInTheStateCountsOnlyAfterLeavingIt(String id, Consumer<PlayerMock> enter, Consumer<PlayerMock> leave) {
+        enter.accept(host);
+        force(id, "reaction");
+        int sips = plugin.director().running(round).def.sips();
+        tick();
+        assertTrue(running(), id + ": in it since before the start is not doing it");
+        enter.accept(anna);
+        enter.accept(ben);
+        later(100);
+        tick();
+        assertTrue(running(), id + ": the host is still in it from before");
+        leave.accept(host);
+        later(100);
+        tick();
+        enter.accept(host);
+        later(100);
+        tick();
+        assertFalse(running(), id + ": done once the host is back in it");
+        assertEquals(Map.of(id(host), sips), end().drinks(), id + ": the host was last");
+    }
+
+    @Test
+    void whoAlreadyHoldsTheTargetMustPutItAwayFirst() {
+        alreadyInTheStateCountsOnlyAfterLeavingIt("react_dirt", p -> p.getInventory().setItemInMainHand(new ItemStack(Material.DIRT)),
+                p -> p.getInventory().setItemInMainHand(new ItemStack(Material.STONE)));
+    }
+
+    @Test
+    void whoIsAlreadyInWaterMustGetOutFirst() {
+        alreadyInTheStateCountsOnlyAfterLeavingIt("react_water", p -> p.setInWater(true), p -> p.setInWater(false));
+    }
+
+    private static void look(PlayerMock p, float pitch) {
+        Location to = p.getLocation().clone();
+        to.setPitch(pitch);
+        move(p, to);
+    }
+
+    @Test
+    void whoAlreadyLooksUpMustLookAwayFirst() {
+        Location up = host.getLocation().clone();
+        up.setPitch(-80);
+        host.teleport(up);
+        force("react_look_up", "reaction");
+        move(host, up.clone().add(0.5, 0, 0));   // walking around, still looking up
+        tick();
+        assertTrue(running(), "looking up since before the start is not looking up");
+        for (PlayerMock p : List.of(anna, ben)) {
+            look(p, -80);
+            later(100);
+        }
+        tick();
+        assertTrue(running(), "the host still looks up from before");
+        look(host, 0);
+        later(100);
+        look(host, -80);
+        tick();
+        assertFalse(running());
+        assertEquals(Map.of(id(host), 1), end().drinks(), "the host looked up again last");
+    }
+
+    /** a poll finds Anna and Ben in water at once: one of them was last, not both */
+    @Test
+    void twoFoundByTheSamePollAreNoTieOneOfThemDrinks() {
+        plugin.random(new Random(7));
+        force("react_water", "reaction");
+        host.setInWater(true);
+        tick();
+        later(500);
+        anna.setInWater(true);
+        ben.setInWater(true);
+        tick();
+        assertFalse(running());
+        Map<UUID, Integer> drinks = end().drinks();
+        assertEquals(1, drinks.size(), "one of the two: " + drinks);
+        assertTrue(Set.of(id(anna), id(ben)).containsAll(drinks.keySet()), "the host was first: " + drinks);
+        assertEquals(2, end().winners().size());
+    }
+
+    /** two events at the same moment are a real tie */
+    @Test
+    void crouchingAtTheSameMomentIsATieAndBothDrink() {
+        force("react_crouch", "reaction");
+        sneak(host, true);
+        later(100);
+        sneak(anna, true);
+        sneak(ben, true);
+        tick();
+        assertEquals(Map.of(id(anna), 1, id(ben), 1), end().drinks());
+    }
+
+    /** the run ends on the first tick after the deadline: what happens between the two counts for nothing */
+    @Test
+    void whatHappensAfterTheDeadlineDoesNotCount() {
+        force("react_water", "reaction");
+        anna.setInWater(true);
+        tick();
+        later(60_000 + 400);
+        host.setInWater(true);
+        tick();
+        assertFalse(running());
+        assertEquals(Map.of(id(host), 2, id(ben), 2), end().drinks(), "the host was too late");
+        assertEquals(List.of(id(anna)), end().winners());
+    }
+
+    @Test
+    void aMoveAfterTheDeadlineDoesNotBreakTheFreeze() {
+        force("react_freeze", "reaction");
+        tick();
+        later(2_000);
+        tick();   // the grace is over: the positions are taken
+        later(8_000 + 400);
+        move(ben, ben.getLocation().clone().add(0, 0, 1));
+        tick();
+        assertFalse(running());
+        assertTrue(end().drinks().isEmpty(), "Ben moved when it was over: " + end().drinks());
+        assertEquals(3, end().winners().size());
     }
 }
