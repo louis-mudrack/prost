@@ -57,7 +57,9 @@ import java.util.logging.Level;
  * otherwise. From the start of the tour until it is over for them, and RETURN_GRACE_MS after a return, they take no
  * damage and cannot change or take anything at a build: no blocks, buckets or block and item use, no using, hitting or
  * breaking entities, no dropping or picking up items. A return into mid-air keeps the shelter until they land; one another
- * plugin refuses, or into a world that is not loaded, keeps it while tick tries again for a minute, then the next join does.
+ * plugin refuses, or into a world that is not loaded, keeps it while tick tries again: for one minute per way back, from
+ * its first failure on and also while they are away (a join within it shelters them again). After that minute each join
+ * tries once, without the shelter. A return that is made is finished, also when telling them about it fails.
  */
 public final class Returns implements Listener {
     private static final String FILE = "returns.yml";
@@ -67,7 +69,7 @@ public final class Returns implements Listener {
     private static final long LANDING_MAX_MS = 30_000L;
     /** a return that failed is tried again this often while they are online ... */
     private static final long RETRY_MS = 5_000L;
-    /** ... for this long; after that the next join tries */
+    /** ... for this long after the way back's first failure, online or not; after that each join tries once */
     private static final long RETRY_WINDOW_MS = 60_000L;
     /** the shelter of a player on the tour: it lasts until the tour is over for them */
     private static final long UNTIL_BACK = Long.MAX_VALUE;
@@ -81,6 +83,8 @@ public final class Returns implements Listener {
     private final Set<UUID> landing = new HashSet<>();
     /** id -> the return that failed, tried again by tick */
     private final Map<UUID, Retry> retries = new HashMap<>();
+    /** ways back whose minute of tries is over: apart from retries, so tick never looks at them again */
+    private final Set<UUID> triesOver = new HashSet<>();
 
     /** plugin times: the next try, and when the tries are over; whether an error of this return has been logged */
     private record Retry(long nextAt, long endsAt, boolean errorLogged) {}
@@ -176,6 +180,7 @@ public final class Returns implements Listener {
             sheltered.put(id, UNTIL_BACK);
             landing.remove(id);
             retries.remove(id);
+            triesOver.remove(id);
         }
         return true;
     }
@@ -202,14 +207,19 @@ public final class Returns implements Listener {
     }
 
     /**
-     * online and alive, every RETRY_MS until the tries are over; offline the join, dead the respawn brings them back. A
-     * rider is left on their mount (the try waits until they are off); one player's error does not stop the others.
+     * online and alive, every RETRY_MS until the minute is over; offline the join, dead the respawn brings them back, while
+     * the minute runs on. A rider is left on their mount (the try waits until they are off); one player's error does not
+     * stop the others.
      */
     private void retryReturns() {
         long now = plugin.now();
         Map.copyOf(retries).forEach((id, retry) -> {
             Player p = Bukkit.getPlayer(id);
-            if (p == null || p.isDead()) return;
+            if (p == null) {
+                if (now >= retry.endsAt()) endMinute(id);   // nobody to tell: their join tells them
+                return;
+            }
+            if (p.isDead()) return;
             try {
                 if (now >= retry.endsAt()) {
                     giveUp(p);
@@ -229,8 +239,9 @@ public final class Returns implements Listener {
     /**
      * Back to where they stood when the tour started, out of any vehicle and rid of any passenger, no longer burning or
      * freezing; true if it moved them. The shelter ends, with the grace only after a return. Dead: the respawn brings them
-     * back. A return that cannot be made yet is told to them and keeps the shelter while tick tries again for a minute;
-     * after that the next join tries.
+     * back. A return that cannot be made yet is told to them and keeps the shelter while tick tries again, until a minute
+     * after the way back's first failure; after that each join tries once, without the shelter. False also for a return
+     * that was made but could not be told: it stays made.
      */
     public boolean bringBack(Player p) {
         int before = homes.size();
@@ -246,12 +257,16 @@ public final class Returns implements Listener {
         saveIfFewer(before);
     }
 
-    /** an error in a return is a failed return like a refused one: told, and the shelter bounded by the minute of tries */
+    /**
+     * an error in a return is a failed return like a refused one: told, and the shelter bounded by the minute of tries.
+     * Once the way back is forgotten the return is finished (or dropped): an error then came from telling them.
+     */
     private boolean moveBackOrRetry(Player p) {
         try {
             return moveBack(p);
         } catch (RuntimeException e) {
-            retry(p, p.getName() + " could not be brought back from the tour", e);
+            if (remembers(p.getUniqueId())) retry(p, p.getName() + " could not be brought back from the tour", e);
+            else warn(p.getName() + " is back from the tour, but telling them failed", e);
             return false;
         }
     }
@@ -265,9 +280,9 @@ public final class Returns implements Listener {
             return false;
         }
         extinguish(p);
-        World world = worldOf(p, home);
+        World world = Bukkit.getWorld(home.world());
         if (world == null) {
-            if (remembers(id)) retry(p, notLoaded(p, home));
+            if (!dropIfGone(p, home)) retry(p, notLoaded(p, home));
             return false;
         }
         p.leaveVehicle();
@@ -283,47 +298,65 @@ public final class Returns implements Listener {
     private void retry(Player p, String failure) { retry(p, failure, null); }
 
     /**
-     * a return another plugin refused, into a world that is not loaded or that threw {@code error}: the shelter holds while
-     * tick tries again; the first failure of this return is logged and told, and the minute of tries starts with it; of
-     * the later ones only a first error is logged. On a stop no tick runs any more: the next join tries.
+     * a return another plugin refused, into a world that is not loaded or that threw {@code error}. The way back's first
+     * failure is logged and told and starts its minute of tries: the shelter holds while tick tries again. A failure within
+     * the minute is told only while the shelter is not held (a join: their quit ended it), so not on tick's tries, nor a
+     * second time when telling it threw; of these only a first error is logged. After the minute (also one that ran out
+     * while they were away, before tick saw it), and on a stop (no tick runs any more), each join tries once, unsheltered.
      */
     private void retry(Player p, String failure, RuntimeException error) {
-        if (!plugin.isEnabled()) {
-            warn(failure + " - tried again when they join", error);
-            Msg.tell(p, "game.vote.return_later");
-            return;
-        }
         UUID id = p.getUniqueId();
-        sheltered.put(id, UNTIL_BACK);
         Retry pending = retries.get(id);
-        if (pending == null) {
+        if (!plugin.isEnabled()) {
+            leaveToTheJoin(p, failure, error);
+        } else if (triesOver.contains(id) || pending != null && plugin.now() >= pending.endsAt()) {
+            endMinute(id);
+            endShelter(id);   // the tour's too: a respawn ends the minute also while they are on it
+            leaveToTheJoin(p, failure, error);
+        } else if (pending == null) {
             long now = plugin.now();
+            sheltered.put(id, UNTIL_BACK);
             retries.put(id, new Retry(now + RETRY_MS, now + RETRY_WINDOW_MS, error != null));
             warn(failure + " - tried again for a minute, then when they join", error);
             Msg.tell(p, "game.vote.return_retry");
-        } else if (error != null && !pending.errorLogged()) {
-            retries.put(id, new Retry(pending.nextAt(), pending.endsAt(), true));
-            warn(failure + " - tried again until the minute is over, then when they join", error);
+        } else {
+            if (error != null && !pending.errorLogged()) {
+                retries.put(id, new Retry(pending.nextAt(), pending.endsAt(), true));
+                warn(failure + " - tried again until the minute is over, then when they join", error);
+            }
+            if (!shelteredUntilBack(id)) {
+                sheltered.put(id, UNTIL_BACK);
+                Msg.tell(p, "game.vote.return_retry");
+            }
         }
+    }
+
+    private void leaveToTheJoin(Player p, String failure, RuntimeException error) {
+        warn(failure + " - tried again when they join", error);
+        Msg.tell(p, "game.vote.return_later");
     }
 
     /** with the stack trace when there is an error */
     private void warn(String what, RuntimeException error) { plugin.getLogger().log(Level.WARNING, what, error); }
 
-    /** the tries are over: so is the shelter, the way back waits in returns.yml for the next join */
+    /** the minute is over: so is the shelter, the way back waits in returns.yml for the next join */
     private void giveUp(Player p) {
-        stopRetrying(p.getUniqueId());
+        endMinute(p.getUniqueId());
         Msg.tell(p, "game.vote.return_later");
     }
 
-    /** the shelter the tries kept ends with them; without tries (still on the tour) it stays */
-    private void stopRetrying(UUID id) { if (retries.remove(id) != null) endShelter(id); }
+    /** from now on each join tries once; the shelter the tries kept ends with them, without tries (still on the tour) it stays */
+    private void endMinute(UUID id) {
+        triesOver.add(id);
+        if (retries.remove(id) != null) endShelter(id);
+    }
 
     /** the way back is gone, and with it the shelter that lasts until they are back and any tries; saveIfFewer writes it down */
     private void forget(UUID id) {
         endShelter(id);
         homes.remove(id);
         retries.remove(id);
+        triesOver.remove(id);
     }
 
     /** the ways back dropped since {@code before} (homes.size() then) leave returns.yml */
@@ -367,23 +400,23 @@ public final class Returns implements Listener {
     /** a running grace stays */
     private void endShelter(UUID id) { sheltered.remove(id, UNTIL_BACK); }
 
+    /** the shelter of the tour, or the one the tries keep */
+    private boolean shelteredUntilBack(UUID id) { return sheltered.getOrDefault(id, 0L) == UNTIL_BACK; }
+
     /** fire or frost picked up at a build while sheltered must not hurt them at home */
     private static void extinguish(Player p) {
         p.setFireTicks(0);
         p.setFreezeTicks(0);
     }
 
-    /** loaded: the world; unloaded: null, the way back is kept; no folder either: gone, dropped (told), null */
-    private World worldOf(Player p, Home home) {
-        World world = Bukkit.getWorld(home.world());
-        if (world != null) return world;
-        if (!new File(Bukkit.getWorldContainer(), home.world()).isDirectory()) {
-            forget(p.getUniqueId());
-            plugin.getLogger().warning(p.getName() + "'s way back leads to " + home + ", but the world " + home.world()
-                    + " no longer exists - dropped");
-            Msg.tell(p, "game.vote.return_gone");
-        }
-        return null;
+    /** for a world that is not loaded: true when its folder is gone too - then so is the way back (logged, told) */
+    private boolean dropIfGone(Player p, Home home) {
+        if (new File(Bukkit.getWorldContainer(), home.world()).isDirectory()) return false;
+        forget(p.getUniqueId());
+        plugin.getLogger().warning(p.getName() + "'s way back leads to " + home + ", but the world " + home.world()
+                + " no longer exists - dropped");
+        Msg.tell(p, "game.vote.return_gone");
+        return true;
     }
 
     private static String notLoaded(Player p, Home home) {
@@ -409,26 +442,31 @@ public final class Returns implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent e) { bringBack(e.getPlayer()); }
 
-    /** the tries run while they are online: the join tries again, and tells them */
+    /** the minute runs on while they are away, the shelter its tries keep ends: a join within it shelters them again */
     @EventHandler
-    public void onQuit(PlayerQuitEvent e) { stopRetrying(e.getPlayer().getUniqueId()); }
+    public void onQuit(PlayerQuitEvent e) {
+        UUID id = e.getPlayer().getUniqueId();
+        if (retries.containsKey(id)) endShelter(id);
+    }
 
-    /** died on the tour, or while their return was tried again: they respawn where they stood */
+    /**
+     * died on the tour, or while their return was tried again: they respawn where they stood. Into a world that is not
+     * loaded they respawn as usual, and the minute of tries is over (also when none had started yet).
+     */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRespawn(PlayerRespawnEvent e) {
         Player p = e.getPlayer();
         UUID id = p.getUniqueId();
         int before = homes.size();
         Home home = homes.get(id);
-        World world = home == null ? null : worldOf(p, home);
+        World world = home == null ? null : Bukkit.getWorld(home.world());
         if (world != null) {
             extinguish(p);
             e.setRespawnLocation(home.in(world));
             returned(p, false);   // still where they died: tick looks where they respawned
-        } else if (remembers(id)) {   // not loaded: they respawn as usual, away from the build
-            stopRetrying(id);
-            plugin.getLogger().warning(notLoaded(p, home) + " - tried again when they join");
-            Msg.tell(p, "game.vote.return_later");
+        } else if (home != null && !dropIfGone(p, home)) {
+            endMinute(id);
+            leaveToTheJoin(p, notLoaded(p, home), null);
         }
         saveIfFewer(before);
     }

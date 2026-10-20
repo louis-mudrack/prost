@@ -352,7 +352,7 @@ public final class VoteTracker extends BaseTracker implements GameTracker {
         try {
             returns().bringBack(p);
         } catch (RuntimeException e) {   // one failed return must not keep the others at a build
-            String what = name(id) + " could not be brought back from the tour - tried again when they join";
+            String what = name(id) + " could not be brought back from the tour - their way back is kept";
             ctx.plugin().getLogger().log(Level.WARNING, what, e);
         }
     }

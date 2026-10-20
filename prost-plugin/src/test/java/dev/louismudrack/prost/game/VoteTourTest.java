@@ -5,6 +5,8 @@ import dev.louismudrack.prost.ProstPlugin;
 import dev.louismudrack.prost.TestServer;
 import dev.louismudrack.prost.api.ProstApi;
 import dev.louismudrack.prost.menu.GameMenu;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -67,6 +69,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -82,7 +86,8 @@ class VoteTourTest {
     private final AtomicLong now = new AtomicLong(1_000_000L);
     private ServerMock server;
     private ProstPlugin plugin;
-    private PlayerMock host, anna, ben;
+    private PlayerMock host, ben;
+    private FragileChatPlayer anna;
     private List<PlayerMock> everyone;
     private final Map<PlayerMock, Location> homes = new LinkedHashMap<>(), builds = new LinkedHashMap<>();
     private Round round;
@@ -93,7 +98,8 @@ class VoteTourTest {
         plugin = TestServer.start(server);
         plugin.clock(() -> now.get());
         host = server.addPlayer("Host");
-        anna = server.addPlayer("Anna");
+        anna = new FragileChatPlayer(server, "Anna");
+        server.addPlayer(anna);
         ben = server.addPlayer("Ben");
         everyone = List.of(host, anna, ben);
         host.performCommand("prost start");
@@ -111,6 +117,20 @@ class VoteTourTest {
 
     @AfterEach
     void stop() { MockBukkit.unmock(); }
+
+    /** a message containing {@code chatBreaksOn} (null: none) throws, as a broken placeholder in a lang text would */
+    static final class FragileChatPlayer extends PlayerMock {
+        String chatBreaksOn;
+
+        FragileChatPlayer(ServerMock server, String name) { super(server, name); }
+
+        @Override
+        public void sendMessage(Component message) {
+            if (chatBreaksOn != null && PlainTextComponentSerializer.plainText().serialize(message).contains(chatBreaksOn))
+                throw new IllegalStateException("a broken chat");
+            super.sendMessage(message);
+        }
+    }
 
     // ---------------------------------------------------------------------------------------------- driving the contest
 
@@ -740,6 +760,117 @@ class VoteTourTest {
         anna.leaveVehicle();
         plugin.returns().tick();
         assertHome(anna, "the next try, once she is off");
+    }
+
+    /** the minute belongs to the way back: no join after it starts another one */
+    @Test
+    void aJoinAfterTheMinuteTriesOnceWithoutProtection() throws Exception {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(anna)), plugin);
+        toVote(host);
+        later(60_001L);
+        plugin.returns().tick();
+        for (int join = 1; join <= 2; join++) {
+            anna.disconnect();
+            TestServer.messages(anna);
+            try (LogCapture log = LogCapture.root()) {
+                anna.reconnect();
+                assertEquals(1, log.messages().stream().filter(m -> m.contains("Anna could not be moved back")
+                        && m.endsWith(" - tried again when they join")).count(), "join " + join + ": " + log.messages());
+            }
+            List<String> told = TestServer.messages(anna);
+            assertTrue(told(told, "Prost brings you back when you join again"), "join " + join + ": " + told);
+            assertFalse(told(told, "Prost tries again for a minute"), "join " + join + ": " + told);
+            assertSheltered(anna, false, "join " + join + " after the minute");
+            assertTrue(builds.containsValue(anna.getLocation()), "still at a build: " + anna.getLocation());
+            assertTrue(saved().containsKey(anna.getUniqueId().toString()), "kept for the next join");
+        }
+    }
+
+    @Test
+    void aJoinWithinTheMinuteKeepsItsEnd() {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(anna)), plugin);
+        toVote(host);
+        later(20_000L);
+        anna.disconnect();
+        TestServer.messages(anna);
+        anna.reconnect();
+        assertTrue(told(TestServer.messages(anna), "Prost tries again for a minute"), "told again on joining");
+        assertSheltered(anna, true, "rejoined within the minute");
+        later(40_001L);
+        plugin.returns().tick();
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"), "a minute after the first failure");
+        assertSheltered(anna, false, "the minute is over");
+    }
+
+    @Test
+    void aJoinAfterARespawnIntoAnUnloadedWorldIsNotProtected() {
+        tourFromAnotherWorld(true);
+        anna.setHealth(0);
+        TestServer.messages(anna);
+        anna.respawn();
+        assertTrue(told(TestServer.messages(anna), "Prost brings you back when you join again"), "told on the respawn");
+        anna.disconnect();
+        anna.reconnect();
+        List<String> told = TestServer.messages(anna);
+        assertTrue(told(told, "Prost brings you back when you join again"), told.toString());
+        assertFalse(told(told, "Prost tries again for a minute"), told.toString());
+        assertSheltered(anna, false, "the respawn ended the minute");
+    }
+
+    @Test
+    void aFinishedReturnWhoseMessageFailsIsNotTriedAgain() throws Exception {
+        tour();
+        anna.chatBreaksOn = "You are back where you stood";
+        try (LogCapture log = LogCapture.root()) {
+            toVote(host);
+            assertHome(anna, "back, although she could not be told");
+            List<LogRecord> back = log.records().stream().filter(r -> r.getMessage().contains("Anna is back from the tour")).toList();
+            assertEquals(1, back.size(), log.messages().toString());
+            assertEquals(Level.WARNING, back.get(0).getLevel());
+            assertEquals("a broken chat", back.get(0).getThrown().getMessage(), "with the stack trace");
+            later(3001L);
+            assertSheltered(anna, false, "the grace after the return only");
+            log.clear();
+            later(60_001L);
+            plugin.returns().tick();
+            assertEquals(List.of(), log.messages().stream().filter(m -> m.contains("Anna")).toList(), "no try of a finished return");
+        }
+        assertFalse(saved().containsKey(anna.getUniqueId().toString()), "forgotten");
+    }
+
+    @Test
+    void oneFailingPlayerDoesNotStopTheOthersTries() {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(anna)), plugin);
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(ben)), plugin);
+        toVote(host);
+        anna.chatBreaksOn = "Prost brings you back when you join again";
+        TestServer.messages(ben);
+        try (LogCapture log = LogCapture.root()) {
+            later(60_001L);
+            plugin.returns().tick();
+            assertEquals(1, log.messages().stream().filter(m -> m.contains("Anna's return could not be tried again")).count(),
+                    log.messages().toString());
+        }
+        assertTrue(told(TestServer.messages(ben), "Prost brings you back when you join again"), "Ben's minute ends too");
+        assertSheltered(ben, false, "the minute is over for him");
+    }
+
+    /** the error comes back to retry as a second failure of the same return: telling it again would throw past the others */
+    @Test
+    void aFailedReturnWhoseMessageFailsKeepsNobodyElseAway() {
+        tour();
+        server.getPluginManager().registerEvents(new HomeBlocker(homes.get(anna)), plugin);
+        anna.chatBreaksOn = "Prost tries again for a minute";
+        try (LogCapture log = LogCapture.root()) {
+            toVote(host);
+            assertEquals(1, log.messages().stream().filter(m -> m.contains("Anna could not be brought back")).count(),
+                    log.messages().toString());
+        }
+        assertHome(ben, "brought back after her");
+        assertSheltered(anna, true, "her minute of tries runs");
     }
 
     /** the scheduler runs Returns#tick: every other test calls it by hand */
