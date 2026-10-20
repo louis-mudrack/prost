@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 - 2026-10-20
+### Fixes
+- Hot potato: an admin who clicks the potato in the holder's inventory through /invsee or OpenInv no longer removes it
+  from the game; the click is only refused.
+- The "sit" reaction no longer counts a boat or minecart seat that another plugin refuses (a protected region, say).
+- Build contests respect a closed Nether or End (`dimensions` in config.yml or a plugin's gate): `/prost here` there is
+  refused, no build is placed there when the building time ends, and the tour does not visit a build whose dimension is
+  closed by its turn (it still gets votes; with `vote.teleport: false` its coordinates are still named).
+
 ## 0.4.0 - 2026-10-20
 26 new challenges in three new kinds that play like party games: 129 challenges in eight kinds now.
 
