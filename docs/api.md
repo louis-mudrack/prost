@@ -96,7 +96,8 @@ All events are Bukkit events, fire on the **main server thread**, and are not ca
 | `RouletteHitEvent` | the roulette hit a player and landed on sips; they then arrive as a `SipsEvent` with source `ROULETTE` | `player()`, `roundCode()`, `sips()` |
 
 A round that ends while a challenge is running fires only `RoundEndEvent` (its view still shows the running challenge); no
-`ChallengeEndEvent` follows.
+`ChallengeEndEvent` follows. A challenge that fails while it starts is cancelled with a `ChallengeEndEvent` (`resolved()`
+false) that may come without a `ChallengeStartEvent` before it.
 
 ## Views
 

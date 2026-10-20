@@ -30,6 +30,7 @@ import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,12 +49,23 @@ class GameRunTest {
         Verdict verdict = Verdict.of(Map.of(), List.of());
         /** non-null: verdict() throws it */
         RuntimeException verdictFails;
+        /** non-null: start() throws it once it listens */
+        RuntimeException startFails;
+        /** non-null: stop() throws it once it stopped listening */
+        RuntimeException stopFails;
         final List<UUID> dropped = new ArrayList<>();
         int verdicts;
 
-        @Override public void start(List<Player> players) { Bukkit.getPluginManager().registerEvents(this, Bukkit.getPluginManager().getPlugin("Prost")); }
+        @Override public void start(List<Player> players) {
+            Bukkit.getPluginManager().registerEvents(this, Bukkit.getPluginManager().getPlugin("Prost"));
+            if (startFails != null) throw startFails;
+        }
         @Override public int progress(UUID id) { return 0; }
-        @Override public void stop() { HandlerList.unregisterAll(this); stopped = true; }
+        @Override public void stop() {
+            HandlerList.unregisterAll(this);
+            stopped = true;
+            if (stopFails != null) throw stopFails;
+        }
         @Override public long deadline() { return deadline; }
         @Override public boolean decided() { return decided; }
         @Override public Verdict verdict() {
@@ -287,6 +299,93 @@ class GameRunTest {
         assertTrue(plugin.director().next(round), "the next challenge may be drawn");
         plugin.director().tick();
         assertNotNull(plugin.director().running(round), "and is drawn");
+    }
+
+    /** a second round of two, hosted by Dora */
+    private Round secondRound() {
+        PlayerMock dora = server.addPlayer("Dora"), eve = server.addPlayer("Eve");
+        dora.performCommand("prost start");
+        Round second = plugin.rounds().of(dora.getUniqueId());
+        eve.performCommand("prost join " + second.code);
+        return second;
+    }
+
+    /** another scripted game with the first one's minute to play */
+    private ScriptedGame otherGame() {
+        ScriptedGame other = new ScriptedGame();
+        other.deadline = game.deadline;
+        return other;
+    }
+
+    private void launch(Round r, ScriptedGame g) {
+        plugin.director().launch(new ChallengeRun(plugin, r, def(), Kind.REACTION, r.activeIds(), ctx -> g));
+    }
+
+    /** a run that throws while it stops for its ended round must not stop the loop: the other rounds play on */
+    @Test
+    void aRunWhoseStopFailsDoesNotBreakTheLoop() {
+        game.stopFails = new IllegalStateException("scripted stop failure");
+        launch(round, game);
+        Round second = secondRound();
+        ScriptedGame other = otherGame();
+        launch(second, other);
+        other.decided = true;
+        host.performCommand("prost end");
+        assertDoesNotThrow(() -> plugin.director().tick());
+        assertNull(plugin.director().running(round), "the ended round's run is gone");
+        assertEquals(1, other.verdicts, "the other round's game was judged");
+    }
+
+    @Test
+    void aShutdownStopsEveryRunEvenWhenOneFails() {
+        game.stopFails = new IllegalStateException("scripted stop failure");
+        launch(round, game);
+        ScriptedGame other = otherGame();
+        launch(secondRound(), other);
+        try (LogCapture log = LogCapture.root()) {
+            assertDoesNotThrow(() -> plugin.director().shutdown());
+            List<String> warned = log.records().stream().filter(r -> r.getThrown() == game.stopFails).map(LogCapture::text).toList();
+            assertEquals(1, warned.size(), "logged once: " + log.messages());
+            assertTrue(warned.get(0).contains("scripted") && warned.get(0).contains(round.code), "names the challenge and the round: " + warned);
+        }
+        assertTrue(game.stopped, "the failing game was stopped");
+        assertTrue(other.stopped, "and the other one too");
+    }
+
+    /** a throw while starting must not hold the round either: it is cancelled as an error and the next challenge may come */
+    @Test
+    void aGameWhoseStartFailsFreesTheRound() {
+        game.startFails = new IllegalStateException("scripted start failure");
+        TestServer.messages(host);
+        try (LogCapture log = LogCapture.root()) {
+            launch(round, game);
+            assertEquals(1, log.records().stream().filter(r -> r.getThrown() == game.startFails).count(), "logged once: " + log.messages());
+        }
+        assertNull(plugin.director().running(round), "the broken run is gone");
+        assertFalse(listens(game), "no listener left");
+        assertTrue(host.getBossBars().isEmpty(), "no bar left");
+        assertTrue(TestServer.messages(host).stream().anyMatch(m -> m.contains("hit an error")), "the round is told");
+        assertEquals(1, ended.size(), "API listeners see it end");
+        assertFalse(ended.get(0).resolved());
+        assertTrue(plugin.director().next(round), "the next challenge may be drawn");
+    }
+
+    /** the hot potato draws its hidden length when it starts: a random source that throws breaks that start */
+    @Test
+    void aForcedChallengeWhoseStartFailsLeavesNoRun() {
+        IllegalStateException broken = new IllegalStateException("scripted random failure");
+        plugin.random(new Random() {
+            @Override public long nextLong(long origin, long bound) { throw broken; }
+        });
+        try (LogCapture log = LogCapture.root()) {
+            server.dispatchCommand(server.getConsoleSender(), "prost admin force " + round.code + " hot_potato reaction");
+            assertEquals(1, log.records().stream().filter(r -> r.getThrown() == broken).count(), "the start failed: " + log.messages());
+        }
+        assertNull(plugin.director().running(round), "no run left");
+        plugin.random(new Random());
+        assertTrue(plugin.director().next(round), "the round may draw again");
+        plugin.director().tick();
+        assertNotNull(plugin.director().running(round), "and does");
     }
 
     @Test

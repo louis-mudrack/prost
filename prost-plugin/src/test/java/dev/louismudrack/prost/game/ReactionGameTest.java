@@ -123,6 +123,14 @@ class ReactionGameTest {
         assertEquals(List.of(id(anna), id(ben)), end().winners());
     }
 
+    /** the presence check marks a quit only every so often: until then the one who left must not be drawn */
+    @Test
+    void aPlayerWhoJustQuitIsNotDrawn() {
+        ben.disconnect();
+        force("react_crouch", "reaction");
+        assertFalse(plugin.director().running(round).participants().contains(id(ben)), "Ben has left");
+    }
+
     @Test
     void everybodyCrouchingEndsEarlyAndTheLastDrinks() {
         force("react_crouch", "reaction");

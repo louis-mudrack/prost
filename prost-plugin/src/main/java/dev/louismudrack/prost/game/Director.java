@@ -38,8 +38,8 @@ public final class Director {
     public void tick() {
         for (ChallengeRun run : new ArrayList<>(runs.values())) {
             if (plugin.rounds().byCode(run.round.code) == null) {   // the round ended mid-challenge
-                run.stopQuietly();
                 runs.remove(run.round.code);
+                stopQuietly(run);
                 continue;
             }
             try {
@@ -53,7 +53,7 @@ public final class Director {
         for (Round r : new ArrayList<>(plugin.rounds().all())) {
             try {
                 if (resumed(r)) r.nextDrawAt = DirectorRules.afterResume(now, r.nextDrawAt, RESUME_MIN_WAIT_MS);
-                List<UUID> active = r.activeIds();
+                List<UUID> active = playable(r);
                 if (DirectorRules.mayStart(runs.containsKey(r.code), r.paused, active.size(), now, r.nextDrawAt)) draw(r, active);
                 remindRules(r, now);
                 showPaused(r);
@@ -75,6 +75,22 @@ public final class Director {
         } finally {
             if (runs.get(run.round.code) == run) ended(run.round, false);   // a broken run never holds its round
         }
+    }
+
+    /** a run that throws while stopping must not keep the loop or the other runs from going on */
+    private void stopQuietly(ChallengeRun run) {
+        try {
+            run.stopQuietly();
+        } catch (RuntimeException | LinkageError e) {
+            plugin.getLogger().log(Level.WARNING, "stopping challenge " + run.def.id() + " in round " + run.round.code + " failed", e);
+        }
+    }
+
+    /** a member who just quit stays active until the next presence check, but cannot play */
+    private static List<UUID> playable(Round r) {
+        List<UUID> out = new ArrayList<>();
+        for (UUID id : r.activeIds()) if (Bukkit.getPlayer(id) != null) out.add(id);
+        return out;
     }
 
     /** the action bar says so while you or the whole round is paused */
@@ -133,7 +149,12 @@ public final class Director {
     /** the round's run from now on; tests hand in one with a scripted game */
     void launch(ChallengeRun run) {
         runs.put(run.round.code, run);
-        run.start();
+        try {
+            run.start();
+        } catch (RuntimeException e) {
+            failed(run, e);
+            return;
+        }
         plugin.rounds().save();
     }
 
@@ -162,7 +183,7 @@ public final class Director {
 
     /** /prost admin force: a given challenge and kind right now (testing, staff) */
     public boolean force(Round r, ChallengeDef d, Kind kind) {
-        List<UUID> active = r.activeIds();
+        List<UUID> active = playable(r);
         if (runs.containsKey(r.code) || !DrawRules.kinds(d, active.size()).contains(kind)) return false;
         start(r, new DrawRules.Choice(d, kind), List.of(), active);
         return true;
@@ -190,7 +211,7 @@ public final class Director {
 
     /** onDisable: running challenges just stop - nobody drinks, the warm-up starts again after the restart */
     public void shutdown() {
-        for (ChallengeRun run : runs.values()) run.stopQuietly();
+        for (ChallengeRun run : new ArrayList<>(runs.values())) stopQuietly(run);
         runs.clear();
     }
 }
