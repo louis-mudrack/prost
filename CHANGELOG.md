@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.3 - 2026-10-20
+### Fixes
+- Build contest tour: a way back that fails is tried for one minute counted from its first failure, whether the player
+  is online or not. A quit no longer drops those tries and a join no longer restarts them; a join after the minute gets
+  one more try without protection and tells the player to join again if it fails. A respawn into a world that is not
+  loaded ends a running minute.
+- A return that is done is never tried again, even when the message telling the player fails. At the end of a tour (and
+  at a stop) a return that fails no longer keeps the others away.
+- A player sent home into mid-air stays protected until they land even after a quit, a server stop or a reload; their
+  next arrival starts the 30 seconds again. Flying players are released a few seconds after the return, and one whose
+  flight ends in mid-air stays protected until they land.
+- A challenge that hits a missing class is cancelled like any other error instead of stopping the round.
+- `/prost admin force` tells the admin when the challenge failed to start, and a failed start no longer counts as
+  played (the entry is still not drawn again until the pool resets).
+
 ## 0.4.2 - 2026-10-20
 ### Fixes
 - Build contest tour: a player is no longer left falling or hurt after the tour sends them home. They stay protected
